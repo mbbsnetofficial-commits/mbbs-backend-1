@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require("cors");
 const authRouter = require('./routes/auth.routes');
 const app = express();
 const swaggerUi = require('swagger-ui-express');
@@ -15,13 +16,33 @@ const notificationRouter = require("./routes/notification.routes");
 const platformAdminRouter = require("./routes/platformAdmin.routes");
 const previousYearQuestionRouter = require("./routes/previousYearQuestion.routes");
 
+// Railway terminates HTTPS at its proxy. This also makes req.ip use forwarded data.
+app.set("trust proxy", 1);
+
+const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(",").map(origin => origin.trim())
+    : true;
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
+
+app.use(express.json({ limit: "1mb" }));
+
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        status: "success",
+        message: "MBBS NEET API is running",
+        timestamp: new Date().toISOString()
+    });
+});
 
 
 // Interactive API documentation. This does not change the authentication routes.
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 //Routes
-app.use(express.json());
 app.use('/api/v1/auth', authRouter);
 // Admin login must be mounted before student routers that apply protect globally.
 app.use("/api/v1/admin", platformAdminRouter);
