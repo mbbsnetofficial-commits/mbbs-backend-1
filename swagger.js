@@ -629,7 +629,15 @@ const swaggerOptions = {
                                             data: {
                                                 type: 'object',
                                                 properties: {
-                                                    token: { type: 'string', description: 'JWT access token' },
+                                                    student_id: {
+                                                        type: 'string',
+                                                        description: 'Unique student identifier.',
+                                                        example: 'STU1784270552819BG1KRS'
+                                                    },
+                                                    accessToken: {
+                                                        type: 'string',
+                                                        description: 'JWT access token. Send it as Authorization: Bearer <accessToken> for protected APIs.'
+                                                    },
                                                     refreshToken: { type: 'string', description: 'JWT refresh token' }
                                                 }
                                             }

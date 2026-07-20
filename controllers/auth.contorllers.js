@@ -1,5 +1,4 @@
 const Auth = require('./../model/auth');
-const jwt = require('jsonwebtoken');
 const {
     createAuthSession,
     rotateAuthSession,
@@ -84,15 +83,13 @@ exports.login = async (req, res) => {
             })
         }
 
-        const { accessToken: authtoken, refreshToken: refreshtoken } = await createAuthSession(user, req);
+        const { accessToken, refreshToken } = await createAuthSession(user, req);
         res.status(200).json({
             status: 'success',
             data: {
                 student_id: user.student_id,
-                authtoken,
-                refreshtoken,
-                accessToken: authtoken,
-                refreshToken: refreshtoken
+                accessToken,
+                refreshToken
             }
         })
     } catch (err) {
