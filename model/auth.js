@@ -1,0 +1,129 @@
+const mongoose = require("mongoose");
+const validator = require("validator");
+const bcrypt = require("bcryptjs");
+
+const authSchema = new mongoose.Schema(
+    {
+        student_id: {
+            type: String,
+            unique: true
+        },
+
+        firstName: {
+            type: String,
+            required: [true, "First name is required"],
+            trim: true,
+            lowercase: true,
+            validate: [validator.isAlpha, "Only alphabets are allowed"]
+        },
+
+        lastName: {
+            type: String,
+            required: [true, "Last name is required"],
+            trim: true,
+            lowercase: true,
+            validate: [validator.isAlpha, "Only alphabets are allowed"]
+        },
+
+        email: {
+            type: String,
+            required: [true, "Email is required"],
+            trim: true,
+            lowercase: true,
+            unique: true,
+            validate: [validator.isEmail, "Please enter a valid email"]
+        },
+
+        password: {
+            type: String,
+            required: [true, "Password is required"],
+            trim: true,
+            minlength: [8, "Password must be at least 8 characters long"]
+        },
+
+        confirmPassword: {
+            type: String,
+            required: [true, "Confirm password is required"],
+            trim: true,
+            minlength: [8, "Confirm password must be at least 8 characters long"],
+            validate: {
+                validator: function (value) {
+                    return value === this.password;
+                },
+                message: "Passwords do not match"
+            }
+        },
+
+        phoneNumber: {
+            type: String,
+            required: [true, "Phone number is required"],
+            unique: true,
+            validate: {
+                validator: value => /^\+[1-9]\d{7,14}$/.test(value),
+                message: "Phone number must use international format"
+            }
+        },
+
+        token_version: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+
+        is_active: {
+            type: Boolean,
+            default: true,
+            index: true
+        }
+    },
+    {
+        collection: "neet-auth",
+        timestamps: true
+    }
+);
+
+
+// ==========================================
+// Generate Student ID & Hash Password
+// ==========================================
+authSchema.pre("validate", function () {
+    if (this.isModified("phoneNumber")) {
+        const cleaned = this.phoneNumber.trim().replace(/[\s()-]/g, "");
+        this.phoneNumber = /^\d{10}$/.test(cleaned) ? `+91${cleaned}` : cleaned;
+    }
+});
+
+authSchema.pre("save", async function () {
+
+    if (this.isNew && !this.student_id) {
+
+        const random = Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+
+        this.student_id = `STU${Date.now()}${random}`;
+    }
+
+    if (this.isModified("password") && !/^\$2[aby]\$/.test(this.password)) {
+        this.password = await bcrypt.hash(this.password, 10);
+    }
+
+    this.confirmPassword = undefined;
+});
+
+// ==========================================
+// Compare Password
+// ==========================================
+
+authSchema.methods.comparePassword = async function (
+    enteredPassword,
+    storedPassword
+) {
+    return await bcrypt.compare(
+        enteredPassword,
+        storedPassword
+    );
+};
+
+module.exports = mongoose.model("Auth", authSchema);

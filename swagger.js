@@ -1,0 +1,1815 @@
+const swaggerJsdoc = require('swagger-jsdoc');
+
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.3',
+        info: {
+            title: 'MBBS NEET API',
+            version: '1.0.0',
+            description: 'API documentation for authentication, Question of the Day, and quick-test features.'
+        },
+        servers: [
+            {
+                url: 'http://localhost:3000',
+                description: 'Local development server'
+            }
+        ],
+        tags: [
+            {
+                name: 'Authentication',
+                description: 'User registration and login endpoints'
+            },
+            {
+                name: 'Question of the Day',
+                description: 'Fetch the daily question and submit one answer per student'
+            },
+            {
+                name: 'Quick Test',
+                description: 'Select subjects and chapters, start a test, and submit answers'
+            },
+            {
+                name: 'Test Review Chatbot',
+                description: 'Gemini-powered review chat grounded in a student\'s wrong test answers'
+            },
+            {
+                name: 'Student Activity',
+                description: 'Record and retrieve the authenticated student\'s latest application activity'
+            },
+            {
+                name: 'User Activity',
+                description: 'Record and retrieve application activity by numeric user ID'
+            },
+            {
+                name: 'Student Profile',
+                description: 'Create, update, and retrieve the authenticated student profile'
+            },
+            {
+                name: 'Question Feedback',
+                description: 'Submit and retrieve student feedback for questions in their tests'
+            },
+            {
+                name: 'Review Comments',
+                description: 'Submit and retrieve authenticated student review comments'
+            },
+            {
+                name: 'Notifications',
+                description: 'Create, list, read, count, and dismiss authenticated student notifications'
+            },
+            {
+                name: 'Platform Admin',
+                description: 'Authenticate active platform administrators'
+            },
+            {
+                name: 'Previous Year Tests',
+                description: 'List, inspect, start, and submit mapped previous-year examination papers'
+            }
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    description: 'Enter the JWT returned by the login API.'
+                },
+                adminBearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    description: 'Enter the JWT returned by the platform admin login API.'
+                }
+            },
+            schemas: {
+                SignupRequest: {
+                    type: 'object',
+                    required: ['firstName', 'lastName', 'email', 'password', 'confirmPassword'],
+                    properties: {
+                        firstName: { type: 'string', example: 'sanjay' },
+                        lastName: { type: 'string', example: 'kumar' },
+                        email: { type: 'string', format: 'email', example: 'sanjay@example.com' },
+                        phoneNumber: { type: 'string', pattern: '^\\d{10}$', example: '8903605604' },
+                        password: { type: 'string', format: 'password', minLength: 8, example: 'password123' },
+                        confirmPassword: { type: 'string', format: 'password', minLength: 8, example: 'password123' }
+                    }
+                },
+                SignupOtpVerifyRequest: {
+                    type: 'object',
+                    required: ['phoneNumber', 'otp'],
+                    properties: {
+                        phoneNumber: { type: 'string', example: '8903605604' },
+                        otp: { type: 'string', pattern: '^\\d{6}$', example: '483921' }
+                    }
+                },
+                LoginRequest: {
+                    type: 'object',
+                    required: ['email', 'password'],
+                    properties: {
+                        email: { type: 'string', format: 'email', example: 'sanjay@example.com' },
+                        password: { type: 'string', format: 'password', example: 'password123' }
+                    }
+                },
+                RefreshTokenRequest: {
+                    type: 'object',
+                    required: ['refreshToken'],
+                    properties: {
+                        refreshToken: {
+                            type: 'string',
+                            description: 'Refresh token returned by login, sign-up verification, or the previous refresh call.'
+                        }
+                    }
+                },
+                ForgotPasswordRequest: {
+                    type: 'object',
+                    required: ['phoneNumber'],
+                    properties: {
+                        phoneNumber: { type: 'string', example: '+918012036989' }
+                    }
+                },
+                VerifyResetOtpRequest: {
+                    type: 'object',
+                    required: ['phoneNumber', 'otp'],
+                    properties: {
+                        phoneNumber: { type: 'string', example: '+918012036989' },
+                        otp: { type: 'string', pattern: '^\\d{6}$', example: '483921' }
+                    }
+                },
+                ResetPasswordRequest: {
+                    type: 'object',
+                    required: ['resetToken', 'password', 'confirmPassword'],
+                    properties: {
+                        resetToken: { type: 'string', description: 'One-time token returned by the OTP verification API.' },
+                        password: { type: 'string', format: 'password', minLength: 8, example: 'newPassword123' },
+                        confirmPassword: { type: 'string', format: 'password', minLength: 8, example: 'newPassword123' }
+                    }
+                },
+                ChangePasswordRequest: {
+                    type: 'object',
+                    required: ['currentPassword', 'newPassword', 'confirmPassword'],
+                    properties: {
+                        currentPassword: { type: 'string', format: 'password', example: 'password123' },
+                        newPassword: { type: 'string', format: 'password', minLength: 8, example: 'newPassword123' },
+                        confirmPassword: { type: 'string', format: 'password', minLength: 8, example: 'newPassword123' }
+                    }
+                },
+                ErrorResponse: {
+                    type: 'object',
+                    properties: {
+                        status: { type: 'string', example: 'fail' },
+                        message: { type: 'string', example: 'invalid credentials' }
+                    }
+                },
+                TestSelectionRequest: {
+                    type: 'object',
+                    required: ['subjects'],
+                    properties: {
+                        subjects: {
+                            type: 'array',
+                            minItems: 1,
+                            items: {
+                                type: 'string',
+                                enum: ['Physics', 'Chemistry', 'Botany', 'Zoology']
+                            },
+                            example: ['Physics']
+                        }
+                    }
+                },
+                TestTopicRequest: {
+                    allOf: [
+                        { $ref: '#/components/schemas/TestSelectionRequest' },
+                        {
+                            type: 'object',
+                            required: ['chapters'],
+                            properties: {
+                                chapters: {
+                                    type: 'array',
+                                    minItems: 1,
+                                    items: { type: 'string' },
+                                    example: ['Units and Measurements']
+                                }
+                            }
+                        }
+                    ]
+                },
+                StartQuickTestRequest: {
+                    allOf: [
+                        { $ref: '#/components/schemas/TestTopicRequest' },
+                        {
+                            type: 'object',
+                            required: ['questionCount', 'duration'],
+                            properties: {
+                                questionCount: {
+                                    type: 'integer',
+                                    enum: [15, 20, 25, 30, 35, 40],
+                                    example: 15
+                                },
+                                duration: {
+                                    type: 'integer',
+                                    minimum: 1,
+                                    maximum: 30,
+                                    description: 'Test duration in minutes.',
+                                    example: 15
+                                }
+                            }
+                        }
+                    ]
+                },
+                TestQuestion: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'integer', example: 1001 },
+                        question: { type: 'string', example: 'What is the SI unit of force?' },
+                        option_a: { type: 'string', example: 'Joule' },
+                        option_b: { type: 'string', example: 'Newton' },
+                        option_c: { type: 'string', example: 'Watt' },
+                        option_d: { type: 'string', example: 'Pascal' },
+                        difficulty: { type: 'string', example: 'Easy' },
+                        question_type: { type: 'string', example: 'Single Correct Answer' },
+                        topic_id: { type: 'integer', example: 101 }
+                    }
+                },
+                SubmitTestRequest: {
+                    type: 'object',
+                    required: ['sessionId', 'answers'],
+                    properties: {
+                        sessionId: {
+                            type: 'string',
+                            description: 'Session ID returned by the start-test API.',
+                            example: '6879c11b92eaed84fcf156c1'
+                        },
+                        answers: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['question_id', 'selected_option'],
+                                properties: {
+                                    question_id: { type: 'integer', example: 1001 },
+                                    selected_option: {
+                                        type: 'string',
+                                        enum: ['A', 'B', 'C', 'D'],
+                                        example: 'B'
+                                    },
+                                    time_spent: {
+                                        type: 'number',
+                                        minimum: 0,
+                                        description: 'Optional time spent on this question in seconds; used for insight timing calculations.',
+                                        example: 18
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                TestErrorResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: false },
+                        message: { type: 'string', example: 'An error occurred.' }
+                    }
+                },
+                CreateChatSessionRequest: {
+                    type: 'object',
+                    required: ['testSessionId'],
+                    properties: {
+                        testSessionId: {
+                            type: 'string',
+                            description: 'A completed test session belonging to the logged-in student.',
+                            example: '6a59c9163133406e11373f53'
+                        },
+                        title: {
+                            type: 'string',
+                            maxLength: 120,
+                            example: 'Physics Wrong Answers Review'
+                        }
+                    }
+                },
+                UpdateChatSessionRequest: {
+                    type: 'object',
+                    required: ['title'],
+                    properties: {
+                        title: {
+                            type: 'string',
+                            maxLength: 120,
+                            example: 'Mechanics Review'
+                        }
+                    }
+                },
+                SendChatMessageRequest: {
+                    type: 'object',
+                    required: ['message'],
+                    properties: {
+                        message: {
+                            type: 'string',
+                            maxLength: 4000,
+                            example: 'Explain why my answer to question 1001 was wrong.'
+                        }
+                    }
+                },
+                ChatSession: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string', example: '687b51de7277aa31465561fd' },
+                        test_session_id: { type: 'string', example: '6a59c9163133406e11373f53' },
+                        title: { type: 'string', example: 'Physics Wrong Answers Review' },
+                        wrong_question_ids: {
+                            type: 'array',
+                            items: { type: 'integer' },
+                            example: [1001, 1005]
+                        },
+                        is_active: { type: 'boolean', example: true },
+                        last_message_at: { type: 'string', format: 'date-time' }
+                    }
+                },
+                ChatMessage: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string', example: '687b52647277aa3146556201' },
+                        role: { type: 'string', enum: ['user', 'assistant'], example: 'assistant' },
+                        content: { type: 'string', example: 'Your selected option is incorrect because...' },
+                        model: { type: 'string', nullable: true, example: 'gemini-3.5-flash' },
+                        createdAt: { type: 'string', format: 'date-time' }
+                    }
+                },
+                QuestionOfTheDay: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'integer', example: 101 },
+                        question_date: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-07-16T00:00:00.000Z'
+                        },
+                        question: {
+                            type: 'string',
+                            example: 'Which organelle is known as the powerhouse of the cell?'
+                        },
+                        option_a: { type: 'string', example: 'Nucleus' },
+                        option_b: { type: 'string', example: 'Mitochondrion' },
+                        option_c: { type: 'string', example: 'Ribosome' },
+                        option_d: { type: 'string', example: 'Golgi apparatus' },
+                        difficulty: {
+                            type: 'string',
+                            enum: ['Easy', 'Medium', 'Hard'],
+                            example: 'Easy'
+                        },
+                        question_type: { type: 'string', example: 'Single Correct Answer' },
+                        topic_id: { type: 'integer', example: 12 },
+                        alreadyAnswered: {
+                            type: 'boolean',
+                            description: 'Whether the logged-in student has already submitted an answer.',
+                            example: false
+                        }
+                    }
+                },
+                QuestionSubmissionRequest: {
+                    type: 'object',
+                    required: ['question_id', 'selected_option'],
+                    properties: {
+                        question_id: {
+                            type: 'integer',
+                            description: 'The numeric ID returned by the Question of the Day API.',
+                            example: 101
+                        },
+                        selected_option: {
+                            type: 'string',
+                            enum: ['A', 'B', 'C', 'D'],
+                            description: 'The option selected by the student.',
+                            example: 'B'
+                        }
+                    }
+                },
+                QuestionSubmissionResult: {
+                    type: 'object',
+                    properties: {
+                        question_id: { type: 'integer', example: 101 },
+                        selected_option: { type: 'string', enum: ['A', 'B', 'C', 'D'], example: 'B' },
+                        correct_answer: { type: 'string', enum: ['A', 'B', 'C', 'D'], example: 'B' },
+                        is_correct: { type: 'boolean', example: true },
+                        explanation: {
+                            type: 'string',
+                            example: 'Mitochondria produce most of the cell\'s ATP.'
+                        }
+                    }
+                },
+                StudentActivity: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string', example: '6a574d89f8cfe3af28d29008' },
+                        id: { type: 'integer', example: 206 },
+                        student_id: { type: 'string', example: 'MOB26070968IUXQ' },
+                        last_seen: { type: 'string', format: 'date-time', example: '2026-07-09T16:10:35.536Z' },
+                        ip_address: { type: 'string', example: '127.0.0.1' },
+                        user_agent: { type: 'string', example: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36' }
+                    }
+                },
+                UserActivityRequest: {
+                    type: 'object',
+                    required: ['user_id'],
+                    properties: {
+                        user_id: { type: 'integer', minimum: 1, example: 3 }
+                    }
+                },
+                UserActivity: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string', example: '6a574cb5f8cfe3af28d28fd3' },
+                        id: { type: 'integer', example: 4 },
+                        user_id: { type: 'integer', example: 3 },
+                        last_seen: { type: 'string', format: 'date-time', example: '2026-02-18T09:47:54.148Z' },
+                        ip_address: { type: 'string', example: '127.0.0.1' },
+                        user_agent: { type: 'string', example: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+                    }
+                },
+                StudentProfileRequest: {
+                    type: 'object',
+                    properties: {
+                        phone_number: { type: 'string', example: '+918012036989' },
+                        email: { type: 'string', format: 'email', example: 'student@example.com' },
+                        full_name: { type: 'string', maxLength: 120, example: 'Sanjay Kumar' },
+                        date_of_birth: { type: 'string', format: 'date', example: '2007-06-15' },
+                        school_name: { type: 'string', maxLength: 200, example: 'NEET Higher Secondary School' },
+                        target_exam_year: { type: 'integer', example: 2027 },
+                        auth_provider: { type: 'string', enum: ['mobile', 'local', 'google'], example: 'mobile' }
+                    }
+                },
+                StudentProfile: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string', example: '6a574a45f8cfe3af28d28f8b' },
+                        student_id: { type: 'string', example: 'MOB260328RVFUYR' },
+                        phone_number: { type: 'string', example: '+918012036989' },
+                        is_active: { type: 'boolean', example: true },
+                        is_verified: { type: 'boolean', example: true },
+                        last_login: { type: 'string', format: 'date-time' },
+                        created_at: { type: 'string', format: 'date-time' },
+                        updated_at: { type: 'string', format: 'date-time' },
+                        auth_provider: { type: 'string', example: 'mobile' },
+                        email_verified: { type: 'boolean', example: false },
+                        is_first_login: { type: 'boolean', example: true }
+                    }
+                },
+                QuestionFeedbackRequest: {
+                    type: 'object',
+                    required: ['test_session_id', 'question_id', 'feedback_type', 'comment'],
+                    properties: {
+                        test_session_id: {
+                            type: 'string',
+                            example: '6a59c9163133406e11373f53'
+                        },
+                        question_id: { type: 'integer', example: 1001 },
+                        feedback_type: {
+                            type: 'string',
+                            enum: ['incorrect_question', 'incorrect_answer', 'incorrect_explanation', 'typo', 'other'],
+                            example: 'incorrect_explanation'
+                        },
+                        comment: {
+                            type: 'string',
+                            maxLength: 1000,
+                            example: 'The explanation does not match the correct option.'
+                        }
+                    }
+                },
+                QuestionFeedback: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string' },
+                        student_id: { type: 'string', example: 'MOB260328RVFUYR' },
+                        test_session_id: { type: 'string', example: '6a59c9163133406e11373f53' },
+                        question_id: { type: 'integer', example: 1001 },
+                        feedback_type: { type: 'string', example: 'incorrect_explanation' },
+                        comment: { type: 'string' },
+                        status: { type: 'string', enum: ['pending', 'reviewed', 'resolved', 'rejected'], example: 'pending' },
+                        created_at: { type: 'string', format: 'date-time' },
+                        updated_at: { type: 'string', format: 'date-time' }
+                    }
+                },
+                ReviewCommentRequest: {
+                    type: 'object',
+                    required: ['review_type', 'comment'],
+                    properties: {
+                        review_type: {
+                            type: 'string',
+                            enum: ['app', 'test', 'chatbot', 'question', 'other'],
+                            example: 'test'
+                        },
+                        rating: { type: 'integer', minimum: 1, maximum: 5, example: 4 },
+                        comment: {
+                            type: 'string',
+                            maxLength: 2000,
+                            example: 'The test experience was useful and the explanations were clear.'
+                        },
+                        test_session_id: {
+                            type: 'string',
+                            nullable: true,
+                            description: 'Optional test session belonging to the logged-in student.',
+                            example: '6a59c9163133406e11373f53'
+                        }
+                    }
+                },
+                ReviewComment: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string' },
+                        user_id: { type: 'string' },
+                        student_id: { type: 'string', example: 'MOB260328RVFUYR' },
+                        review_type: { type: 'string', example: 'test' },
+                        rating: { type: 'integer', nullable: true, example: 4 },
+                        comment: { type: 'string' },
+                        test_session_id: { type: 'string', nullable: true },
+                        status: { type: 'string', example: 'pending' },
+                        created_at: { type: 'string', format: 'date-time' },
+                        updated_at: { type: 'string', format: 'date-time' }
+                    }
+                },
+                NotificationRequest: {
+                    type: 'object',
+                    required: ['title', 'message'],
+                    properties: {
+                        title: { type: 'string', maxLength: 150, example: 'Test completed' },
+                        message: { type: 'string', maxLength: 1000, example: 'Your test result and insights are ready.' },
+                        notification_type: {
+                            type: 'string',
+                            enum: ['system', 'test', 'qod', 'chatbot', 'account', 'reminder'],
+                            default: 'system',
+                            example: 'test'
+                        },
+                        priority: {
+                            type: 'string',
+                            enum: ['low', 'normal', 'high'],
+                            default: 'normal',
+                            example: 'normal'
+                        },
+                        action_url: { type: 'string', nullable: true, example: '/tests/results/6a59c9163133406e11373f53' },
+                        data: { type: 'object', nullable: true, additionalProperties: true }
+                    }
+                },
+                Notification: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string' },
+                        user_id: { type: 'string' },
+                        student_id: { type: 'string', example: 'STU1784270552819BG1KRS' },
+                        title: { type: 'string' },
+                        message: { type: 'string' },
+                        notification_type: { type: 'string', example: 'test' },
+                        priority: { type: 'string', example: 'normal' },
+                        action_url: { type: 'string', nullable: true },
+                        data: { type: 'object', nullable: true, additionalProperties: true },
+                        is_read: { type: 'boolean', example: false },
+                        read_at: { type: 'string', format: 'date-time', nullable: true },
+                        created_at: { type: 'string', format: 'date-time' },
+                        updated_at: { type: 'string', format: 'date-time' }
+                    }
+                },
+                PlatformAdminLoginRequest: {
+                    type: 'object',
+                    required: ['username', 'password'],
+                    properties: {
+                        username: { type: 'string', example: 'platform-admin' },
+                        password: { type: 'string', format: 'password', example: 'secure-admin-password' }
+                    }
+                }
+            }
+        },
+        paths: {
+            '/api/v1/auth/sign-up': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 1: Start sign-up and send mobile OTP',
+                    description: 'Validates and temporarily stores the registration details with a bcrypt password hash, rejects an email or mobile number already in neet-auth, and sends a five-minute OTP through Twilio. The account is not created until Step 2.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/SignupRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'OTP generated and accepted by Twilio for delivery.' },
+                        400: { description: 'Registration payload is invalid.' },
+                        409: { description: 'Email or mobile number is already registered.' },
+                        429: { description: 'OTP resend cooldown is active.' },
+                        502: { description: 'Twilio could not send the OTP.' },
+                        500: {
+                            description: 'Validation or server error',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/ErrorResponse' }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            '/api/v1/auth/login': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Log in with email and password',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/LoginRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: {
+                            description: 'Login successful',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            data: {
+                                                type: 'object',
+                                                properties: {
+                                                    token: { type: 'string', description: 'JWT access token' },
+                                                    refreshToken: { type: 'string', description: 'JWT refresh token' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: {
+                            description: 'Email or password is missing',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/ErrorResponse' }
+                                }
+                            }
+                        },
+                        403: {
+                            description: 'Invalid credentials',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/ErrorResponse' }
+                                }
+                            }
+                        },
+                        500: {
+                            description: 'Server error',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/ErrorResponse' }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            '/api/v1/auth/refresh-token': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Rotate a refresh token and issue new tokens',
+                    description: 'No Authorization header is required. The submitted refresh token must belong to an active stored auth session. Successful use rotates it, making the old refresh token invalid.',
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/RefreshTokenRequest' } } }
+                    },
+                    responses: {
+                        200: { description: 'New accessToken and refreshToken returned.' },
+                        400: { description: 'refreshToken is missing.' },
+                        401: { description: 'Refresh token is invalid, expired, reused, or revoked.' }
+                    }
+                }
+            },
+            '/api/v1/auth/logout': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Log out the current device/session',
+                    description: 'Requires the current access token. Revokes only the linked auth session, immediately invalidating that session’s access and refresh tokens.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Current session logged out successfully.' },
+                        400: { description: 'Legacy access token is not linked to a session.' },
+                        401: { description: 'Access token is invalid, expired, or revoked.' }
+                    }
+                }
+            },
+            '/api/v1/auth/logout-all': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Log out every device/session',
+                    description: 'Requires an access token. Revokes every stored session and increments token_version, immediately invalidating all existing access and refresh tokens.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'All sessions logged out successfully.' },
+                        401: { description: 'Access token is invalid, expired, or revoked.' },
+                        404: { description: 'User account not found.' }
+                    }
+                }
+            },
+            '/api/v1/auth/sign-up/verify-otp': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 2: Verify sign-up OTP and create account',
+                    description: 'Verifies the mobile OTP, creates the user in neet-auth, marks the OTP record as used, and returns an access token.',
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/SignupOtpVerifyRequest' } } }
+                    },
+                    responses: {
+                        201: { description: 'Mobile verified, account created, and access token returned.' },
+                        400: { description: 'OTP is malformed, invalid, or expired.' },
+                        409: { description: 'Email or mobile number became registered before verification.' },
+                        429: { description: 'Maximum OTP attempts reached.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/auth/forgot-password': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 1: Generate and send password-reset OTP',
+                    description: 'The backend generates a cryptographically secure 6-digit OTP, stores only its HMAC hash in reset-password, and sends the OTP through Twilio. The OTP expires after 5 minutes.',
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/ForgotPasswordRequest' } } }
+                    },
+                    responses: {
+                        200: { description: 'OTP generated, hashed, stored, and accepted by Twilio for delivery.' },
+                        400: { description: 'Phone number is invalid.' },
+                        404: { description: 'No account uses the supplied phone number.' },
+                        429: { description: 'OTP resend cooldown is active.' },
+                        502: { description: 'Twilio could not send the SMS.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/auth/verify-reset-otp': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 2: Verify password-reset OTP',
+                    description: 'Compares the submitted OTP hash using a timing-safe comparison. Successful verification returns a one-time reset token valid for 10 minutes.',
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/VerifyResetOtpRequest' } } }
+                    },
+                    responses: {
+                        200: { description: 'OTP verified and one-time reset token returned.' },
+                        400: { description: 'OTP is malformed, invalid, or expired.' },
+                        429: { description: 'Maximum OTP attempts reached.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/auth/reset-password': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 3: Set a new password',
+                    description: 'Uses the one-time reset token to update the account. The Auth model hashes the new password with bcrypt, and token_version is increased so every previously issued access and refresh token becomes invalid.',
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/ResetPasswordRequest' } } }
+                    },
+                    responses: {
+                        200: { description: 'Password reset successfully.' },
+                        400: { description: 'Payload or reset token is invalid or expired.' },
+                        404: { description: 'User account no longer exists.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/auth/change-password': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Change the logged-in user password',
+                    description: 'Requires a valid JWT and the current password. The new password is hashed with bcrypt, and all previously issued access and refresh tokens are invalidated.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/ChangePasswordRequest' } } }
+                    },
+                    responses: {
+                        200: { description: 'Password changed successfully.' },
+                        400: { description: 'Password fields are missing, invalid, identical, or do not match.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        403: { description: 'Current password is incorrect.' },
+                        404: { description: 'User account not found.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/test/history': {
+                get: {
+                    tags: ['Quick Test'],
+                    summary: 'List the logged-in student test history',
+                    description: 'Returns summary records for both Quick Test and Previous Year sessions without answer arrays or question IDs.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['Started', 'Completed', 'Expired'] } },
+                        { name: 'test_type', in: 'query', schema: { type: 'string', enum: ['Quick Test', 'Previous Year'] } }
+                    ],
+                    responses: { 200: { description: 'Paginated test history returned.' }, 400: { description: 'A filter is invalid.' }, 401: { description: 'Student token is missing or invalid.' } }
+                }
+            },
+            '/api/v1/test/sessions/{sessionId}': {
+                get: {
+                    tags: ['Quick Test'],
+                    summary: 'Get one owned test session',
+                    description: 'Returns session metadata and ordered questions without correct answers or explanations.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Safe session detail returned.' }, 400: { description: 'Invalid sessionId.' }, 401: { description: 'Student token is missing or invalid.' }, 404: { description: 'Owned session not found.' } }
+                }
+            },
+            '/api/v1/test/sessions/{sessionId}/result': {
+                get: {
+                    tags: ['Quick Test'],
+                    summary: 'Get a completed test result and answer review',
+                    description: 'Returns scoring, timing, selected options, correct answers, and explanations only after the owned session is Completed.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Completed result and question review returned.' }, 400: { description: 'Invalid sessionId.' }, 401: { description: 'Student token is missing or invalid.' }, 404: { description: 'Owned session not found.' }, 409: { description: 'Session is not completed.' } }
+                }
+            },
+            '/api/v1/test/subjects': {
+                get: {
+                    tags: ['Quick Test'],
+                    summary: 'Step 1: Get available subjects',
+                    description: 'Returns the distinct subjects stored in the topic collection.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: 'Subjects returned successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            total: { type: 'integer', example: 4 },
+                                            data: {
+                                                type: 'array',
+                                                items: { type: 'string' },
+                                                example: ['Physics', 'Chemistry', 'Botany', 'Zoology']
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: {
+                            description: 'JWT is missing, invalid, or expired.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        400: { description: 'Registration payload or one-time token is invalid.' },
+                        409: { description: 'Email or mobile number is already registered.' },
+                        500: {
+                            description: 'Server or database error.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
+                        }
+                    }
+                }
+            },
+            '/api/v1/test/chapters': {
+                post: {
+                    tags: ['Quick Test'],
+                    summary: 'Step 2: Get chapters for selected subjects',
+                    description: 'Send one or more subjects. The API returns unique chapters belonging to them.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/TestSelectionRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: {
+                            description: 'Chapters returned successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            total: { type: 'integer', example: 2 },
+                                            data: {
+                                                type: 'array',
+                                                items: {
+                                                    type: 'object',
+                                                    properties: { chapter: { type: 'string' } }
+                                                },
+                                                example: [
+                                                    { chapter: 'Motion in a Straight Line' },
+                                                    { chapter: 'Units and Measurements' }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: {
+                            description: 'No subject was selected.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
+                        },
+                        401: {
+                            description: 'JWT is missing, invalid, or expired.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        500: {
+                            description: 'Server or database error.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
+                        }
+                    }
+                }
+            },
+            '/api/v1/test/topics': {
+                post: {
+                    tags: ['Quick Test'],
+                    summary: 'Step 3: Get topics for selected chapters',
+                    description: 'Send the selected subjects and chapters to retrieve their topics.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/TestTopicRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: {
+                            description: 'Topics returned successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            total: { type: 'integer', example: 1 },
+                                            data: {
+                                                type: 'array',
+                                                items: {
+                                                    type: 'object',
+                                                    properties: {
+                                                        id: { type: 'integer', example: 101 },
+                                                        name: { type: 'string', example: 'Physical quantities' },
+                                                        subject: { type: 'string', example: 'Physics' },
+                                                        chapter: { type: 'string', example: 'Units and Measurements' },
+                                                        icon: { type: 'string', example: '📚' }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: {
+                            description: 'JWT is missing, invalid, or expired.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        500: {
+                            description: 'Invalid payload, server, or database error.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
+                        }
+                    }
+                }
+            },
+            '/api/v1/test/start': {
+                post: {
+                    tags: ['Quick Test'],
+                    summary: 'Step 4: Start a quick test',
+                    description: 'Finds topics for the selected chapters, randomly selects questions, hides correct answers and explanations, and creates a student test session.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/StartQuickTestRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: {
+                            description: 'Test session created and questions returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            sessionId: { type: 'string', example: '6879c11b92eaed84fcf156c1' },
+                                            duration: { type: 'integer', example: 15 },
+                                            totalQuestions: { type: 'integer', example: 15 },
+                                            data: {
+                                                type: 'array',
+                                                items: { $ref: '#/components/schemas/TestQuestion' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: {
+                            description: 'JWT is missing, invalid, or expired.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        500: {
+                            description: 'Validation, session creation, server, or database error.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
+                        }
+                    }
+                }
+            },
+            '/api/v1/test/submit': {
+                post: {
+                    tags: ['Quick Test'],
+                    summary: 'Step 5: Submit the completed test',
+                    description: 'Checks each submitted option, awards +4 for a correct answer and -1 for a wrong answer, updates the session, and returns the result review.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/SubmitTestRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: {
+                            description: 'Test submitted and result calculated.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            score: { type: 'integer', example: 11 },
+                                            correct: { type: 'integer', example: 3 },
+                                            wrong: { type: 'integer', example: 1 },
+                                            accuracy: { type: 'number', format: 'float', example: 75 },
+                                            review: {
+                                                type: 'array',
+                                                items: {
+                                                    type: 'object',
+                                                    properties: {
+                                                        question_id: { type: 'integer', example: 1001 },
+                                                        selected: { type: 'string', example: 'B' },
+                                                        correct_answer: { type: 'string', example: 'B' },
+                                                        isCorrect: { type: 'boolean', example: true }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: {
+                            description: 'sessionId or answers are missing, or the sessionId format is invalid.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
+                        },
+                        401: {
+                            description: 'JWT is missing, invalid, or expired.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        404: {
+                            description: 'The student test session or a submitted question_id was not found.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/TestErrorResponse' },
+                                    example: {
+                                        success: false,
+                                        message: 'Question with id 1001 was not found.'
+                                    }
+                                }
+                            }
+                        },
+                        409: {
+                            description: 'The test session has already been submitted.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
+                        },
+                        500: {
+                            description: 'Invalid answer data, session update, server, or database error.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
+                        }
+                    }
+                }
+            },
+            '/api/v1/chat-sessions': {
+                get: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'List the logged-in student\'s chat sessions',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'active', in: 'query', schema: { type: 'boolean' } }
+                    ],
+                    responses: {
+                        200: { description: 'Paginated chat sessions returned.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                },
+                post: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'Step 1: Create a chat for a completed test',
+                    description: 'Verifies test ownership and stores the IDs of questions answered incorrectly.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateChatSessionRequest' } } }
+                    },
+                    responses: {
+                        201: {
+                            description: 'Chat session created.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ChatSession' } } }
+                        },
+                        400: { description: 'Invalid testSessionId or the test has no wrong answers.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Completed test session not found for this student.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/chat-sessions/{chatSessionId}': {
+                parameters: [{
+                    name: 'chatSessionId',
+                    in: 'path',
+                    required: true,
+                    schema: { type: 'string' },
+                    example: '687b51de7277aa31465561fd'
+                }],
+                get: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'Get one owned chat session',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Chat session returned.' },
+                        400: { description: 'Invalid chatSessionId.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Chat session not found.' }
+                    }
+                },
+                patch: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'Rename a chat session',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateChatSessionRequest' } } }
+                    },
+                    responses: {
+                        200: { description: 'Chat title updated.' },
+                        400: { description: 'Invalid ID or title.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Chat session not found.' }
+                    }
+                },
+                delete: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'Deactivate a chat session',
+                    description: 'Soft-deletes the chat by setting is_active to false; messages are retained.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Chat session deactivated.' },
+                        400: { description: 'Invalid chatSessionId.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Active chat session not found.' }
+                    }
+                }
+            },
+            '/api/v1/chat-sessions/{chatSessionId}/messages': {
+                parameters: [{
+                    name: 'chatSessionId',
+                    in: 'path',
+                    required: true,
+                    schema: { type: 'string' },
+                    example: '687b51de7277aa31465561fd'
+                }],
+                get: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'Get paginated messages for an owned chat',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } }
+                    ],
+                    responses: {
+                        200: { description: 'Messages returned in chronological order.' },
+                        400: { description: 'Invalid chatSessionId.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Chat session not found.' }
+                    }
+                },
+                post: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'Step 2: Ask Gemini about wrong answers',
+                    description: 'Grounds Gemini with the completed test\'s wrong questions, selected options, correct answers, and explanations, then stores both messages.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/SendChatMessageRequest' } } }
+                    },
+                    responses: {
+                        200: { description: 'User and Gemini messages stored and returned.' },
+                        400: { description: 'Invalid ID or message.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Active chat or linked test session not found.' },
+                        502: { description: 'Gemini request failed or returned no text.' },
+                        503: { description: 'Gemini is not configured or remains temporarily unavailable after retries and fallback.' }
+                    }
+                }
+            },
+            '/api/v1/chat-sessions/{chatSessionId}/insights': {
+                post: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'Step 2: Generate insights for all wrong answers',
+                    description: 'No request body is required. The backend calculates factual performance values, asks Gemini for qualitative wrong-answer analysis, and upserts the combined report into test-subject-zone-insights.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'chatSessionId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string' },
+                        example: '687b51de7277aa31465561fd'
+                    }],
+                    responses: {
+                        200: { description: 'Insights generated for all wrong answers and stored in chat history.' },
+                        400: { description: 'Invalid chatSessionId.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Active chat or linked test session not found.' },
+                        502: { description: 'Gemini request failed or returned no text.' },
+                        503: { description: 'Gemini is not configured or remains temporarily unavailable after retries and fallback.' }
+                    }
+                }
+            },
+            '/api/v1/test-subject-zone-insights/{testSessionId}': {
+                get: {
+                    tags: ['Test Review Chatbot'],
+                    summary: 'Step 3: Get the stored test subject zone insight',
+                    description: 'Returns the structured insight stored in test-subject-zone-insights for the logged-in student and supplied test session.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'testSessionId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string' },
+                        example: '6a59c9163133406e11373f53'
+                    }],
+                    responses: {
+                        200: { description: 'Stored subject zone insight returned successfully.' },
+                        400: { description: 'Invalid testSessionId.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'No insight exists for this student and test session.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/student-activity': {
+                post: {
+                    tags: ['Student Activity'],
+                    summary: 'Create or update the logged-in student activity',
+                    description: 'No request body is required. student_id comes from the JWT; IP address, user agent, and last_seen are generated from the request and server time.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Existing student activity updated successfully.' },
+                        201: { description: 'Student activity created successfully.' },
+                        400: { description: 'The JWT does not contain student_id.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/student-activity/me': {
+                get: {
+                    tags: ['Student Activity'],
+                    summary: 'Get the logged-in student activity',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Student activity returned successfully.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Student activity has not been recorded.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/user-activity': {
+                post: {
+                    tags: ['User Activity'],
+                    summary: 'Create or update user activity',
+                    description: 'Send only the numeric user_id. The server records last_seen, IP address, and user agent automatically.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/UserActivityRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Existing user activity updated successfully.' },
+                        201: { description: 'User activity created successfully.' },
+                        400: { description: 'user_id is missing or invalid.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/user-activity/{userId}': {
+                get: {
+                    tags: ['User Activity'],
+                    summary: 'Get activity for a numeric user ID',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'userId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'integer', minimum: 1 },
+                        example: 3
+                    }],
+                    responses: {
+                        200: { description: 'User activity returned successfully.' },
+                        400: { description: 'userId is invalid.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'User activity not found.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/student-profile': {
+                post: {
+                    tags: ['Student Profile'],
+                    summary: 'Create or update the logged-in student profile',
+                    description: 'student_id is read from the JWT. Verification, activation, login-state, and timestamp fields are controlled by the server.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/StudentProfileRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Existing student profile updated successfully.' },
+                        201: { description: 'Student profile created successfully.' },
+                        400: { description: 'Profile payload or JWT student_id is invalid.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        409: { description: 'A supplied unique profile value is already in use.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/student-profile/me': {
+                get: {
+                    tags: ['Student Profile'],
+                    summary: 'Get the logged-in student profile',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Student profile returned successfully.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Student profile not found.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/test/question-feedback': {
+                post: {
+                    tags: ['Question Feedback'],
+                    summary: 'Submit feedback for a test question',
+                    description: 'The server gets student_id from the JWT and verifies that the test session belongs to the student and contains the supplied question. Submitting again updates the existing feedback.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/QuestionFeedbackRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Existing feedback updated successfully.' },
+                        201: { description: 'Question feedback submitted successfully.' },
+                        400: { description: 'Feedback payload is invalid.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'Question or matching student test session not found.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                },
+                get: {
+                    tags: ['Question Feedback'],
+                    summary: 'List the logged-in student\'s question feedback',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'question_id', in: 'query', schema: { type: 'integer' } }
+                    ],
+                    responses: {
+                        200: { description: 'Feedback list returned successfully.' },
+                        400: { description: 'question_id filter is invalid.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/review-comments': {
+                post: {
+                    tags: ['Review Comments'],
+                    summary: 'Submit a review comment',
+                    description: 'user_id and student_id come from the JWT. test_session_id is optional, but when supplied it must belong to the logged-in student.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/ReviewCommentRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'Review comment stored successfully.' },
+                        400: { description: 'Review payload is invalid.' },
+                        401: { description: 'JWT is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Optional test session does not belong to the student.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                },
+                get: {
+                    tags: ['Review Comments'],
+                    summary: 'List the logged-in student\'s review comments',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        {
+                            name: 'review_type',
+                            in: 'query',
+                            schema: { type: 'string', enum: ['app', 'test', 'chatbot', 'question', 'other'] }
+                        }
+                    ],
+                    responses: {
+                        200: { description: 'Review comments returned successfully.' },
+                        400: { description: 'review_type filter is invalid.' },
+                        401: { description: 'JWT is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/notifications': {
+                post: {
+                    tags: ['Notifications'],
+                    summary: 'Create a notification for the logged-in student',
+                    description: 'user_id and student_id are always taken from the JWT. Internal controllers can also use createNotificationService.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/NotificationRequest' } } }
+                    },
+                    responses: {
+                        201: { description: 'Notification created successfully.' },
+                        400: { description: 'Notification payload is invalid.' },
+                        401: { description: 'JWT is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                },
+                get: {
+                    tags: ['Notifications'],
+                    summary: 'List the logged-in student notifications',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'is_read', in: 'query', schema: { type: 'boolean' } },
+                        {
+                            name: 'notification_type',
+                            in: 'query',
+                            schema: { type: 'string', enum: ['system', 'test', 'qod', 'chatbot', 'account', 'reminder'] }
+                        }
+                    ],
+                    responses: {
+                        200: { description: 'Notification list returned successfully.' },
+                        400: { description: 'A query filter is invalid.' },
+                        401: { description: 'JWT is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/notifications/unread-count': {
+                get: {
+                    tags: ['Notifications'],
+                    summary: 'Get the unread notification count',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Unread count returned successfully.' },
+                        401: { description: 'JWT is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/notifications/read-all': {
+                patch: {
+                    tags: ['Notifications'],
+                    summary: 'Mark all notifications as read',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'All unread notifications marked as read.' },
+                        401: { description: 'JWT is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/notifications/{notificationId}/read': {
+                patch: {
+                    tags: ['Notifications'],
+                    summary: 'Mark one notification as read',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'notificationId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string' }
+                    }],
+                    responses: {
+                        200: { description: 'Notification marked as read.' },
+                        400: { description: 'notificationId is invalid.' },
+                        401: { description: 'JWT is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Notification not found for this user.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/notifications/{notificationId}': {
+                delete: {
+                    tags: ['Notifications'],
+                    summary: 'Dismiss one notification',
+                    description: 'Soft-deletes the notification so it remains in MongoDB but no longer appears in the student list.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'notificationId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string' }
+                    }],
+                    responses: {
+                        200: { description: 'Notification dismissed successfully.' },
+                        400: { description: 'notificationId is invalid.' },
+                        401: { description: 'JWT is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Notification not found for this user.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/admin/login': {
+                post: {
+                    tags: ['Platform Admin'],
+                    summary: 'Log in as an active platform administrator',
+                    description: 'Verifies the submitted password against the bcrypt password_hash in platform-admins and returns an admin JWT.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/PlatformAdminLoginRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Admin login successful and JWT returned.' },
+                        400: { description: 'username or password is missing.' },
+                        401: { description: 'Credentials are invalid or the admin is inactive.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/admin/dashboard': {
+                get: {
+                    tags: ['Platform Admin'], summary: 'Get admin dashboard totals',
+                    security: [{ adminBearerAuth: [] }],
+                    responses: { 200: { description: 'Platform totals returned.' }, 401: { description: 'Invalid admin token.' }, 500: { description: 'Server error.' } }
+                }
+            },
+            '/api/v1/admin/students': {
+                get: {
+                    tags: ['Platform Admin'], summary: 'List and search students', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, maximum: 100 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' } }
+                    ],
+                    responses: { 200: { description: 'Students returned without password data.' }, 401: { description: 'Invalid admin token.' } }
+                }
+            },
+            '/api/v1/admin/students/{studentId}': {
+                patch: {
+                    tags: ['Platform Admin'], summary: 'Adjust student account and subscription settings', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: {
+                        is_active: { type: 'boolean' }, is_verified: { type: 'boolean' }, email_verified: { type: 'boolean' },
+                        is_institution_student: { type: 'boolean' }, subscription_plan: { type: 'string' },
+                        subscription_expires_at: { type: 'string', format: 'date-time' }, target_exam_year: { type: 'integer' }
+                    } } } } },
+                    responses: { 200: { description: 'Student settings updated.' }, 400: { description: 'Invalid settings.' }, 404: { description: 'Student not found.' } }
+                }
+            },
+            '/api/v1/admin/questions': {
+                get: { tags: ['Platform Admin'], summary: 'List questions', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Questions returned.' } } },
+                post: { tags: ['Platform Admin'], summary: 'Create a question', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 201: { description: 'Question created.' }, 400: { description: 'Invalid question.' } } }
+            },
+            '/api/v1/admin/questions/{id}': {
+                patch: { tags: ['Platform Admin'], summary: 'Update a question', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Question updated.' }, 404: { description: 'Question not found.' } } }
+            },
+            '/api/v1/admin/topics': {
+                get: { tags: ['Platform Admin'], summary: 'List topics', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Topics returned.' } } },
+                post: { tags: ['Platform Admin'], summary: 'Create a topic', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 201: { description: 'Topic created.' } } }
+            },
+            '/api/v1/admin/topics/{id}': {
+                patch: { tags: ['Platform Admin'], summary: 'Update a topic', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Topic updated.' }, 404: { description: 'Topic not found.' } } }
+            },
+            '/api/v1/admin/qod': {
+                get: { tags: ['Platform Admin'], summary: 'List Questions of the Day', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'QOD records returned.' } } },
+                post: { tags: ['Platform Admin'], summary: 'Create a Question of the Day', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 201: { description: 'QOD created.' } } }
+            },
+            '/api/v1/admin/qod/{id}': {
+                patch: { tags: ['Platform Admin'], summary: 'Update a Question of the Day', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'QOD updated.' }, 404: { description: 'QOD not found.' } } }
+            },
+            '/api/v1/admin/moderation/{resource}': {
+                get: { tags: ['Platform Admin'], summary: 'List question feedback or review comments', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'resource', in: 'path', required: true, schema: { type: 'string', enum: ['question-feedback', 'review-comments'] } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'reviewed', 'resolved', 'rejected'] } }], responses: { 200: { description: 'Moderation items returned.' } } }
+            },
+            '/api/v1/admin/moderation/{resource}/{itemId}': {
+                patch: { tags: ['Platform Admin'], summary: 'Update moderation status', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'resource', in: 'path', required: true, schema: { type: 'string', enum: ['question-feedback', 'review-comments'] } }, { name: 'itemId', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'string', enum: ['pending', 'reviewed', 'resolved', 'rejected'] } } } } } }, responses: { 200: { description: 'Moderation status updated.' }, 404: { description: 'Item not found.' } } }
+            },
+            '/api/v1/admin/notifications': {
+                post: { tags: ['Platform Admin'], summary: 'Send a notification to one student', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['student_id', 'title', 'message'], properties: { student_id: { type: 'string' }, title: { type: 'string' }, message: { type: 'string' }, notification_type: { type: 'string' }, priority: { type: 'string' }, action_url: { type: 'string' }, data: { type: 'object' } } } } } }, responses: { 201: { description: 'Notification created.' }, 404: { description: 'Student not found.' } } }
+            },
+            '/api/v1/admin/admins': {
+                get: { tags: ['Platform Admin'], summary: 'List platform admins', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Admins returned without password hashes.' } } },
+                post: { tags: ['Platform Admin'], summary: 'Create a platform admin', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['username', 'password'], properties: { id: { type: 'integer' }, username: { type: 'string' }, password: { type: 'string', format: 'password', minLength: 8 }, is_active: { type: 'boolean', default: true } } } } } }, responses: { 201: { description: 'Admin created with a bcrypt password hash.' }, 409: { description: 'Admin ID or username already exists.' } } }
+            },
+            '/api/v1/admin/admins/{adminId}': {
+                patch: { tags: ['Platform Admin'], summary: 'Update an admin username or active status', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'adminId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { username: { type: 'string' }, is_active: { type: 'boolean' } } } } } }, responses: { 200: { description: 'Admin updated.' }, 404: { description: 'Admin not found.' }, 409: { description: 'Username already exists.' } } }
+            },
+            '/api/v1/admin/admins/{adminId}/reset-password': {
+                post: { tags: ['Platform Admin'], summary: 'Reset an admin password', description: 'Hashes the new password and revokes all existing tokens for the target admin.', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'adminId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['password', 'confirmPassword'], properties: { password: { type: 'string', format: 'password', minLength: 8 }, confirmPassword: { type: 'string', format: 'password', minLength: 8 } } } } } }, responses: { 200: { description: 'Password reset and tokens revoked.' }, 400: { description: 'Passwords are invalid or do not match.' }, 404: { description: 'Admin not found.' } } }
+            },
+            '/api/v1/admin/admins/{adminId}/status': {
+                patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate another admin', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'adminId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean' } } } } } }, responses: { 200: { description: 'Admin status updated and existing tokens revoked.' }, 400: { description: 'Cannot deactivate own account.' }, 404: { description: 'Admin not found.' } } }
+            },
+            '/api/v1/admin/platform-tests': {
+                get: { tags: ['Platform Admin'], summary: 'List platform tests', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'is_active', in: 'query', schema: { type: 'boolean' } }, { name: 'exam_type', in: 'query', schema: { type: 'string' } }], responses: { 200: { description: 'Platform tests returned.' } } },
+                post: { tags: ['Platform Admin'], summary: 'Create a platform test', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['test_name', 'test_code', 'test_type', 'time_limit', 'total_questions'], properties: { test_name: { type: 'string' }, test_code: { type: 'string' }, test_type: { type: 'string' }, description: { type: 'string' }, instructions: { type: 'string' }, time_limit: { type: 'integer' }, total_questions: { type: 'integer' }, selected_topics: { type: 'array', items: { type: 'integer' } }, is_active: { type: 'boolean' }, scheduled_date_time: { type: 'string', format: 'date-time' }, exam_type: { type: 'string' } } } } } }, responses: { 201: { description: 'Platform test created.' }, 409: { description: 'ID or test code already exists.' } } }
+            },
+            '/api/v1/admin/platform-tests/{testId}': {
+                patch: { tags: ['Platform Admin'], summary: 'Update a platform test', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'testId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Platform test updated.' }, 404: { description: 'Platform test not found.' } } }
+            },
+            '/api/v1/admin/test-sessions': {
+                get: { tags: ['Platform Admin'], summary: 'List student test sessions', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'student_id', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'test_type', in: 'query', schema: { type: 'string' } }], responses: { 200: { description: 'Test sessions returned.' } } }
+            },
+            '/api/v1/admin/test-sessions/{sessionId}': {
+                get: { tags: ['Platform Admin'], summary: 'Get one complete test session', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Test session returned.' }, 400: { description: 'Invalid sessionId.' }, 404: { description: 'Session not found.' } } }
+            },
+            '/api/v1/admin/previous-year-tests': {
+                get: { tags: ['Platform Admin'], summary: 'List previous-year papers including mappings', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'is_active', in: 'query', schema: { type: 'boolean' } }], responses: { 200: { description: 'Previous-year papers returned.' } } },
+                post: { tags: ['Platform Admin'], summary: 'Add a previous-year paper', description: 'question_ids are optional, but when supplied every ID must exist and the mapping length must equal question_count.', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name', 'question_count', 'exam_type'], properties: { id: { type: 'integer' }, name: { type: 'string' }, source_filename: { type: 'string' }, question_count: { type: 'integer' }, exam_type: { type: 'string' }, is_active: { type: 'boolean' }, institution_id: { type: 'integer' }, uploaded_by_id: { type: 'integer' }, question_ids: { type: 'array', items: { type: 'integer' } } } } } } }, responses: { 201: { description: 'Previous-year paper created.' }, 400: { description: 'Metadata or mapping is invalid.' }, 409: { description: 'Paper ID already exists.' } } }
+            },
+            '/api/v1/admin/previous-year-tests/{paperId}': {
+                patch: { tags: ['Platform Admin'], summary: 'Update metadata or question mapping for a previous-year paper', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'paperId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Previous-year paper updated.' }, 400: { description: 'Mapping is invalid.' }, 404: { description: 'Paper not found.' } } }
+            },
+            '/api/v1/previous-year-tests': {
+                get: {
+                    tags: ['Previous Year Tests'],
+                    summary: 'Step 1: List active previous-year papers',
+                    description: 'Returns mapping_available and mapped_question_count. Only papers with mapping_available=true can be started.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'exam_type', in: 'query', schema: { type: 'string', example: 'neet' } }],
+                    responses: {
+                        200: { description: 'Active previous-year paper metadata returned.' },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/previous-year-tests/{paperId}': {
+                get: {
+                    tags: ['Previous Year Tests'], summary: 'Step 2: Get one previous-year paper', security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'paperId', in: 'path', required: true, schema: { type: 'integer' }, example: 15 }],
+                    responses: { 200: { description: 'Paper metadata and mapping readiness returned.' }, 400: { description: 'Invalid paperId.' }, 404: { description: 'Paper not found.' } }
+                }
+            },
+            '/api/v1/previous-year-tests/{paperId}/start': {
+                post: {
+                    tags: ['Previous Year Tests'], summary: 'Step 3: Start a mapped previous-year test',
+                    description: 'Creates a Previous Year test session, preserves paper question order, and hides correct answers and explanations.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'paperId', in: 'path', required: true, schema: { type: 'integer' }, example: 15 }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['duration'], properties: { duration: { type: 'number', minimum: 1, example: 200 } } } } } },
+                    responses: { 201: { description: 'Session and questions returned.' }, 400: { description: 'Invalid duration or paperId.' }, 404: { description: 'Paper not found.' }, 409: { description: 'Question mapping is incomplete.' } }
+                }
+            },
+            '/api/v1/previous-year-tests/submit': {
+                post: {
+                    tags: ['Previous Year Tests'], summary: 'Step 4: Submit a previous-year test',
+                    description: 'Accepts only a Previous Year session owned by the student. Scoring is +4 correct, -1 wrong, and 0 skipped.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/SubmitTestRequest' } } } },
+                    responses: { 200: { description: 'Test scored and stored.' }, 400: { description: 'Invalid payload or answer.' }, 404: { description: 'Previous-year session not found.' }, 409: { description: 'Session already submitted.' } }
+                }
+            },
+            '/api/v1/question-of-the-day': {
+                get: {
+                    tags: ['Question of the Day'],
+                    summary: "Get today's Question of the Day",
+                    description: 'Uses the student ID from the JWT, finds the question scheduled for today, and reports whether that student has already answered it. The correct answer is not returned by this endpoint.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: "Today's question was found.",
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            data: { $ref: '#/components/schemas/QuestionOfTheDay' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: {
+                            description: 'JWT is missing, invalid, or expired.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        404: {
+                            description: 'No question is scheduled for today.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        500: {
+                            description: 'An unexpected server or database error occurred.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        }
+                    }
+                }
+            },
+            '/api/v1/question-of-the-day/submit': {
+                post: {
+                    tags: ['Question of the Day'],
+                    summary: "Submit an answer to today's question",
+                    description: 'Validates the selected option, prevents a student from submitting twice, saves the result, and then returns the correct answer and explanation.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/QuestionSubmissionRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: {
+                            description: 'The answer was saved successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'Answer submitted successfully.' },
+                                            data: { $ref: '#/components/schemas/QuestionSubmissionResult' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: {
+                            description: 'A required field is missing or selected_option is not A, B, C, or D.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        401: {
+                            description: 'JWT is missing, invalid, or expired.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        404: {
+                            description: 'The supplied question_id does not exist.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        409: {
+                            description: 'The logged-in student has already answered this question.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        },
+                        500: {
+                            description: 'An unexpected server or database error occurred.',
+                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    apis: []
+};
+
+module.exports = swaggerJsdoc(swaggerOptions);
