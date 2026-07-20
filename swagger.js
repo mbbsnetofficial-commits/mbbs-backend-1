@@ -10,10 +10,12 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: process.env.PUBLIC_API_URL || 'http://localhost:3000',
-                description: process.env.PUBLIC_API_URL
-                    ? 'Production server'
-                    : 'Local development server'
+                url: process.env.PUBLIC_API_URL || 'https://mbbs-backend-production-dc64.up.railway.app',
+                description: 'Railway production server'
+            },
+            {
+                url: 'http://localhost:3000',
+                description: 'Local development server'
             }
         ],
         tags: [
