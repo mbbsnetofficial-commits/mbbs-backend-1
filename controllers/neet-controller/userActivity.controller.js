@@ -1,44 +1,42 @@
-const StudentActivity = require("../model/studentActivity");
+const UserActivity = require("../../model/neet-models/userActivity");
 
 const getIpAddress = req => {
     const address = req.ip || req.socket.remoteAddress || "unknown";
-
     return address.replace(/^::ffff:/, "");
 };
 
 const createActivity = async activityData => {
-    // This numeric ID keeps the same structure as the existing collection.
-    const latestActivity = await StudentActivity.findOne()
+    const latestActivity = await UserActivity.findOne()
         .sort({ id: -1 })
         .select("id")
         .lean();
 
-    return StudentActivity.create({
+    return UserActivity.create({
         id: (latestActivity?.id || 0) + 1,
         ...activityData
     });
 };
 
-exports.recordStudentActivity = async (req, res) => {
+exports.recordUserActivity = async (req, res) => {
     try {
-        const studentId = req.user.student_id;
+        const userId = Number(req.body.user_id);
 
-        if (!studentId) {
+        if (!Number.isInteger(userId) || userId <= 0) {
             return res.status(400).json({
                 status: "fail",
-                message: "student_id is missing from the authentication token."
+                message: "A positive numeric user_id is required."
             });
         }
 
         const activityData = {
-            student_id: studentId,
+            user_id: userId,
             last_seen: new Date(),
             ip_address: getIpAddress(req),
             user_agent: req.get("user-agent") || "unknown"
         };
 
-        let activity = await StudentActivity.findOneAndUpdate(
-            { student_id: studentId },
+        let activity = await UserActivity.findOneAndUpdate(
+            { user_id: userId },
             { $set: activityData },
             { new: true, runValidators: true }
         );
@@ -49,11 +47,10 @@ exports.recordStudentActivity = async (req, res) => {
                 activity = await createActivity(activityData);
                 statusCode = 201;
             } catch (error) {
-                // If simultaneous first requests created the student, update that record.
                 if (error.code !== 11000) throw error;
 
-                activity = await StudentActivity.findOneAndUpdate(
-                    { student_id: studentId },
+                activity = await UserActivity.findOneAndUpdate(
+                    { user_id: userId },
                     { $set: activityData },
                     { new: true, runValidators: true }
                 );
@@ -65,8 +62,8 @@ exports.recordStudentActivity = async (req, res) => {
         return res.status(statusCode).json({
             status: "success",
             message: statusCode === 201
-                ? "Student activity created successfully."
-                : "Student activity updated successfully.",
+                ? "User activity created successfully."
+                : "User activity updated successfully.",
             data: activity
         });
     } catch (error) {
@@ -74,16 +71,23 @@ exports.recordStudentActivity = async (req, res) => {
     }
 };
 
-exports.getMyStudentActivity = async (req, res) => {
+exports.getUserActivity = async (req, res) => {
     try {
-        const activity = await StudentActivity.findOne({
-            student_id: req.user.student_id
-        }).lean();
+        const userId = Number(req.params.userId);
+
+        if (!Number.isInteger(userId) || userId <= 0) {
+            return res.status(400).json({
+                status: "fail",
+                message: "userId must be a positive number."
+            });
+        }
+
+        const activity = await UserActivity.findOne({ user_id: userId }).lean();
 
         if (!activity) {
             return res.status(404).json({
                 status: "fail",
-                message: "Student activity not found."
+                message: "User activity not found."
             });
         }
 

@@ -1,7 +1,7 @@
 const express = require("express");
-const platformAdminController = require("../controllers/platformAdmin.controller");
-const adminControlController = require("../controllers/adminControl.controller");
-const { protectAdmin } = require("../utilities/adminAuth");
+const platformAdminController = require("../../controllers/neet-controller/platformAdmin.controller");
+const adminControlController = require("../../controllers/neet-controller/adminControl.controller");
+const { protectAdmin } = require("../../utilities/adminAuth");
 
 const platformAdminRouter = express.Router();
 

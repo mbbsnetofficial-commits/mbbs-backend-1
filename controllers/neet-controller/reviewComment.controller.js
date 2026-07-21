@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
-const ReviewComment = require("../model/reviewComment");
-const TestSession = require("../model/testSession");
-const { REVIEW_TYPE_ENUM } = require("../constants/enum");
+const ReviewComment = require("../../model/neet-models/reviewComment");
+const TestSession = require("../../model/neet-models/testSession");
+const { REVIEW_TYPE_ENUM } = require("../../constants/enum");
 
 exports.createReviewComment = async (req, res) => {
     try {

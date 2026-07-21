@@ -8,7 +8,7 @@ const {
     sendChatMessageService,
     generateWrongAnswerInsightsService,
     getTestSubjectZoneInsightService
-} = require("../services/chat.service");
+} = require("../../services/chat.service");
 
 const sendError = (res, error) => {
     const statusCode = error.statusCode || 500;

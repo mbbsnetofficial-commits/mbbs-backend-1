@@ -2,9 +2,9 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const twilio = require("twilio");
 const validator = require("validator");
-const Auth = require("../model/auth");
-const SignupOtp = require("../model/signupOtp");
-const { createAuthSession } = require("../services/authToken.service");
+const Auth = require("../../model/neet-models/auth");
+const SignupOtp = require("../../model/neet-models/signupOtp");
+const { createAuthSession } = require("../../services/authToken.service");
 
 const OTP_VALID_MINUTES = 5;
 const RESEND_SECONDS = 60;

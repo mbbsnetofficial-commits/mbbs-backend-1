@@ -1,7 +1,7 @@
-const Topic = require("./../model/topic");
-const Question = require("./../model/questions");
-const TestSession = require("./../model/testSession");
-const { SUBJECT_ENUM } = require("./../constants/enum");
+const Topic = require("../../model/neet-models/topic");
+const Question = require("../../model/neet-models/questions");
+const TestSession = require("../../model/neet-models/testSession");
+const { SUBJECT_ENUM } = require("../../constants/enum");
 const mongoose = require("mongoose");
 
 exports.getSubjects = async (req, res) => {

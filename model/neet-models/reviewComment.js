@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { REVIEW_TYPE_ENUM, REVIEW_STATUS_ENUM } = require("../constants/enum");
+const { REVIEW_TYPE_ENUM, REVIEW_STATUS_ENUM } = require("../../constants/enum");
 
 const reviewCommentSchema = new mongoose.Schema({
     user_id: {

@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
-const Auth = require("../model/auth");
-const AuthSession = require("../model/authSession");
+const Auth = require("../model/neet-models/auth");
+const AuthSession = require("../model/neet-models/authSession");
 
 exports.protect = async (req, res, next) => {
     try {

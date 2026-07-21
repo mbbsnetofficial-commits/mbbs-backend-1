@@ -1,6 +1,6 @@
 const express = require("express");
-const testQuestionController = require("../controllers/testQuestion.controller");
-const { protect } = require("../utilities/auth");
+const testQuestionController = require("../../controllers/neet-controller/testQuestion.controller");
+const { protect } = require("../../utilities/auth");
 
 const testQuestionRouter = express.Router();
 

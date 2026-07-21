@@ -1,10 +1,10 @@
-const Auth = require('./../model/auth');
+const Auth = require('../../model/neet-models/auth');
 const {
     createAuthSession,
     rotateAuthSession,
     revokeSession,
     revokeAllSessions
-} = require('../services/authToken.service');
+} = require('../../services/authToken.service');
 
 exports.register = async (req, res) => {
     try {

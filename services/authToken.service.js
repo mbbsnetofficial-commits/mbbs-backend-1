@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-const AuthSession = require("../model/authSession");
+const AuthSession = require("../model/neet-models/authSession");
 
 const hashToken = token => crypto.createHash("sha256").update(token).digest("hex");
 
@@ -64,7 +64,7 @@ exports.rotateAuthSession = async (refreshToken, req) => {
         throw Object.assign(new Error("Refresh token is invalid, expired, or revoked."), { statusCode: 401 });
     }
 
-    const Auth = require("../model/auth");
+    const Auth = require("../model/neet-models/auth");
     const user = await Auth.findById(decoded.id);
     if (!user || user.is_active === false || (decoded.token_version ?? 0) !== (user.token_version ?? 0)) {
         throw Object.assign(new Error("User session has expired. Please login again."), { statusCode: 401 });

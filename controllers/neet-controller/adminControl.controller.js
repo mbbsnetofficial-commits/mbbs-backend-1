@@ -1,17 +1,17 @@
-const Auth = require("../model/auth");
-const StudentProfile = require("../model/studentProfile");
-const Question = require("../model/questions");
-const Topic = require("../model/topic");
-const QuestionOfTheDay = require("../model/qod");
-const QuestionFeedback = require("../model/questionFeedback");
-const ReviewComment = require("../model/reviewComment");
-const Notification = require("../model/notification");
-const PlatformAdmin = require("../model/platformAdmin");
-const TestSession = require("../model/testSession");
-const PlatformTest = require("../model/platformTest");
-const PreviousYearQuestion = require("../model/previousYearQuestion");
-const { createNotificationService } = require("../services/notification.service");
-const { SUBJECT_ENUM, REVIEW_STATUS_ENUM, NOTIFICATION_TYPE_ENUM, NOTIFICATION_PRIORITY_ENUM } = require("../constants/enum");
+const Auth = require("../../model/neet-models/auth");
+const StudentProfile = require("../../model/neet-models/studentProfile");
+const Question = require("../../model/neet-models/questions");
+const Topic = require("../../model/neet-models/topic");
+const QuestionOfTheDay = require("../../model/neet-models/qod");
+const QuestionFeedback = require("../../model/neet-models/questionFeedback");
+const ReviewComment = require("../../model/neet-models/reviewComment");
+const Notification = require("../../model/neet-models/notification");
+const PlatformAdmin = require("../../model/neet-models/platformAdmin");
+const TestSession = require("../../model/neet-models/testSession");
+const PlatformTest = require("../../model/neet-models/platformTest");
+const PreviousYearQuestion = require("../../model/neet-models/previousYearQuestion");
+const { createNotificationService } = require("../../services/notification.service");
+const { SUBJECT_ENUM, REVIEW_STATUS_ENUM, NOTIFICATION_TYPE_ENUM, NOTIFICATION_PRIORITY_ENUM } = require("../../constants/enum");
 
 const pagination = query => {
     const page = Math.max(Number.parseInt(query.page, 10) || 1, 1);

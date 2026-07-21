@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const {
     NOTIFICATION_TYPE_ENUM,
     NOTIFICATION_PRIORITY_ENUM
-} = require("../constants/enum");
+} = require("../../constants/enum");
 
 const notificationSchema = new mongoose.Schema({
     user_id: {

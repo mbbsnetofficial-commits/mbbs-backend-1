@@ -1,6 +1,6 @@
 const express = require("express");
-const previousYearQuestionController = require("../controllers/previousYearQuestion.controller");
-const { protect } = require("../utilities/auth");
+const previousYearQuestionController = require("../../controllers/neet-controller/previousYearQuestion.controller");
+const { protect } = require("../../utilities/auth");
 
 const previousYearQuestionRouter = express.Router();
 

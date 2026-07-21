@@ -1,10 +1,10 @@
 const mongoose = require("mongoose");
-const Notification = require("../model/notification");
-const { createNotificationService } = require("../services/notification.service");
+const Notification = require("../../model/neet-models/notification");
+const { createNotificationService } = require("../../services/notification.service");
 const {
     NOTIFICATION_TYPE_ENUM,
     NOTIFICATION_PRIORITY_ENUM
-} = require("../constants/enum");
+} = require("../../constants/enum");
 
 const getOwnerFilter = req => ({
     user_id: req.user.id,

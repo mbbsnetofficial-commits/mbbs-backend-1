@@ -1,6 +1,6 @@
 const express = require("express");
-const userActivityController = require("../controllers/userActivity.controller");
-const { protect } = require("../utilities/auth");
+const userActivityController = require("../../controllers/neet-controller/userActivity.controller");
+const { protect } = require("../../utilities/auth");
 
 const userActivityRouter = express.Router();
 

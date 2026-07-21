@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const PlatformAdmin = require("../model/platformAdmin");
+const PlatformAdmin = require("../../model/neet-models/platformAdmin");
 
 exports.loginPlatformAdmin = async (req, res) => {
     try {

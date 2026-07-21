@@ -1,6 +1,6 @@
 const express = require("express");
-const notificationController = require("../controllers/notification.controller");
-const { protect } = require("../utilities/auth");
+const notificationController = require("../../controllers/neet-controller/notification.controller");
+const { protect } = require("../../utilities/auth");
 
 const notificationRouter = express.Router();
 

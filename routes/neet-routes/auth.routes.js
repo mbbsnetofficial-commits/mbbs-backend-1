@@ -1,9 +1,9 @@
 const express = require('express');
 const authRouter = express.Router();
-const authController = require('../controllers/auth.contorllers');
-const passwordResetController = require('../controllers/passwordReset.controller');
-const { protect } = require('../utilities/auth');
-const signupController = require('../controllers/signup.controller');
+const authController = require('../../controllers/neet-controller/auth.contorllers');
+const passwordResetController = require('../../controllers/neet-controller/passwordReset.controller');
+const { protect } = require('../../utilities/auth');
+const signupController = require('../../controllers/neet-controller/signup.controller');
 
 authRouter.route('/register')
     .post(signupController.startSignup)

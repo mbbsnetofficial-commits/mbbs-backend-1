@@ -21,16 +21,16 @@ const startServer = async () => {
             console.log(`Server started on 0.0.0.0:${port}`);
         });
 
-        const shutdown = signal => {
-            console.log(`${signal} received. Closing server...`);
-            server.close(async () => {
-                await mongoose.disconnect();
-                process.exit(0);
-            });
-        };
+        // const shutdown = signal => {
+        //     console.log(`${signal} received. Closing server...`);
+        //     server.close(async () => {
+        //         await mongoose.disconnect();
+        //         process.exit(0);
+        //     });
+        // };
 
-        process.on("SIGTERM", () => shutdown("SIGTERM"));
-        process.on("SIGINT", () => shutdown("SIGINT"));
+        // process.on("SIGTERM", () => shutdown("SIGTERM"));
+        // process.on("SIGINT", () => shutdown("SIGINT"));
     } catch (error) {
         console.error("Server startup failed:", error.message);
         process.exit(1);

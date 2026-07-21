@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const {
     SUBJECT_ENUM
-} = require("../constants/enum");
+} = require("../../constants/enum");
 
 const topicSchema = new mongoose.Schema(
 {

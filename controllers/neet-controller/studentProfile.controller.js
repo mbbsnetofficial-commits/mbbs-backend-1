@@ -1,4 +1,4 @@
-const StudentProfile = require("../model/studentProfile");
+const StudentProfile = require("../../model/neet-models/studentProfile");
 
 const editableFields = [
     "phone_number",

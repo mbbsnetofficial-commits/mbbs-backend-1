@@ -1,4 +1,4 @@
-const Notification = require("../model/notification");
+const Notification = require("../model/neet-models/notification");
 
 exports.createNotificationService = async ({
     userId,

@@ -1,8 +1,8 @@
 const express = require("express");
 const qodRouter = express.Router();
 
-const qodController = require("../controllers/qod.controllers");
-const { protect } = require("../utilities/auth");
+const qodController = require("../../controllers/neet-controller/qod.controllers");
+const { protect } = require("../../utilities/auth");
 
 // GET Question Of The Day
 qodRouter

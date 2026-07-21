@@ -1,5 +1,5 @@
-const QuestionOfTheDay = require("../model/qod");
-const QuestionSubmission = require("../model/qodsubmission");
+const QuestionOfTheDay = require("../../model/neet-models/qod");
+const QuestionSubmission = require("../../model/neet-models/qodsubmission");
 
 // ==========================================
 // GET QUESTION OF THE DAY

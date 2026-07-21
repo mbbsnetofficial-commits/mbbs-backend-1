@@ -1,6 +1,6 @@
 const express = require("express");
-const studentActivityController = require("../controllers/studentActivity.controller");
-const { protect } = require("../utilities/auth");
+const studentActivityController = require("../../controllers/neet-controller/studentActivity.controller");
+const { protect } = require("../../utilities/auth");
 
 const studentActivityRouter = express.Router();
 

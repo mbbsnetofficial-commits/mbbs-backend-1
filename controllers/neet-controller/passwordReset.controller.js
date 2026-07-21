@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const twilio = require("twilio");
-const Auth = require("../model/auth");
-const PasswordReset = require("../model/passwordReset");
+const Auth = require("../../model/neet-models/auth");
+const PasswordReset = require("../../model/neet-models/passwordReset");
 
 const OTP_VALID_MINUTES = 5;
 const RESET_TOKEN_VALID_MINUTES = 10;

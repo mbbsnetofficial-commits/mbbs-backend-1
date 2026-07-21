@@ -1,6 +1,6 @@
 const express = require("express");
-const questionFeedbackController = require("../controllers/questionFeedback.controller");
-const { protect } = require("../utilities/auth");
+const questionFeedbackController = require("../../controllers/neet-controller/questionFeedback.controller");
+const { protect } = require("../../utilities/auth");
 
 const questionFeedbackRouter = express.Router();
 

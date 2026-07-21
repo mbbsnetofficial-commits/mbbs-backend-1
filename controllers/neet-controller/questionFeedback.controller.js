@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
-const QuestionFeedback = require("../model/questionFeedback");
-const Question = require("../model/questions");
-const TestSession = require("../model/testSession");
+const QuestionFeedback = require("../../model/neet-models/questionFeedback");
+const Question = require("../../model/neet-models/questions");
+const TestSession = require("../../model/neet-models/testSession");
 
 const feedbackTypes = [
     "incorrect_question",

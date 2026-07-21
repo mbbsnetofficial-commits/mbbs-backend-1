@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 const { GoogleGenAI } = require("@google/genai");
-const ChatSession = require("../model/chatSession");
-const ChatMessage = require("../model/chatMessage");
-const TestSession = require("../model/testSession");
-const Question = require("../model/questions");
-const Topic = require("../model/topic");
-const TestSubjectZoneInsight = require("../model/testSubjectZoneInsight");
+const ChatSession = require("../model/neet-models/chatSession");
+const ChatMessage = require("../model/neet-models/chatMessage");
+const TestSession = require("../model/neet-models/testSession");
+const Question = require("../model/neet-models/questions");
+const Topic = require("../model/neet-models/topic");
+const TestSubjectZoneInsight = require("../model/neet-models/testSubjectZoneInsight");
 
 class ServiceError extends Error {
     constructor(statusCode, message) {

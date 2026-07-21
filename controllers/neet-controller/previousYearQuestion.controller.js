@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
-const PreviousYearQuestion = require("../model/previousYearQuestion");
-const Question = require("../model/questions");
-const Topic = require("../model/topic");
-const TestSession = require("../model/testSession");
+const PreviousYearQuestion = require("../../model/neet-models/previousYearQuestion");
+const Question = require("../../model/neet-models/questions");
+const Topic = require("../../model/neet-models/topic");
+const TestSession = require("../../model/neet-models/testSession");
 const testQuestionController = require("./testQuestion.controller");
 
 const formatPaper = paper => {

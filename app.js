@@ -1,20 +1,20 @@
 const express = require('express');
 const cors = require("cors");
-const authRouter = require('./routes/auth.routes');
+const authRouter = require('./routes/neet-routes/auth.routes');
 const app = express();
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger');
-const qodRouter = require("./routes/qod.routes");
-const testQuestionRouter = require("./routes/testQuestion.routes");
-const chatRouter = require("./routes/chat.routes");
-const studentActivityRouter = require("./routes/studentActivity.routes");
-const userActivityRouter = require("./routes/userActivity.routes");
-const studentProfileRouter = require("./routes/studentProfile.routes");
-const questionFeedbackRouter = require("./routes/questionFeedback.routes");
-const reviewCommentRouter = require("./routes/reviewComment.routes");
-const notificationRouter = require("./routes/notification.routes");
-const platformAdminRouter = require("./routes/platformAdmin.routes");
-const previousYearQuestionRouter = require("./routes/previousYearQuestion.routes");
+const qodRouter = require("./routes/neet-routes/qod.routes");
+const testQuestionRouter = require("./routes/neet-routes/testQuestion.routes");
+const chatRouter = require("./routes/neet-routes/chat.routes");
+const studentActivityRouter = require("./routes/neet-routes/studentActivity.routes");
+const userActivityRouter = require("./routes/neet-routes/userActivity.routes");
+const studentProfileRouter = require("./routes/neet-routes/studentProfile.routes");
+const questionFeedbackRouter = require("./routes/neet-routes/questionFeedback.routes");
+const reviewCommentRouter = require("./routes/neet-routes/reviewComment.routes");
+const notificationRouter = require("./routes/neet-routes/notification.routes");
+const platformAdminRouter = require("./routes/neet-routes/platformAdmin.routes");
+const previousYearQuestionRouter = require("./routes/neet-routes/previousYearQuestion.routes");
 
 // Railway terminates HTTPS at its proxy. This also makes req.ip use forwarded data.
 app.set("trust proxy", 1);

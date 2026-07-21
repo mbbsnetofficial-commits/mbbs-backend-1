@@ -1,6 +1,6 @@
 const express = require("express");
-const reviewCommentController = require("../controllers/reviewComment.controller");
-const { protect } = require("../utilities/auth");
+const reviewCommentController = require("../../controllers/neet-controller/reviewComment.controller");
+const { protect } = require("../../utilities/auth");
 
 const reviewCommentRouter = express.Router();
 
