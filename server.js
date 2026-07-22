@@ -1,7 +1,8 @@
 const dotenv = require("dotenv");
+const path = require("path");
 
 // Railway supplies environment variables directly. This file remains useful locally.
-dotenv.config({ path: "./config.env" });
+dotenv.config({ path: path.join(__dirname, "config", "config.env") });
 
 const mongoose = require("mongoose");
 const app = require("./app");

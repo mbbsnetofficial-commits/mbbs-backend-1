@@ -6,6 +6,8 @@ node_modules/
 .env.*
 config.env
 config.env.*
+config/config.env
+config/config.env.*
 !.env.example
 !config.env.example
 

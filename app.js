@@ -1,20 +1,22 @@
 const express = require('express');
 const cors = require("cors");
-const authRouter = require('./routes/neet-routes/auth.routes');
 const app = express();
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger');
-const qodRouter = require("./routes/neet-routes/qod.routes");
-const testQuestionRouter = require("./routes/neet-routes/testQuestion.routes");
-const chatRouter = require("./routes/neet-routes/chat.routes");
-const studentActivityRouter = require("./routes/neet-routes/studentActivity.routes");
-const userActivityRouter = require("./routes/neet-routes/userActivity.routes");
-const studentProfileRouter = require("./routes/neet-routes/studentProfile.routes");
-const questionFeedbackRouter = require("./routes/neet-routes/questionFeedback.routes");
-const reviewCommentRouter = require("./routes/neet-routes/reviewComment.routes");
-const notificationRouter = require("./routes/neet-routes/notification.routes");
-const platformAdminRouter = require("./routes/neet-routes/platformAdmin.routes");
-const previousYearQuestionRouter = require("./routes/neet-routes/previousYearQuestion.routes");
+const {
+    authRouter,
+    platformAdminRouter,
+    qodRouter,
+    testQuestionRouter,
+    previousYearQuestionRouter,
+    chatRouter,
+    studentActivityRouter,
+    userActivityRouter,
+    studentProfileRouter,
+    questionFeedbackRouter,
+    reviewCommentRouter,
+    notificationRouter
+} = require("./routes/neet-routes");
 
 // Railway terminates HTTPS at its proxy. This also makes req.ip use forwarded data.
 app.set("trust proxy", 1);
@@ -42,9 +44,8 @@ app.get("/health", (req, res) => {
 // Interactive API documentation. This does not change the authentication routes.
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-//Routes
+// API routes. Keep admin before student routers because admin login is public.
 app.use('/api/v1/auth', authRouter);
-// Admin login must be mounted before student routers that apply protect globally.
 app.use("/api/v1/admin", platformAdminRouter);
 app.use("/api/v1", qodRouter);
 app.use("/api/v1", testQuestionRouter);
