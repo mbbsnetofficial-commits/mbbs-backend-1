@@ -2,10 +2,11 @@ const express = require("express");
 const platformAdminController = require("../../controllers/neet-controller/platformAdmin.controller");
 const adminControlController = require("../../controllers/neet-controller/adminControl.controller");
 const { protectAdmin } = require("../../utilities/adminAuth");
+const { loginLimiter } = require("../../middleware/rateLimit.middleware");
 
 const platformAdminRouter = express.Router();
 
-platformAdminRouter.post("/login", platformAdminController.loginPlatformAdmin);
+platformAdminRouter.post("/login", loginLimiter, platformAdminController.loginPlatformAdmin);
 
 platformAdminRouter.use(protectAdmin);
 

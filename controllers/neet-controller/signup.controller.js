@@ -68,9 +68,6 @@ exports.startSignup = async (req, res) => {
         }
 
         const existingRequest = await SignupOtp.findOne({ phone_number: phoneNumber }).lean();
-        if (existingRequest?.used_at) {
-            return res.status(409).json({ status: "fail", message: "This mobile number has already been used." });
-        }
         if (existingRequest?.resend_available_at > new Date()) {
             const seconds = Math.ceil((existingRequest.resend_available_at.getTime() - Date.now()) / 1000);
             return res.status(429).json({
@@ -95,6 +92,7 @@ exports.startSignup = async (req, res) => {
                 resend_available_at: new Date(now + RESEND_SECONDS * 1000),
                 attempts: 0,
                 verified: false,
+                used_at: null,
                 twilio_message_sid: null,
                 twilio_message_status: null,
                 twilio_error_code: null,

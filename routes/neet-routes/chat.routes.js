@@ -1,6 +1,7 @@
 const express = require("express");
 const chatController = require("../../controllers/neet-controller/chat.controller");
 const { protect } = require("../../utilities/auth");
+const { aiLimiter } = require("../../middleware/rateLimit.middleware");
 
 const chatRouter = express.Router();
 
@@ -20,11 +21,12 @@ chatRouter
 chatRouter
     .route("/chat-sessions/:chatSessionId/messages")
     .get(chatController.getChatMessages)
-    .post(chatController.sendChatMessage);
+    .post(aiLimiter, chatController.sendChatMessage);
 
 // Generates insights for every wrong answer without a request payload.
 chatRouter.post(
     "/chat-sessions/:chatSessionId/insights",
+    aiLimiter,
     chatController.generateWrongAnswerInsights
 );
 

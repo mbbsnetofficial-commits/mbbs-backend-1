@@ -10,12 +10,12 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: process.env.PUBLIC_API_URL || 'https://mbbs-backend-production-dc64.up.railway.app',
-                description: 'Railway production server'
-            },
-            {
                 url: 'http://localhost:3000',
                 description: 'Local development server'
+            },
+            {
+                url: process.env.PUBLIC_API_URL || 'https://mbbs-backend-production-dc64.up.railway.app',
+                description: 'Railway production server'
             }
         ],
         tags: [
@@ -36,16 +36,8 @@ const swaggerOptions = {
                 description: 'Gemini-powered review chat grounded in a student\'s wrong test answers'
             },
             {
-                name: 'Student Activity',
-                description: 'Record and retrieve the authenticated student\'s latest application activity'
-            },
-            {
                 name: 'User Activity',
                 description: 'Record and retrieve application activity by numeric user ID'
-            },
-            {
-                name: 'Student Profile',
-                description: 'Create, update, and retrieve the authenticated student profile'
             },
             {
                 name: 'Question Feedback',
@@ -66,6 +58,46 @@ const swaggerOptions = {
             {
                 name: 'Previous Year Tests',
                 description: 'List, inspect, start, and submit mapped previous-year examination papers'
+            },
+            {
+                name: 'Blog Templates',
+                description: 'Platform-admin APIs for creating and managing reusable blog templates'
+            },
+            {
+                name: 'Blog Categories',
+                description: 'Platform-admin APIs for managing hierarchical blog categories'
+            },
+            {
+                name: 'Blog Tags',
+                description: 'Platform-admin APIs for managing searchable blog tags and tag statistics'
+            },
+            {
+                name: 'Blog Authors',
+                description: 'Platform-admin APIs for creating and managing blog authors'
+            },
+            {
+                name: 'Blogs',
+                description: 'Platform-admin CMS APIs for drafting, scheduling, publishing, and managing blogs'
+            },
+            {
+                name: 'Blog Media',
+                description: 'Platform-admin APIs for uploading and managing Cloudinary media'
+            },
+            {
+                name: 'Blog SEO',
+                description: 'Platform-admin APIs for managing meta, social, sitemap, and schema.org settings'
+            },
+            {
+                name: 'Blog Reviews',
+                description: 'Student review submission, public approved reviews, and admin moderation'
+            },
+            {
+                name: 'Blog Search',
+                description: 'Public search across published and active blog content'
+            },
+            {
+                name: 'Blog Analytics',
+                description: 'Platform-admin live metrics, snapshots, growth, and content performance'
             }
         ],
         components: {
@@ -80,7 +112,7 @@ const swaggerOptions = {
                     type: 'http',
                     scheme: 'bearer',
                     bearerFormat: 'JWT',
-                    description: 'Enter the JWT returned by the platform admin login API.'
+                    description: 'Paste only the JWT returned by POST /api/v1/admin/login. Do not type the Bearer prefix; Swagger adds it automatically.'
                 }
             },
             schemas: {
@@ -160,6 +192,483 @@ const swaggerOptions = {
                     properties: {
                         status: { type: 'string', example: 'fail' },
                         message: { type: 'string', example: 'invalid credentials' }
+                    }
+                },
+                BlogTemplateInput: {
+                    type: 'object',
+                    required: ['templateName'],
+                    properties: {
+                        templateName: {
+                            type: 'string',
+                            minLength: 3,
+                            maxLength: 100,
+                            example: 'Country Guide'
+                        },
+                        description: {
+                            type: 'string',
+                            maxLength: 500,
+                            example: 'Template for creating country guide articles.'
+                        },
+                        thumbnail: {
+                            type: 'string',
+                            format: 'uri',
+                            example: 'https://example.com/template-thumbnail.jpg'
+                        },
+                        previewImages: {
+                            type: 'array',
+                            items: { type: 'string', format: 'uri' },
+                            example: ['https://example.com/preview-1.jpg']
+                        },
+                        allowedSections: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            example: ['hero', 'overview', 'content', 'faq', 'relatedBlogs', 'cta']
+                        },
+                        displayOrder: { type: 'integer', minimum: 0, default: 0, example: 1 },
+                        status: { type: 'boolean', default: true },
+                        isDefault: { type: 'boolean', default: false },
+                        metadata: {
+                            type: 'object',
+                            additionalProperties: true,
+                            example: { category: 'education' }
+                        }
+                    }
+                },
+                BlogTemplateUpdateInput: {
+                    type: 'object',
+                    minProperties: 1,
+                    properties: {
+                        templateName: { type: 'string', minLength: 3, maxLength: 100 },
+                        description: { type: 'string', maxLength: 500 },
+                        thumbnail: { type: 'string', format: 'uri' },
+                        previewImages: { type: 'array', items: { type: 'string', format: 'uri' } },
+                        allowedSections: { type: 'array', items: { type: 'string' } },
+                        displayOrder: { type: 'integer', minimum: 0 },
+                        status: { type: 'boolean' },
+                        isDefault: { type: 'boolean' },
+                        metadata: { type: 'object', additionalProperties: true }
+                    }
+                },
+                BlogTemplate: {
+                    allOf: [
+                        { $ref: '#/components/schemas/BlogTemplateInput' },
+                        {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string', example: '66a59ced88c5dcf13d81f030a' },
+                                templateCode: { type: 'string', example: 'TMP_COUNTRY_GUIDE_8A12BC' },
+                                version: { type: 'integer', example: 1 },
+                                createdAt: { type: 'string', format: 'date-time' },
+                                updatedAt: { type: 'string', format: 'date-time' }
+                            }
+                        }
+                    ]
+                },
+                BlogTemplateError: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: false },
+                        message: { type: 'string', example: 'Template not found.' }
+                    }
+                },
+                BlogCategoryInput: {
+                    type: 'object',
+                    required: ['categoryName', 'categoryType'],
+                    properties: {
+                        categoryName: { type: 'string', minLength: 3, maxLength: 100, example: 'MBBS Abroad' },
+                        categoryType: { type: 'string', enum: ['BLOG', 'EXAM', 'COUNTRY', 'UNIVERSITY', 'REVIEW', 'NEWS', 'SCHOLARSHIP', 'VISA', 'HOSTEL'], example: 'BLOG' },
+                        description: { type: 'string', maxLength: 500, example: 'Guides and articles about studying MBBS abroad.' },
+                        icon: { type: 'string', format: 'uri', example: 'https://example.com/icons/mbbs.png' },
+                        bannerImage: { type: 'string', format: 'uri', example: 'https://example.com/banners/mbbs.jpg' },
+                        parentCategory: { type: 'string', nullable: true, example: null },
+                        displayOrder: { type: 'integer', minimum: 0, default: 0 },
+                        isFeatured: { type: 'boolean', default: false },
+                        status: { type: 'boolean', default: true },
+                        seo: {
+                            type: 'object',
+                            properties: {
+                                metaTitle: { type: 'string', maxLength: 160 },
+                                metaDescription: { type: 'string', maxLength: 320 },
+                                keywords: { type: 'array', items: { type: 'string' } },
+                                canonicalUrl: { type: 'string', format: 'uri' }
+                            }
+                        },
+                        metadata: { type: 'object', additionalProperties: true }
+                    }
+                },
+                BlogCategory: {
+                    allOf: [
+                        { $ref: '#/components/schemas/BlogCategoryInput' },
+                        {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string', example: '66a59ced88c5dcf13d81f030a' },
+                                categoryCode: { type: 'string', example: 'CAT_MBBS_ABROAD_A3F6B2' },
+                                slug: { type: 'string', example: 'mbbs-abroad' },
+                                level: { type: 'integer', enum: [1, 2] },
+                                totalBlogs: { type: 'integer', example: 0 },
+                                createdAt: { type: 'string', format: 'date-time' },
+                                updatedAt: { type: 'string', format: 'date-time' }
+                            }
+                        }
+                    ]
+                },
+                BlogCategoryUpdateInput: {
+                    type: 'object',
+                    minProperties: 1,
+                    properties: {
+                        categoryName: { type: 'string', minLength: 3, maxLength: 100 },
+                        categoryType: { type: 'string', enum: ['BLOG', 'EXAM', 'COUNTRY', 'UNIVERSITY', 'REVIEW', 'NEWS', 'SCHOLARSHIP', 'VISA', 'HOSTEL'] },
+                        description: { type: 'string', maxLength: 500 },
+                        icon: { type: 'string', format: 'uri' },
+                        bannerImage: { type: 'string', format: 'uri' },
+                        parentCategory: { type: 'string', nullable: true },
+                        displayOrder: { type: 'integer', minimum: 0 },
+                        isFeatured: { type: 'boolean' },
+                        status: { type: 'boolean' },
+                        seo: { type: 'object' },
+                        metadata: { type: 'object' }
+                    }
+                },
+                BlogTagInput: {
+                    type: 'object',
+                    required: ['tagName'],
+                    properties: {
+                        tagName: { type: 'string', minLength: 2, maxLength: 100, example: 'Medical University' },
+                        slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', example: 'medical-university' },
+                        description: { type: 'string', maxLength: 500 },
+                        tagType: { type: 'string', enum: ['COUNTRY', 'EXAM', 'UNIVERSITY', 'COURSE', 'SCHOLARSHIP', 'HOSTEL', 'VISA', 'NEWS', 'GENERAL'], default: 'GENERAL' },
+                        color: { type: 'string', pattern: '^#(?:[A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$', default: '#2196F3' },
+                        icon: { type: 'string', format: 'uri' },
+                        bannerImage: { type: 'string', format: 'uri' },
+                        displayOrder: { type: 'integer', minimum: 0, default: 0 },
+                        isFeatured: { type: 'boolean', default: false },
+                        status: { type: 'boolean', default: true },
+                        seo: {
+                            type: 'object',
+                            properties: {
+                                metaTitle: { type: 'string', maxLength: 160 },
+                                metaDescription: { type: 'string', maxLength: 320 },
+                                keywords: { type: 'array', items: { type: 'string' } },
+                                canonicalUrl: { type: 'string', format: 'uri' }
+                            }
+                        },
+                        metadata: { type: 'object', additionalProperties: true }
+                    }
+                },
+                BlogTagUpdateInput: {
+                    type: 'object',
+                    minProperties: 1,
+                    properties: {
+                        tagName: { type: 'string', minLength: 2, maxLength: 100 },
+                        slug: { type: 'string' },
+                        description: { type: 'string', maxLength: 500 },
+                        tagType: { type: 'string', enum: ['COUNTRY', 'EXAM', 'UNIVERSITY', 'COURSE', 'SCHOLARSHIP', 'HOSTEL', 'VISA', 'NEWS', 'GENERAL'] },
+                        color: { type: 'string' },
+                        icon: { type: 'string', format: 'uri' },
+                        bannerImage: { type: 'string', format: 'uri' },
+                        displayOrder: { type: 'integer', minimum: 0 },
+                        isFeatured: { type: 'boolean' },
+                        status: { type: 'boolean' },
+                        seo: { type: 'object' },
+                        metadata: { type: 'object' }
+                    }
+                },
+                BlogTag: {
+                    allOf: [
+                        { $ref: '#/components/schemas/BlogTagInput' },
+                        {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string', example: '66a59ced88c5dcf13d81f030a' },
+                                tagCode: { type: 'string', example: 'TAG_MEDICAL_UNIVERSITY_A2F9B8' },
+                                totalBlogs: { type: 'integer', example: 0 },
+                                totalViews: { type: 'integer', example: 0 },
+                                createdAt: { type: 'string', format: 'date-time' },
+                                updatedAt: { type: 'string', format: 'date-time' }
+                            }
+                        }
+                    ]
+                },
+                BlogAuthorInput: {
+                    type: 'object',
+                    required: ['fullName', 'email'],
+                    properties: {
+                        fullName: { type: 'string', minLength: 2, maxLength: 100, example: 'Dr. Sanjay Kumar' },
+                        slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', example: 'dr-sanjay-kumar' },
+                        email: { type: 'string', format: 'email', example: 'sanjay@example.com' },
+                        phone: { type: 'string', pattern: '^[+]?[0-9]{7,15}$', example: '+918903605604' },
+                        designation: { type: 'string', maxLength: 150, example: 'Medical Content Specialist' },
+                        bio: { type: 'string', maxLength: 3000, example: 'Medical author specializing in NEET preparation.' },
+                        authorType: {
+                            type: 'string',
+                            enum: ['ADMIN', 'EDITOR', 'COUNSELOR', 'DOCTOR', 'UNIVERSITY_REPRESENTATIVE', 'GUEST_AUTHOR'],
+                            default: 'EDITOR'
+                        },
+                        profileImage: { type: 'string', example: 'https://example.com/profile.jpg' },
+                        coverImage: { type: 'string', example: 'https://example.com/cover.jpg' },
+                        experience: { type: 'integer', minimum: 0, default: 0, example: 5 },
+                        qualifications: { type: 'array', uniqueItems: true, items: { type: 'string' }, example: ['MBBS', 'MD'] },
+                        specializations: { type: 'array', uniqueItems: true, items: { type: 'string' }, example: ['Biology'] },
+                        languages: { type: 'array', uniqueItems: true, items: { type: 'string' }, example: ['English', 'Tamil'] },
+                        country: { type: 'string', example: 'India' },
+                        city: { type: 'string', example: 'Chennai' },
+                        socialLinks: {
+                            type: 'object',
+                            properties: {
+                                website: { type: 'string', example: 'https://example.com' },
+                                linkedin: { type: 'string', example: 'https://linkedin.com/in/sanjay' },
+                                facebook: { type: 'string' },
+                                instagram: { type: 'string' },
+                                twitter: { type: 'string' },
+                                youtube: { type: 'string' }
+                            }
+                        },
+                        isFeatured: { type: 'boolean', default: false },
+                        status: { type: 'boolean', default: true },
+                        displayOrder: { type: 'integer', minimum: 0, default: 0 },
+                        seo: {
+                            type: 'object',
+                            properties: {
+                                metaTitle: { type: 'string', maxLength: 200 },
+                                metaDescription: { type: 'string', maxLength: 500 },
+                                keywords: { type: 'array', uniqueItems: true, items: { type: 'string' } },
+                                canonicalUrl: { type: 'string' }
+                            }
+                        },
+                        metadata: { type: 'object', additionalProperties: true }
+                    }
+                },
+                BlogAuthorUpdateInput: {
+                    type: 'object',
+                    minProperties: 1,
+                    properties: {
+                        fullName: { type: 'string', minLength: 2, maxLength: 100 },
+                        slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' },
+                        email: { type: 'string', format: 'email' },
+                        phone: { type: 'string', pattern: '^[+]?[0-9]{7,15}$' },
+                        designation: { type: 'string', maxLength: 150 },
+                        bio: { type: 'string', maxLength: 3000 },
+                        authorType: { type: 'string', enum: ['ADMIN', 'EDITOR', 'COUNSELOR', 'DOCTOR', 'UNIVERSITY_REPRESENTATIVE', 'GUEST_AUTHOR'] },
+                        profileImage: { type: 'string' },
+                        coverImage: { type: 'string' },
+                        experience: { type: 'integer', minimum: 0 },
+                        qualifications: { type: 'array', uniqueItems: true, items: { type: 'string' } },
+                        specializations: { type: 'array', uniqueItems: true, items: { type: 'string' } },
+                        languages: { type: 'array', uniqueItems: true, items: { type: 'string' } },
+                        country: { type: 'string' },
+                        city: { type: 'string' },
+                        socialLinks: { type: 'object' },
+                        isFeatured: { type: 'boolean' },
+                        status: { type: 'boolean' },
+                        displayOrder: { type: 'integer', minimum: 0 },
+                        seo: { type: 'object' },
+                        metadata: { type: 'object' }
+                    }
+                },
+                BlogAuthor: {
+                    allOf: [
+                        { $ref: '#/components/schemas/BlogAuthorInput' },
+                        {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string', example: '66a59ced88c5dcf13d81f030a' },
+                                authorCode: { type: 'string', example: 'AUT_DR_SANJAY_KUMAR_A2F9B8' },
+                                totalBlogs: { type: 'integer', example: 0 },
+                                totalViews: { type: 'integer', example: 0 },
+                                totalLikes: { type: 'integer', example: 0 },
+                                totalComments: { type: 'integer', example: 0 },
+                                createdAt: { type: 'string', format: 'date-time' },
+                                updatedAt: { type: 'string', format: 'date-time' }
+                            }
+                        }
+                    ]
+                },
+                BlogInput: {
+                    type: 'object',
+                    required: ['title', 'content', 'template', 'category', 'author'],
+                    properties: {
+                        title: { type: 'string', minLength: 10, maxLength: 250, example: 'Complete NEET Biology Preparation Guide' },
+                        slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' },
+                        shortDescription: { type: 'string', maxLength: 500 },
+                        excerpt: { type: 'string', maxLength: 1000 },
+                        content: { type: 'object', additionalProperties: true, example: { blocks: [{ type: 'paragraph', text: 'Start your NEET preparation with NCERT.' }] } },
+                        blogType: { type: 'string', enum: ['BLOG', 'NEWS', 'ARTICLE', 'GUIDE', 'FAQ', 'CASE_STUDY'], default: 'BLOG' },
+                        template: { type: 'string', description: 'Active BlogTemplate MongoDB _id.' },
+                        category: { type: 'string', description: 'Active BlogCategory MongoDB _id.' },
+                        tags: { type: 'array', maxItems: 20, uniqueItems: true, items: { type: 'string' } },
+                        author: { type: 'string', description: 'Active BlogAuthor MongoDB _id.' },
+                        featuredImage: { type: 'object', properties: { url: { type: 'string' }, alt: { type: 'string' }, caption: { type: 'string' } } },
+                        gallery: { type: 'array', maxItems: 30, items: { type: 'object', properties: { url: { type: 'string' }, alt: { type: 'string' } } } },
+                        videos: { type: 'array', maxItems: 20, items: { type: 'object', properties: { title: { type: 'string' }, url: { type: 'string' } } } },
+                        visibility: { type: 'string', enum: ['PUBLIC', 'PRIVATE', 'PASSWORD'], default: 'PUBLIC' },
+                        password: { type: 'string', description: 'Required for PASSWORD visibility and stored as a bcrypt hash.', writeOnly: true },
+                        isFeatured: { type: 'boolean', default: false },
+                        isTrending: { type: 'boolean', default: false },
+                        isPinned: { type: 'boolean', default: false },
+                        seo: { type: 'object', properties: { metaTitle: { type: 'string' }, metaDescription: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, canonicalUrl: { type: 'string' }, robots: { type: 'string', enum: ['index,follow', 'noindex,follow', 'index,nofollow', 'noindex,nofollow'] } } },
+                        faqs: { type: 'array', maxItems: 20, items: { type: 'object', required: ['question', 'answer'], properties: { question: { type: 'string' }, answer: { type: 'string' } } } },
+                        relatedBlogs: { type: 'array', maxItems: 20, uniqueItems: true, items: { type: 'string' } },
+                        metadata: { type: 'object', additionalProperties: true }
+                    }
+                },
+                BlogUpdateInput: {
+                    type: 'object',
+                    minProperties: 1,
+                    description: 'Partial BlogInput. Send only fields that need to change.',
+                    additionalProperties: true,
+                    example: { title: 'Updated NEET Biology Preparation Guide', isFeatured: true }
+                },
+                Blog: {
+                    allOf: [
+                        { $ref: '#/components/schemas/BlogInput' },
+                        {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string' },
+                                blogCode: { type: 'string', example: 'BLOG_COMPLETE_NEET_BIOLOGY_GUIDE_A2F9B8' },
+                                status: { type: 'string', enum: ['DRAFT', 'REVIEW', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED'] },
+                                readingTime: { type: 'integer' },
+                                totalViews: { type: 'integer' },
+                                totalLikes: { type: 'integer' },
+                                totalShares: { type: 'integer' },
+                                totalComments: { type: 'integer' },
+                                publishedAt: { type: 'string', format: 'date-time', nullable: true },
+                                scheduledAt: { type: 'string', format: 'date-time', nullable: true },
+                                createdAt: { type: 'string', format: 'date-time' },
+                                updatedAt: { type: 'string', format: 'date-time' }
+                            }
+                        }
+                    ]
+                },
+                BlogMedia: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string' },
+                        originalName: { type: 'string' },
+                        displayName: { type: 'string' },
+                        fileName: { type: 'string' },
+                        publicId: { type: 'string' },
+                        assetId: { type: 'string' },
+                        url: { type: 'string' },
+                        secureUrl: { type: 'string' },
+                        folder: { type: 'string' },
+                        format: { type: 'string' },
+                        extension: { type: 'string' },
+                        mimeType: { type: 'string' },
+                        resourceType: { type: 'string', enum: ['image', 'video', 'raw'] },
+                        width: { type: 'number' },
+                        height: { type: 'number' },
+                        duration: { type: 'number' },
+                        bytes: { type: 'integer' },
+                        readableSize: { type: 'string' },
+                        altText: { type: 'string' },
+                        caption: { type: 'string' },
+                        tags: { type: 'array', items: { type: 'string' } },
+                        status: { type: 'string', enum: ['ACTIVE', 'DELETED'] },
+                        createdAt: { type: 'string', format: 'date-time' },
+                        updatedAt: { type: 'string', format: 'date-time' }
+                    }
+                },
+                BlogMediaMetadata: {
+                    type: 'object',
+                    minProperties: 1,
+                    properties: {
+                        displayName: { type: 'string', maxLength: 250 },
+                        altText: { type: 'string', maxLength: 500 },
+                        caption: { type: 'string', maxLength: 1000 },
+                        tags: { type: 'array', uniqueItems: true, items: { type: 'string' } }
+                    }
+                },
+                BlogSeoInput: {
+                    type: 'object',
+                    required: ['module', 'referenceId', 'slug', 'metaTitle', 'metaDescription'],
+                    properties: {
+                        module: { type: 'string', enum: ['BLOG', 'PAGE', 'AUTHOR', 'CATEGORY', 'TAG', 'COUNTRY', 'UNIVERSITY', 'HOME', 'SERVICE'] },
+                        referenceId: { type: 'string', example: '6a630000d3310d5292509999' },
+                        slug: { type: 'string', minLength: 3, maxLength: 200, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', example: 'complete-neet-biology-guide' },
+                        canonicalUrl: { type: 'string', example: 'https://example.com/blogs/complete-neet-biology-guide' },
+                        metaTitle: { type: 'string', minLength: 10, maxLength: 60, example: 'Complete NEET Biology Guide' },
+                        metaDescription: { type: 'string', minLength: 50, maxLength: 160, example: 'Prepare for NEET Biology with a complete NCERT study and revision strategy for medical aspirants.' },
+                        metaKeywords: { type: 'array', maxItems: 15, uniqueItems: true, items: { type: 'string' }, example: ['NEET', 'Biology', 'NCERT'] },
+                        robots: { type: 'string', enum: ['index,follow', 'index,nofollow', 'noindex,follow', 'noindex,nofollow'], default: 'index,follow' },
+                        openGraph: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' }, image: { type: 'string', nullable: true, description: 'BlogMedia MongoDB ID.' }, imageAlt: { type: 'string' }, type: { type: 'string', enum: ['website', 'article', 'profile', 'book'] } } },
+                        twitter: { type: 'object', properties: { card: { type: 'string', enum: ['summary', 'summary_large_image', 'app', 'player'] }, title: { type: 'string' }, description: { type: 'string' }, image: { type: 'string', nullable: true } } },
+                        sitemap: { type: 'object', properties: { priority: { type: 'number', minimum: 0, maximum: 1, default: 0.8 }, changeFrequency: { type: 'string', enum: ['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'] } } },
+                        schemaType: { type: 'string', enum: ['Article', 'BlogPosting', 'FAQPage', 'Organization', 'Person', 'WebSite', 'WebPage', 'BreadcrumbList', 'LocalBusiness'] },
+                        schemaData: { type: 'object', additionalProperties: true },
+                        redirectUrl: { type: 'string' },
+                        isActive: { type: 'boolean', default: true }
+                    }
+                },
+                BlogSeoUpdateInput: {
+                    type: 'object',
+                    minProperties: 1,
+                    additionalProperties: true,
+                    example: { metaTitle: 'Updated NEET Biology Guide', robots: 'index,follow', isActive: true }
+                },
+                BlogReviewInput: {
+                    type: 'object',
+                    required: ['reviewType', 'referenceId', 'reviewerName', 'title', 'review', 'rating'],
+                    properties: {
+                        reviewType: { type: 'string', enum: ['UNIVERSITY', 'COUNTRY', 'BLOG', 'CONSULTANT', 'AUTHOR', 'WEBSITE'] },
+                        referenceId: { type: 'string', example: '6a630000d3310d5292509999' },
+                        reviewerName: { type: 'string', minLength: 2, maxLength: 100, example: 'Sanjay Kumar' },
+                        email: { type: 'string', format: 'email' },
+                        phone: { type: 'string' },
+                        country: { type: 'string' },
+                        city: { type: 'string' },
+                        title: { type: 'string', minLength: 5, maxLength: 150, example: 'Very useful preparation guide' },
+                        review: { type: 'string', minLength: 20, maxLength: 5000, example: 'This guide was detailed and very useful for my NEET preparation.' },
+                        rating: { type: 'integer', minimum: 1, maximum: 5, example: 5 },
+                        media: { type: 'array', maxItems: 10, items: { type: 'object', required: ['mediaId'], properties: { mediaId: { type: 'string' }, mediaType: { type: 'string', enum: ['IMAGE', 'VIDEO'] } } } }
+                    }
+                },
+                BlogReviewUpdateInput: {
+                    type: 'object',
+                    minProperties: 1,
+                    properties: {
+                        reviewerName: { type: 'string' },
+                        email: { type: 'string', format: 'email' },
+                        phone: { type: 'string' },
+                        country: { type: 'string' },
+                        city: { type: 'string' },
+                        title: { type: 'string' },
+                        review: { type: 'string' },
+                        rating: { type: 'integer', minimum: 1, maximum: 5 },
+                        media: { type: 'array', items: { type: 'object' } }
+                    }
+                },
+                BlogAdvancedSearchInput: {
+                    type: 'object',
+                    required: ['keyword'],
+                    properties: {
+                        keyword: { type: 'string', minLength: 2, maxLength: 100, example: 'NEET Biology' },
+                        module: { type: 'string', enum: ['GLOBAL', 'BLOG', 'CATEGORY', 'TAG', 'AUTHOR', 'REVIEW', 'SEO', 'MEDIA'], default: 'GLOBAL' },
+                        category: { type: 'string', description: 'BlogCategory MongoDB ID.' },
+                        author: { type: 'string', description: 'BlogAuthor MongoDB ID.' },
+                        tag: { type: 'string', description: 'BlogTag MongoDB ID.' },
+                        rating: { type: 'integer', minimum: 1, maximum: 5, description: 'Applies to REVIEW searches.' },
+                        sortBy: { type: 'string', enum: ['relevance', 'createdAt', 'updatedAt', 'title', 'name', 'rating', 'popularity'], default: 'relevance' },
+                        sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+                        page: { type: 'integer', minimum: 1, default: 1 },
+                        limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 }
+                    }
+                },
+                BlogAnalyticsSnapshot: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string' },
+                        date: { type: 'string', format: 'date' },
+                        period: { type: 'string', enum: ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] },
+                        dashboard: { type: 'object', properties: { totalBlogs: { type: 'integer' }, publishedBlogs: { type: 'integer' }, draftBlogs: { type: 'integer' }, totalCategories: { type: 'integer' }, totalTags: { type: 'integer' }, totalAuthors: { type: 'integer' } } },
+                        reviews: { type: 'object', properties: { totalReviews: { type: 'integer' }, approvedReviews: { type: 'integer' }, pendingReviews: { type: 'integer' }, rejectedReviews: { type: 'integer' }, averageRating: { type: 'number' } } },
+                        searches: { type: 'object', description: 'Zero until search event tracking is implemented.' },
+                        media: { type: 'object', properties: { totalFiles: { type: 'integer' }, totalImages: { type: 'integer' }, totalVideos: { type: 'integer' }, storageUsed: { type: 'integer', description: 'Total bytes.' } } },
+                        seo: { type: 'object', properties: { indexedPages: { type: 'integer' }, missingMetaTitles: { type: 'integer' }, missingMetaDescriptions: { type: 'integer' }, averageSeoScore: { type: 'number' } } },
+                        traffic: { type: 'object', description: 'pageViews comes from blog counters; visitor fields require event tracking.' },
+                        growth: { type: 'object', properties: { blogGrowth: { type: 'number' }, reviewGrowth: { type: 'number' }, searchGrowth: { type: 'number' }, visitorGrowth: { type: 'number' } } },
+                        generatedAt: { type: 'string', format: 'date-time' }
                     }
                 },
                 TestSelectionRequest: {
@@ -336,7 +845,7 @@ const swaggerOptions = {
                 QuestionOfTheDay: {
                     type: 'object',
                     properties: {
-                        id: { type: 'integer', example: 101 },
+                        id: { type: 'integer', example: 4029 },
                         question_date: {
                             type: 'string',
                             format: 'date-time',
@@ -371,7 +880,7 @@ const swaggerOptions = {
                         question_id: {
                             type: 'integer',
                             description: 'The numeric ID returned by the Question of the Day API.',
-                            example: 101
+                            example: 4029
                         },
                         selected_option: {
                             type: 'string',
@@ -394,17 +903,17 @@ const swaggerOptions = {
                         }
                     }
                 },
-                StudentActivity: {
-                    type: 'object',
-                    properties: {
-                        _id: { type: 'string', example: '6a574d89f8cfe3af28d29008' },
-                        id: { type: 'integer', example: 206 },
-                        student_id: { type: 'string', example: 'MOB26070968IUXQ' },
-                        last_seen: { type: 'string', format: 'date-time', example: '2026-07-09T16:10:35.536Z' },
-                        ip_address: { type: 'string', example: '127.0.0.1' },
-                        user_agent: { type: 'string', example: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36' }
-                    }
-                },
+                // StudentActivity: {
+                //     type: 'object',
+                //     properties: {
+                //         _id: { type: 'string', example: '6a574d89f8cfe3af28d29008' },
+                //         id: { type: 'integer', example: 206 },
+                //         student_id: { type: 'string', example: 'MOB26070968IUXQ' },
+                //         last_seen: { type: 'string', format: 'date-time', example: '2026-07-09T16:10:35.536Z' },
+                //         ip_address: { type: 'string', example: '127.0.0.1' },
+                //         user_agent: { type: 'string', example: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36' }
+                //     }
+                // },
                 UserActivityRequest: {
                     type: 'object',
                     required: ['user_id'],
@@ -435,22 +944,22 @@ const swaggerOptions = {
                         auth_provider: { type: 'string', enum: ['mobile', 'local', 'google'], example: 'mobile' }
                     }
                 },
-                StudentProfile: {
-                    type: 'object',
-                    properties: {
-                        _id: { type: 'string', example: '6a574a45f8cfe3af28d28f8b' },
-                        student_id: { type: 'string', example: 'MOB260328RVFUYR' },
-                        phone_number: { type: 'string', example: '+918012036989' },
-                        is_active: { type: 'boolean', example: true },
-                        is_verified: { type: 'boolean', example: true },
-                        last_login: { type: 'string', format: 'date-time' },
-                        created_at: { type: 'string', format: 'date-time' },
-                        updated_at: { type: 'string', format: 'date-time' },
-                        auth_provider: { type: 'string', example: 'mobile' },
-                        email_verified: { type: 'boolean', example: false },
-                        is_first_login: { type: 'boolean', example: true }
-                    }
-                },
+                // StudentProfile: {
+                //     type: 'object',
+                //     properties: {
+                //         _id: { type: 'string', example: '6a574a45f8cfe3af28d28f8b' },
+                //         student_id: { type: 'string', example: 'MOB260328RVFUYR' },
+                //         phone_number: { type: 'string', example: '+918012036989' },
+                //         is_active: { type: 'boolean', example: true },
+                //         is_verified: { type: 'boolean', example: true },
+                //         last_login: { type: 'string', format: 'date-time' },
+                //         created_at: { type: 'string', format: 'date-time' },
+                //         updated_at: { type: 'string', format: 'date-time' },
+                //         auth_provider: { type: 'string', example: 'mobile' },
+                //         email_verified: { type: 'boolean', example: false },
+                //         is_first_login: { type: 'boolean', example: true }
+                //     }
+                // },
                 QuestionFeedbackRequest: {
                     type: 'object',
                     required: ['test_session_id', 'question_id', 'feedback_type', 'comment'],
@@ -1280,34 +1789,6 @@ const swaggerOptions = {
                     }
                 }
             },
-            '/api/v1/student-activity': {
-                post: {
-                    tags: ['Student Activity'],
-                    summary: 'Create or update the logged-in student activity',
-                    description: 'No request body is required. student_id comes from the JWT; IP address, user agent, and last_seen are generated from the request and server time.',
-                    security: [{ bearerAuth: [] }],
-                    responses: {
-                        200: { description: 'Existing student activity updated successfully.' },
-                        201: { description: 'Student activity created successfully.' },
-                        400: { description: 'The JWT does not contain student_id.' },
-                        401: { description: 'JWT is missing, invalid, or expired.' },
-                        500: { description: 'Server or database error.' }
-                    }
-                }
-            },
-            '/api/v1/student-activity/me': {
-                get: {
-                    tags: ['Student Activity'],
-                    summary: 'Get the logged-in student activity',
-                    security: [{ bearerAuth: [] }],
-                    responses: {
-                        200: { description: 'Student activity returned successfully.' },
-                        401: { description: 'JWT is missing, invalid, or expired.' },
-                        404: { description: 'Student activity has not been recorded.' },
-                        500: { description: 'Server or database error.' }
-                    }
-                }
-            },
             '/api/v1/user-activity': {
                 post: {
                     tags: ['User Activity'],
@@ -1348,43 +1829,6 @@ const swaggerOptions = {
                         400: { description: 'userId is invalid.' },
                         401: { description: 'JWT is missing, invalid, or expired.' },
                         404: { description: 'User activity not found.' },
-                        500: { description: 'Server or database error.' }
-                    }
-                }
-            },
-            '/api/v1/student-profile': {
-                post: {
-                    tags: ['Student Profile'],
-                    summary: 'Create or update the logged-in student profile',
-                    description: 'student_id is read from the JWT. Verification, activation, login-state, and timestamp fields are controlled by the server.',
-                    security: [{ bearerAuth: [] }],
-                    requestBody: {
-                        required: true,
-                        content: {
-                            'application/json': {
-                                schema: { $ref: '#/components/schemas/StudentProfileRequest' }
-                            }
-                        }
-                    },
-                    responses: {
-                        200: { description: 'Existing student profile updated successfully.' },
-                        201: { description: 'Student profile created successfully.' },
-                        400: { description: 'Profile payload or JWT student_id is invalid.' },
-                        401: { description: 'JWT is missing, invalid, or expired.' },
-                        409: { description: 'A supplied unique profile value is already in use.' },
-                        500: { description: 'Server or database error.' }
-                    }
-                }
-            },
-            '/api/v1/student-profile/me': {
-                get: {
-                    tags: ['Student Profile'],
-                    summary: 'Get the logged-in student profile',
-                    security: [{ bearerAuth: [] }],
-                    responses: {
-                        200: { description: 'Student profile returned successfully.' },
-                        401: { description: 'JWT is missing, invalid, or expired.' },
-                        404: { description: 'Student profile not found.' },
                         500: { description: 'Server or database error.' }
                     }
                 }
@@ -1581,6 +2025,7 @@ const swaggerOptions = {
                     tags: ['Platform Admin'],
                     summary: 'Log in as an active platform administrator',
                     description: 'Verifies the submitted password against the bcrypt password_hash in platform-admins and returns an admin JWT.',
+                    security: [],
                     requestBody: {
                         required: true,
                         content: {
@@ -1669,6 +2114,786 @@ const swaggerOptions = {
             },
             '/api/v1/admin/admins/{adminId}/status': {
                 patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate another admin', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'adminId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean' } } } } } }, responses: { 200: { description: 'Admin status updated and existing tokens revoked.' }, 400: { description: 'Cannot deactivate own account.' }, 404: { description: 'Admin not found.' } } }
+            },
+            '/api/v1/admin/blog-analytics/dashboard': {
+                get: {
+                    tags: ['Blog Analytics'], summary: 'Get the live analytics dashboard', security: [{ adminBearerAuth: [] }],
+                    description: 'Calculates current totals directly from blog collections and current-month growth compared with the previous month.',
+                    responses: { 200: { description: 'Live dashboard returned.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'Rate limit exceeded.' } }
+                }
+            },
+            '/api/v1/admin/blog-analytics/snapshots': {
+                get: {
+                    tags: ['Blog Analytics'], summary: 'List saved analytics snapshots', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'period', in: 'query', schema: { type: 'string', enum: ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] } },
+                        { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+                        { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } }
+                    ],
+                    responses: { 200: { description: 'Snapshots and pagination returned.' }, 400: { description: 'Invalid filters.' }, 401: { description: 'Invalid admin token.' } }
+                },
+                post: {
+                    tags: ['Blog Analytics'], summary: 'Generate or refresh an analytics snapshot', security: [{ adminBearerAuth: [] }],
+                    description: 'Normalizes the date to the selected period and upserts one snapshot for that period/date.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['period'], properties: { period: { type: 'string', enum: ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] }, date: { type: 'string', format: 'date', description: 'Defaults to today.' } } } } } },
+                    responses: { 201: { description: 'Snapshot generated or refreshed.' }, 400: { description: 'Invalid period or date.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'Rate limit exceeded.' } }
+                }
+            },
+            '/api/v1/admin/blog-analytics/snapshots/latest/{period}': {
+                get: {
+                    tags: ['Blog Analytics'], summary: 'Get the latest snapshot for one period', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'period', in: 'path', required: true, schema: { type: 'string', enum: ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] } }],
+                    responses: { 200: { description: 'Latest snapshot returned.' }, 400: { description: 'Invalid period.' }, 404: { description: 'No snapshot exists for this period.' } }
+                }
+            },
+            '/api/v1/admin/blog-analytics/content-performance': {
+                get: {
+                    tags: ['Blog Analytics'], summary: 'Get top-performing blogs, authors, and categories', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 50, default: 10 } }],
+                    responses: { 200: { description: 'Content performance returned.' }, 401: { description: 'Invalid admin token.' } }
+                }
+            },
+            '/api/v1/blog-search': {
+                get: {
+                    tags: ['Blog Search'], summary: 'Search all supported blog modules', security: [],
+                    description: 'Searches only published/active/approved frontend-safe records and ranks exact and partial matches.',
+                    parameters: [
+                        { name: 'keyword', in: 'query', required: true, schema: { type: 'string', minLength: 2, maxLength: 100 }, example: 'biology' },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['relevance', 'createdAt', 'updatedAt', 'title', 'name', 'rating', 'popularity'], default: 'relevance' } },
+                        { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } }
+                    ],
+                    responses: { 200: { description: 'Ranked and grouped results returned.' }, 400: { description: 'Invalid keyword or query.' }, 429: { description: 'Rate limit exceeded.' } }
+                }
+            },
+            '/api/v1/blog-search/module': {
+                get: {
+                    tags: ['Blog Search'], summary: 'Search one blog module', security: [],
+                    parameters: [
+                        { name: 'module', in: 'query', required: true, schema: { type: 'string', enum: ['BLOG', 'CATEGORY', 'TAG', 'AUTHOR', 'REVIEW', 'SEO', 'MEDIA'] } },
+                        { name: 'keyword', in: 'query', required: true, schema: { type: 'string', minLength: 2, maxLength: 100 } },
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 100, default: 10 } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['relevance', 'createdAt', 'updatedAt', 'title', 'name', 'rating', 'popularity'] } },
+                        { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'] } }
+                    ],
+                    responses: { 200: { description: 'Module search results returned.' }, 400: { description: 'Invalid or unavailable module.' } }
+                }
+            },
+            '/api/v1/blog-search/suggestions': {
+                get: {
+                    tags: ['Blog Search'], summary: 'Get search suggestions', security: [],
+                    description: 'Returns unique suggestions from published blogs and active categories, tags, and authors.',
+                    parameters: [
+                        { name: 'keyword', in: 'query', required: true, schema: { type: 'string', minLength: 1, maxLength: 50 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10, default: 5 } }
+                    ],
+                    responses: { 200: { description: 'Suggestions returned.' }, 400: { description: 'Invalid query.' } }
+                }
+            },
+            '/api/v1/blog-search/advanced': {
+                post: {
+                    tags: ['Blog Search'], summary: 'Run an advanced filtered search', security: [],
+                    description: 'Category, author, and tag filters apply to BLOG. Rating applies to REVIEW.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogAdvancedSearchInput' } } } },
+                    responses: { 200: { description: 'Filtered ranked results returned.' }, 400: { description: 'Invalid search payload.' }, 429: { description: 'Rate limit exceeded.' } }
+                }
+            },
+            '/api/v1/blog-reviews': {
+                post: {
+                    tags: ['Blog Reviews'], summary: 'Submit a student review', security: [{ bearerAuth: [] }],
+                    description: 'Creates a PENDING review. A student can submit one active review for each reviewType/referenceId pair.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogReviewInput' } } } },
+                    responses: { 201: { description: 'Review submitted for moderation.' }, 400: { description: 'Invalid review or reference.' }, 401: { description: 'Student JWT required.' }, 409: { description: 'Student already reviewed this target.' } }
+                }
+            },
+            '/api/v1/blog-reviews/mine': {
+                get: { tags: ['Blog Reviews'], summary: 'List the authenticated student’s reviews', security: [{ bearerAuth: [] }], responses: { 200: { description: 'Student reviews returned.' }, 401: { description: 'Student JWT required.' } } }
+            },
+            '/api/v1/blog-reviews/featured': {
+                get: { tags: ['Blog Reviews'], summary: 'List approved featured reviews', security: [], responses: { 200: { description: 'Featured reviews returned.' } } }
+            },
+            '/api/v1/blog-reviews/reference/{reviewType}/{referenceId}': {
+                get: {
+                    tags: ['Blog Reviews'], summary: 'List approved reviews for one target', security: [],
+                    parameters: [
+                        { name: 'reviewType', in: 'path', required: true, schema: { type: 'string', enum: ['UNIVERSITY', 'COUNTRY', 'BLOG', 'CONSULTANT', 'AUTHOR', 'WEBSITE'] } },
+                        { name: 'referenceId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: { 200: { description: 'Approved reviews returned.' }, 400: { description: 'Invalid type or ID.' } }
+                }
+            },
+            '/api/v1/blog-reviews/{id}': {
+                patch: {
+                    tags: ['Blog Reviews'], summary: 'Update the authenticated student’s pending review', security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogReviewUpdateInput' } } } },
+                    responses: { 200: { description: 'Review updated and returned to PENDING.' }, 403: { description: 'Review belongs to another student.' }, 404: { description: 'Review not found.' }, 409: { description: 'Approved review cannot be edited.' } }
+                }
+            },
+            '/api/v1/admin/blog-reviews': {
+                get: {
+                    tags: ['Blog Reviews'], summary: 'List and filter reviews for moderation', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 100, default: 10 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' } },
+                        { name: 'reviewType', in: 'query', schema: { type: 'string' } },
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['PENDING', 'APPROVED', 'REJECTED', 'SPAM'] } },
+                        { name: 'rating', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 5 } },
+                        { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'isVerified', in: 'query', schema: { type: 'boolean' } }
+                    ],
+                    responses: { 200: { description: 'Reviews and pagination returned.' }, 401: { description: 'Invalid admin token.' } }
+                }
+            },
+            '/api/v1/admin/blog-reviews/statistics': {
+                get: { tags: ['Blog Reviews'], summary: 'Get moderation and rating statistics', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Review statistics returned.' } } }
+            },
+            '/api/v1/admin/blog-reviews/{id}': {
+                get: { tags: ['Blog Reviews'], summary: 'Get one review for moderation', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Review returned.' }, 404: { description: 'Review not found.' } } },
+                delete: { tags: ['Blog Reviews'], summary: 'Soft-delete a review', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Review soft-deleted.' }, 404: { description: 'Review not found.' } } }
+            },
+            '/api/v1/admin/blog-reviews/{id}/approve': {
+                post: { tags: ['Blog Reviews'], summary: 'Approve a pending review', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Review approved.' }, 404: { description: 'Review not found.' } } }
+            },
+            '/api/v1/admin/blog-reviews/{id}/reject': {
+                post: {
+                    tags: ['Blog Reviews'], summary: 'Reject a review with a reason', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['rejectionReason'], properties: { rejectionReason: { type: 'string', minLength: 5, maxLength: 500 } } } } } },
+                    responses: { 200: { description: 'Review rejected.' }, 400: { description: 'Reason is invalid.' }, 404: { description: 'Review not found.' } }
+                }
+            },
+            '/api/v1/admin/blog-reviews/{id}/featured': {
+                patch: { tags: ['Blog Reviews'], summary: 'Feature or unfeature an approved review', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['isFeatured'], properties: { isFeatured: { type: 'boolean' } } } } } }, responses: { 200: { description: 'Featured status updated.' }, 409: { description: 'Only approved reviews can be featured.' } } }
+            },
+            '/api/v1/admin/blog-reviews/{id}/verified': {
+                patch: { tags: ['Blog Reviews'], summary: 'Set review verification status', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['isVerified'], properties: { isVerified: { type: 'boolean' } } } } } }, responses: { 200: { description: 'Verification status updated.' } } }
+            },
+            '/api/v1/admin/blog-reviews/{id}/restore': {
+                patch: { tags: ['Blog Reviews'], summary: 'Restore a soft-deleted review as PENDING', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Review restored.' }, 409: { description: 'Review is not deleted or duplicates another review.' } } }
+            },
+            '/api/v1/admin/blog-seo': {
+                get: {
+                    tags: ['Blog SEO'], summary: 'List and search SEO records', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' } },
+                        { name: 'module', in: 'query', schema: { type: 'string', enum: ['BLOG', 'PAGE', 'AUTHOR', 'CATEGORY', 'TAG', 'COUNTRY', 'UNIVERSITY', 'HOME', 'SERVICE'] } },
+                        { name: 'isActive', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'robots', in: 'query', schema: { type: 'string' } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['createdAt', 'updatedAt', 'metaTitle', 'slug'], default: 'createdAt' } },
+                        { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } }
+                    ],
+                    responses: { 200: { description: 'SEO records and pagination returned.' }, 400: { description: 'Invalid query.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'Rate limit exceeded.' } }
+                },
+                post: {
+                    tags: ['Blog SEO'], summary: 'Create an SEO record', security: [{ adminBearerAuth: [] }],
+                    description: 'Allows one record per module/reference pair and one record per slug. BLOG, AUTHOR, CATEGORY, and TAG references are verified.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogSeoInput' } } } },
+                    responses: { 201: { description: 'SEO record created in blog.blog-seo.' }, 400: { description: 'Invalid fields or reference.' }, 401: { description: 'Invalid admin token.' }, 409: { description: 'Slug or module/reference already exists.' } }
+                }
+            },
+            '/api/v1/admin/blog-seo/statistics': {
+                get: { tags: ['Blog SEO'], summary: 'Get SEO totals grouped by module', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'SEO statistics returned.' }, 401: { description: 'Invalid admin token.' } } }
+            },
+            '/api/v1/admin/blog-seo/module/{module}/{referenceId}': {
+                get: {
+                    tags: ['Blog SEO'], summary: 'Get SEO by module and reference ID', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'module', in: 'path', required: true, schema: { type: 'string', enum: ['BLOG', 'PAGE', 'AUTHOR', 'CATEGORY', 'TAG', 'COUNTRY', 'UNIVERSITY', 'HOME', 'SERVICE'] } },
+                        { name: 'referenceId', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }
+                    ],
+                    responses: { 200: { description: 'SEO record returned.' }, 400: { description: 'Invalid module or reference ID.' }, 404: { description: 'SEO record not found.' } }
+                }
+            },
+            '/api/v1/admin/blog-seo/{id}': {
+                get: {
+                    tags: ['Blog SEO'], summary: 'Get SEO by ID', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'SEO record returned.' }, 404: { description: 'SEO record not found.' } }
+                },
+                patch: {
+                    tags: ['Blog SEO'], summary: 'Update SEO fields', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogSeoUpdateInput' } } } },
+                    responses: { 200: { description: 'SEO updated.' }, 400: { description: 'Invalid update.' }, 404: { description: 'SEO record not found.' }, 409: { description: 'Slug or module/reference conflict.' } }
+                },
+                delete: {
+                    tags: ['Blog SEO'], summary: 'Soft-delete an SEO record', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'SEO soft-deleted.' }, 404: { description: 'SEO record not found.' } }
+                }
+            },
+            '/api/v1/admin/blog-seo/{id}/restore': {
+                patch: {
+                    tags: ['Blog SEO'], summary: 'Restore a soft-deleted SEO record', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'SEO restored.' }, 404: { description: 'SEO record not found.' }, 409: { description: 'Record is not deleted or now conflicts.' } }
+                }
+            },
+            '/api/v1/admin/blog-media': {
+                get: {
+                    tags: ['Blog Media'], summary: 'List and search media', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' } },
+                        { name: 'resourceType', in: 'query', schema: { type: 'string', enum: ['image', 'video', 'raw'] } },
+                        { name: 'folder', in: 'query', schema: { type: 'string' } },
+                        { name: 'tag', in: 'query', schema: { type: 'string' } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['createdAt', 'updatedAt', 'originalName', 'bytes'], default: 'createdAt' } },
+                        { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } }
+                    ],
+                    responses: { 200: { description: 'Media and pagination returned.' }, 400: { description: 'Invalid query.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'Rate limit exceeded.' } }
+                }
+            },
+            '/api/v1/admin/blog-media/upload': {
+                post: {
+                    tags: ['Blog Media'], summary: 'Upload one file to Cloudinary', security: [{ adminBearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'multipart/form-data': {
+                                schema: {
+                                    type: 'object', required: ['file'],
+                                    properties: {
+                                        file: { type: 'string', format: 'binary' },
+                                        folder: { type: 'string', example: 'mbbs-cms/blogs' },
+                                        displayName: { type: 'string' },
+                                        altText: { type: 'string' },
+                                        caption: { type: 'string' },
+                                        tags: { type: 'string', description: 'Comma-separated values or a JSON array.', example: 'neet,biology,ncert' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: { 201: { description: 'Cloudinary upload stored in blog.blog-media.' }, 400: { description: 'Missing or unsupported file.' }, 401: { description: 'Invalid admin token.' }, 413: { description: 'File exceeds its type-specific size limit.' }, 500: { description: 'Cloudinary configuration or upload error.' } }
+                }
+            },
+            '/api/v1/admin/blog-media/upload-multiple': {
+                post: {
+                    tags: ['Blog Media'], summary: 'Upload multiple files to Cloudinary', security: [{ adminBearerAuth: [] }],
+                    description: 'Accepts up to 20 files. Use the multipart field name files for every selected file.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'multipart/form-data': {
+                                schema: {
+                                    type: 'object', required: ['files'],
+                                    properties: {
+                                        files: { type: 'array', maxItems: 20, items: { type: 'string', format: 'binary' } },
+                                        folder: { type: 'string', example: 'mbbs-cms/blogs' },
+                                        tags: { type: 'string', example: 'neet,biology' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: { 201: { description: 'Files uploaded and media records created.' }, 400: { description: 'Invalid files.' }, 413: { description: 'A file exceeds its size limit.' }, 500: { description: 'Cloudinary upload error; completed uploads are rolled back.' } }
+                }
+            },
+            '/api/v1/admin/blog-media/{id}': {
+                get: {
+                    tags: ['Blog Media'], summary: 'Get one media record', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Media returned.' }, 400: { description: 'Invalid ID.' }, 404: { description: 'Media not found.' } }
+                },
+                patch: {
+                    tags: ['Blog Media'], summary: 'Update media metadata', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogMediaMetadata' } } } },
+                    responses: { 200: { description: 'Metadata updated.' }, 400: { description: 'Invalid update.' }, 404: { description: 'Media not found.' } }
+                },
+                delete: {
+                    tags: ['Blog Media'], summary: 'Soft-delete media', description: 'The Cloudinary asset is retained so the record can be restored.', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Media soft-deleted.' }, 404: { description: 'Media not found.' } }
+                }
+            },
+            '/api/v1/admin/blog-media/{id}/replace': {
+                post: {
+                    tags: ['Blog Media'], summary: 'Replace an existing Cloudinary asset', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' }, folder: { type: 'string' }, displayName: { type: 'string' }, altText: { type: 'string' }, caption: { type: 'string' }, tags: { type: 'string' } } } } } },
+                    responses: { 200: { description: 'New asset saved and old Cloudinary asset removed.' }, 400: { description: 'Invalid replacement.' }, 404: { description: 'Media not found.' }, 500: { description: 'Cloudinary error.' } }
+                }
+            },
+            '/api/v1/admin/blog-media/{id}/restore': {
+                patch: {
+                    tags: ['Blog Media'], summary: 'Restore soft-deleted media', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Media restored.' }, 404: { description: 'Media not found.' }, 409: { description: 'Media is not deleted.' } }
+                }
+            },
+            '/api/v1/admin/blogs': {
+                get: {
+                    tags: ['Blogs'], summary: 'List and search blogs', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' } },
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'REVIEW', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED'] } },
+                        { name: 'visibility', in: 'query', schema: { type: 'string', enum: ['PUBLIC', 'PRIVATE', 'PASSWORD'] } },
+                        { name: 'blogType', in: 'query', schema: { type: 'string', enum: ['BLOG', 'NEWS', 'ARTICLE', 'GUIDE', 'FAQ', 'CASE_STUDY'] } },
+                        { name: 'category', in: 'query', schema: { type: 'string' } },
+                        { name: 'author', in: 'query', schema: { type: 'string' } },
+                        { name: 'tag', in: 'query', schema: { type: 'string' } },
+                        { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'isTrending', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['title', 'createdAt', 'updatedAt', 'publishedAt', 'totalViews', 'totalLikes', 'totalComments', 'readingTime'], default: 'createdAt' } },
+                        { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } }
+                    ],
+                    responses: { 200: { description: 'Blogs and pagination returned.' }, 400: { description: 'Invalid query.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'Rate limit exceeded.' } }
+                },
+                post: {
+                    tags: ['Blogs'], summary: 'Create a blog draft', security: [{ adminBearerAuth: [] }],
+                    description: 'Validates all referenced records, generates the slug/code/SEO/reading time, and stores a DRAFT in blog.blogs.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogInput' } } } },
+                    responses: { 201: { description: 'Blog draft created.' }, 400: { description: 'Invalid payload or inactive relationship.' }, 401: { description: 'Invalid admin token.' }, 409: { description: 'Slug already exists.' }, 429: { description: 'Rate limit exceeded.' } }
+                }
+            },
+            '/api/v1/admin/blogs/statistics': {
+                get: { tags: ['Blogs'], summary: 'Get blog status and engagement statistics', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Blog statistics returned.' }, 401: { description: 'Invalid admin token.' } } }
+            },
+            '/api/v1/admin/blogs/{id}': {
+                get: {
+                    tags: ['Blogs'], summary: 'Get one blog', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Blog and populated relationships returned.' }, 400: { description: 'Invalid ID.' }, 404: { description: 'Blog not found.' } }
+                },
+                patch: {
+                    tags: ['Blogs'], summary: 'Update a blog draft or its content', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogUpdateInput' } } } },
+                    responses: { 200: { description: 'Blog updated.' }, 400: { description: 'Invalid update or relationship.' }, 404: { description: 'Blog not found.' }, 409: { description: 'Slug already exists.' } }
+                },
+                delete: {
+                    tags: ['Blogs'], summary: 'Soft-delete a blog', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Blog soft-deleted.' }, 400: { description: 'Invalid ID.' }, 404: { description: 'Blog not found.' } }
+                }
+            },
+            '/api/v1/admin/blogs/{id}/publish': {
+                post: { tags: ['Blogs'], summary: 'Publish a blog immediately', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Blog published and relationship counters updated.' }, 400: { description: 'Invalid relationship.' }, 404: { description: 'Blog not found.' } } }
+            },
+            '/api/v1/admin/blogs/{id}/unpublish': {
+                post: { tags: ['Blogs'], summary: 'Move a published blog back to draft', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Blog unpublished.' }, 404: { description: 'Blog not found.' } } }
+            },
+            '/api/v1/admin/blogs/{id}/schedule': {
+                post: {
+                    tags: ['Blogs'], summary: 'Schedule a blog for future publication', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['scheduledAt'], properties: { scheduledAt: { type: 'string', format: 'date-time', example: '2026-08-01T10:00:00.000Z' } } } } } },
+                    responses: { 200: { description: 'Blog scheduled.' }, 400: { description: 'scheduledAt must be in the future.' }, 404: { description: 'Blog not found.' } }
+                }
+            },
+            '/api/v1/admin/blogs/{id}/duplicate': {
+                post: { tags: ['Blogs'], summary: 'Duplicate a blog as a new draft', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 201: { description: 'Blog copy created.' }, 404: { description: 'Source blog not found.' } } }
+            },
+            '/api/v1/admin/blogs/{id}/restore': {
+                patch: { tags: ['Blogs'], summary: 'Restore a soft-deleted blog as a draft', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Blog restored.' }, 404: { description: 'Blog not found.' }, 409: { description: 'Blog is not deleted or slug conflicts.' } } }
+            },
+            '/api/v1/admin/blog-authors': {
+                get: {
+                    tags: ['Blog Authors'],
+                    summary: 'List and search blog authors',
+                    description: 'Returns non-deleted authors from blog.blog_authors with pagination and optional filters.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+                        { name: 'search', in: 'query', description: 'Searches name, email, designation, biography, country, and city.', schema: { type: 'string' } },
+                        { name: 'authorType', in: 'query', schema: { type: 'string', enum: ['ADMIN', 'EDITOR', 'COUNSELOR', 'DOCTOR', 'UNIVERSITY_REPRESENTATIVE', 'GUEST_AUTHOR'] } },
+                        { name: 'status', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['fullName', 'displayOrder', 'totalBlogs', 'totalViews', 'createdAt', 'updatedAt'], default: 'displayOrder' } },
+                        { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } }
+                    ],
+                    responses: {
+                        200: { description: 'Authors and pagination returned.' },
+                        400: { description: 'Invalid query parameters.' },
+                        401: { description: 'Admin token is missing, invalid, expired, or revoked.' },
+                        429: { description: 'Rate limit exceeded.' }
+                    }
+                },
+                post: {
+                    tags: ['Blog Authors'],
+                    summary: 'Create a blog author',
+                    description: 'Generates authorCode, slug, and default SEO values and stores the record in blog.blog_authors.',
+                    security: [{ adminBearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/BlogAuthorInput' }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: {
+                            description: 'Author created successfully.',
+                            content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean', example: true }, message: { type: 'string' }, data: { $ref: '#/components/schemas/BlogAuthor' } } } } }
+                        },
+                        400: { description: 'Author payload validation failed.' },
+                        401: { description: 'Admin token is missing, invalid, expired, or revoked.' },
+                        409: { description: 'Author email or slug already exists.' },
+                        429: { description: 'Rate limit exceeded.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-authors/dropdown': {
+                get: {
+                    tags: ['Blog Authors'],
+                    summary: 'Get active authors for dropdown controls',
+                    security: [{ adminBearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Compact active-author list returned.' },
+                        401: { description: 'Admin token is missing or invalid.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-authors/featured': {
+                get: {
+                    tags: ['Blog Authors'],
+                    summary: 'Get featured authors',
+                    description: 'Returns at most 10 active featured authors.',
+                    security: [{ adminBearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Featured authors returned.' },
+                        401: { description: 'Admin token is missing or invalid.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-authors/statistics': {
+                get: {
+                    tags: ['Blog Authors'],
+                    summary: 'Get author statistics',
+                    description: 'Returns active, inactive, featured, blog, and view totals.',
+                    security: [{ adminBearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Author statistics returned.' },
+                        401: { description: 'Admin token is missing or invalid.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-authors/{id}': {
+                get: {
+                    tags: ['Blog Authors'],
+                    summary: 'Get one blog author',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: {
+                        200: { description: 'Author returned.' },
+                        400: { description: 'Invalid MongoDB author ID.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Author not found.' }
+                    }
+                },
+                patch: {
+                    tags: ['Blog Authors'],
+                    summary: 'Update a blog author',
+                    description: 'Send only the fields that need to be changed.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogAuthorUpdateInput' } } }
+                    },
+                    responses: {
+                        200: { description: 'Author updated successfully.' },
+                        400: { description: 'Invalid ID or update payload.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Author not found.' },
+                        409: { description: 'Email or slug conflicts with another author.' }
+                    }
+                },
+                delete: {
+                    tags: ['Blog Authors'],
+                    summary: 'Soft-delete a blog author',
+                    description: 'Sets isDeleted=true and status=false; the document remains in MongoDB.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: {
+                        200: { description: 'Author soft-deleted successfully.' },
+                        400: { description: 'Invalid MongoDB author ID.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Author not found.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-authors/{id}/status': {
+                patch: {
+                    tags: ['Blog Authors'],
+                    summary: 'Activate or deactivate an author',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'boolean', example: false } } } } }
+                    },
+                    responses: {
+                        200: { description: 'Author status updated.' },
+                        400: { description: 'Invalid ID or status payload.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Author not found.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-authors/{id}/restore': {
+                patch: {
+                    tags: ['Blog Authors'],
+                    summary: 'Restore a soft-deleted author',
+                    description: 'Restores the author and changes status to true. No request payload is required.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: {
+                        200: { description: 'Author restored successfully.' },
+                        400: { description: 'Invalid MongoDB author ID.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Author not found.' },
+                        409: { description: 'Author is not deleted, or its email or slug now conflicts.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-tags': {
+                get: {
+                    tags: ['Blog Tags'], summary: 'List and search blog tags', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' } },
+                        { name: 'status', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'tagType', in: 'query', schema: { type: 'string' } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['tagName', 'createdAt', 'updatedAt', 'displayOrder', 'totalBlogs', 'totalViews'], default: 'displayOrder' } },
+                        { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } }
+                    ],
+                    responses: { 200: { description: 'Tags and pagination returned.' }, 400: { description: 'Invalid query.' }, 401: { description: 'Admin token is missing or invalid.' } }
+                },
+                post: {
+                    tags: ['Blog Tags'], summary: 'Create a blog tag', security: [{ adminBearerAuth: [] }],
+                    description: 'Generates tagCode, slug, and default SEO and stores the tag in blog.blog_tags.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogTagInput' } } } },
+                    responses: { 201: { description: 'Tag created.' }, 400: { description: 'Invalid tag payload.' }, 401: { description: 'Admin token is missing or invalid.' }, 409: { description: 'Tag name or slug already exists.' } }
+                }
+            },
+            '/api/v1/admin/blog-tags/dropdown': {
+                get: { tags: ['Blog Tags'], summary: 'Get active tags for dropdowns', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Compact tag list returned.' }, 401: { description: 'Admin token is missing or invalid.' } } }
+            },
+            '/api/v1/admin/blog-tags/popular': {
+                get: {
+                    tags: ['Blog Tags'], summary: 'Get popular tags', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }, { name: 'tagType', in: 'query', schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Tags sorted by blog and view totals.' }, 401: { description: 'Admin token is missing or invalid.' } }
+                }
+            },
+            '/api/v1/admin/blog-tags/statistics': {
+                get: { tags: ['Blog Tags'], summary: 'Get tag statistics', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Tag totals and usage statistics returned.' }, 401: { description: 'Admin token is missing or invalid.' } } }
+            },
+            '/api/v1/admin/blog-tags/{id}': {
+                get: {
+                    tags: ['Blog Tags'], summary: 'Get one blog tag', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Tag returned.' }, 400: { description: 'Invalid tag ID.' }, 404: { description: 'Tag not found.' } }
+                },
+                patch: {
+                    tags: ['Blog Tags'], summary: 'Update a blog tag', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogTagUpdateInput' } } } },
+                    responses: { 200: { description: 'Tag updated.' }, 400: { description: 'Invalid update.' }, 404: { description: 'Tag not found.' }, 409: { description: 'Name or slug conflict.' } }
+                },
+                delete: {
+                    tags: ['Blog Tags'], summary: 'Soft-delete a blog tag', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Tag soft-deleted.' }, 404: { description: 'Tag not found.' }, 409: { description: 'Blogs are assigned to this tag.' } }
+                }
+            },
+            '/api/v1/admin/blog-tags/{id}/status': {
+                patch: {
+                    tags: ['Blog Tags'], summary: 'Activate or deactivate a tag', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'boolean' } } } } } },
+                    responses: { 200: { description: 'Tag status updated.' }, 400: { description: 'Invalid ID or status.' }, 404: { description: 'Tag not found.' } }
+                }
+            },
+            '/api/v1/admin/blog-tags/{id}/restore': {
+                patch: {
+                    tags: ['Blog Tags'], summary: 'Restore a soft-deleted tag', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Tag restored.' }, 404: { description: 'Tag not found.' }, 409: { description: 'Tag is not deleted or conflicts with an active tag.' } }
+                }
+            },
+            '/api/v1/admin/blog-categories': {
+                get: {
+                    tags: ['Blog Categories'], summary: 'List blog categories', security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' } },
+                        { name: 'status', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'categoryType', in: 'query', schema: { type: 'string' } },
+                        { name: 'parentCategory', in: 'query', description: 'MongoDB parent ID or root.', schema: { type: 'string' } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['categoryName', 'createdAt', 'updatedAt', 'displayOrder'], default: 'displayOrder' } },
+                        { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } }
+                    ],
+                    responses: { 200: { description: 'Categories and pagination returned.' }, 400: { description: 'Invalid query.' }, 401: { description: 'Admin token is missing or invalid.' } }
+                },
+                post: {
+                    tags: ['Blog Categories'], summary: 'Create a blog category', security: [{ adminBearerAuth: [] }],
+                    description: 'Generates categoryCode, slug, hierarchy level, and default SEO automatically and stores the record in blog.blog_categories.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogCategoryInput' } } } },
+                    responses: { 201: { description: 'Category created successfully.' }, 400: { description: 'Payload or parent category is invalid.' }, 401: { description: 'Admin token is missing or invalid.' }, 409: { description: 'Category name or slug already exists.' } }
+                }
+            },
+            '/api/v1/admin/blog-categories/tree': {
+                get: {
+                    tags: ['Blog Categories'], summary: 'Get the category hierarchy', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'status', in: 'query', schema: { type: 'boolean' } }, { name: 'categoryType', in: 'query', schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Nested root and child categories returned.' }, 401: { description: 'Admin token is missing or invalid.' } }
+                }
+            },
+            '/api/v1/admin/blog-categories/dropdown': {
+                get: {
+                    tags: ['Blog Categories'], summary: 'Get active categories for dropdowns', security: [{ adminBearerAuth: [] }],
+                    responses: { 200: { description: 'Compact active category list returned.' }, 401: { description: 'Admin token is missing or invalid.' } }
+                }
+            },
+            '/api/v1/admin/blog-categories/{id}': {
+                get: {
+                    tags: ['Blog Categories'], summary: 'Get one blog category', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Category returned.' }, 400: { description: 'Invalid category ID.' }, 404: { description: 'Category not found.' } }
+                },
+                patch: {
+                    tags: ['Blog Categories'], summary: 'Update a blog category', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogCategoryUpdateInput' } } } },
+                    responses: { 200: { description: 'Category updated.' }, 400: { description: 'Invalid update or parent.' }, 404: { description: 'Category not found.' }, 409: { description: 'Name or slug conflict.' } }
+                },
+                delete: {
+                    tags: ['Blog Categories'], summary: 'Soft-delete a blog category', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Category soft-deleted.' }, 404: { description: 'Category not found.' }, 409: { description: 'Category has children or assigned blogs.' } }
+                }
+            },
+            '/api/v1/admin/blog-categories/{id}/status': {
+                patch: {
+                    tags: ['Blog Categories'], summary: 'Activate or deactivate a category', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'boolean' } } } } } },
+                    responses: { 200: { description: 'Category status updated.' }, 400: { description: 'Invalid ID or status.' }, 404: { description: 'Category not found.' } }
+                }
+            },
+            '/api/v1/admin/blog-categories/{id}/restore': {
+                patch: {
+                    tags: ['Blog Categories'], summary: 'Restore a soft-deleted category', security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Category restored.' }, 400: { description: 'Parent category is invalid.' }, 404: { description: 'Category not found.' }, 409: { description: 'Category is not deleted or conflicts with an active category.' } }
+                }
+            },
+            '/api/v1/admin/blog-templates': {
+                get: {
+                    tags: ['Blog Templates'],
+                    summary: 'List blog templates',
+                    description: 'Returns active, non-deleted template records with search, filtering, sorting, and pagination.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' }, example: 'country' },
+                        { name: 'status', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['templateName', 'createdAt', 'displayOrder'], default: 'displayOrder' } },
+                        { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } }
+                    ],
+                    responses: {
+                        200: { description: 'Templates and pagination information returned.' },
+                        400: { description: 'Query parameters are invalid.', content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogTemplateError' } } } },
+                        401: { description: 'Admin token is missing or invalid.' }
+                    }
+                },
+                post: {
+                    tags: ['Blog Templates'],
+                    summary: 'Create a blog template',
+                    description: 'Generates templateCode automatically and stores the template in the blog database under the blog-template collection.',
+                    security: [{ adminBearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogTemplateInput' } } }
+                    },
+                    responses: {
+                        201: { description: 'Template created successfully.', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean', example: true }, message: { type: 'string', example: 'Template created successfully.' }, data: { $ref: '#/components/schemas/BlogTemplate' } } } } } },
+                        400: { description: 'Request payload is invalid.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        409: { description: 'Template name or code already exists.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-templates/{id}': {
+                get: {
+                    tags: ['Blog Templates'],
+                    summary: 'Get one blog template',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: {
+                        200: { description: 'Template returned successfully.' },
+                        400: { description: 'Template ID is invalid.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Template not found.' }
+                    }
+                },
+                patch: {
+                    tags: ['Blog Templates'],
+                    summary: 'Update a blog template',
+                    description: 'Updates supplied fields and increments the template version.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BlogTemplateUpdateInput' } } } },
+                    responses: {
+                        200: { description: 'Template updated successfully.' },
+                        400: { description: 'Template ID or payload is invalid.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Template not found.' }
+                    }
+                },
+                delete: {
+                    tags: ['Blog Templates'],
+                    summary: 'Soft-delete a blog template',
+                    description: 'Sets isDeleted, deletedAt, and disables the template without removing its database record.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: {
+                        200: { description: 'Template deleted successfully.' },
+                        400: { description: 'Template ID is invalid.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Template not found.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blog-templates/{id}/status': {
+                patch: {
+                    tags: ['Blog Templates'],
+                    summary: 'Activate or deactivate a blog template',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'boolean', example: false } } } } }
+                    },
+                    responses: {
+                        200: { description: 'Template status and version updated successfully.' },
+                        400: { description: 'Template ID or status is invalid.' },
+                        401: { description: 'Admin token is missing or invalid.' },
+                        404: { description: 'Template not found.' }
+                    }
+                }
             },
             '/api/v1/admin/platform-tests': {
                 get: { tags: ['Platform Admin'], summary: 'List platform tests', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'is_active', in: 'query', schema: { type: 'boolean' } }, { name: 'exam_type', in: 'query', schema: { type: 'string' } }], responses: { 200: { description: 'Platform tests returned.' } } },
