@@ -16,6 +16,7 @@ const {
 } = require("./routes/blog-routes/review.routes");
 const searchRouter = require("./routes/blog-routes/search.routes");
 const analyticsRouter = require("./routes/blog-routes/analytics.routes");
+const pageRouter = require("./routes/blog-routes/page.routes");
 const {
     apiLimiter,
     mutationLimiter,
@@ -68,6 +69,7 @@ app.use("/api/v1", mutationLimiter);
 app.use('/api/v1/auth', authRouter);
 app.use("/api/v1/blog-reviews", publicReviewRouter);
 app.use("/api/v1/blog-search", searchRouter);
+app.use("/api/v1/pages", pageRouter);
 // Mount the specific blog-template router before the general admin router so
 // each template request passes through admin authentication only once.
 app.use("/api/v1/admin/blog-templates", adminLimiter, templateRouter);

@@ -98,6 +98,10 @@ const swaggerOptions = {
             {
                 name: 'Blog Analytics',
                 description: 'Platform-admin live metrics, snapshots, growth, and content performance'
+            },
+            {
+                name: 'Blog Pages',
+                description: 'Public page-composition APIs for rendering the blog website'
             }
         ],
         components: {
@@ -2914,6 +2918,99 @@ const swaggerOptions = {
             },
             '/api/v1/admin/previous-year-tests/{paperId}': {
                 patch: { tags: ['Platform Admin'], summary: 'Update metadata or question mapping for a previous-year paper', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'paperId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Previous-year paper updated.' }, 400: { description: 'Mapping is invalid.' }, 404: { description: 'Paper not found.' } } }
+            },
+            '/api/v1/pages/home': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'Load the public blog home page',
+                    description: 'Combines featured and latest published blogs, active categories, featured authors, approved testimonials, and home SEO. The response is publicly cached for five minutes.',
+                    security: [],
+                    responses: {
+                        200: { description: 'Home page data returned successfully.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/pages/blog/{slug}': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'Load one public blog detail page',
+                    security: [],
+                    parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }, example: 'neet-preparation-guide' }],
+                    responses: {
+                        200: { description: 'Published blog, relations, SEO, approved reviews, and related blogs returned.' },
+                        400: { description: 'Slug format is invalid.' },
+                        404: { description: 'Published public blog not found.' }
+                    }
+                }
+            },
+            '/api/v1/pages/category/{slug}': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'Load a public category page',
+                    security: [],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string' }, example: 'neet-preparation' },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'Category, SEO, published blogs, and pagination returned.' },
+                        400: { description: 'Slug or pagination is invalid.' },
+                        404: { description: 'Active category not found.' }
+                    }
+                }
+            },
+            '/api/v1/pages/tag/{slug}': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'Load a public tag page',
+                    security: [],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string' }, example: 'neet' },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'Tag, SEO, published blogs, and pagination returned.' },
+                        400: { description: 'Slug or pagination is invalid.' },
+                        404: { description: 'Active tag not found.' }
+                    }
+                }
+            },
+            '/api/v1/pages/author/{slug}': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'Load a public author page',
+                    security: [],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string' }, example: 'dr-sanjay-kumar' },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'Author, SEO, published blogs, and pagination returned.' },
+                        400: { description: 'Slug or pagination is invalid.' },
+                        404: { description: 'Active author not found.' }
+                    }
+                }
+            },
+            '/api/v1/pages/search': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'Load public blog search results',
+                    description: 'Searches only published, public, non-deleted blogs.',
+                    security: [],
+                    parameters: [
+                        { name: 'q', in: 'query', required: true, schema: { type: 'string', minLength: 2, maxLength: 100 }, example: 'NEET biology' },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'Search results and pagination returned.' },
+                        400: { description: 'Search query or pagination is invalid.' }
+                    }
+                }
             },
             '/api/v1/previous-year-tests': {
                 get: {
