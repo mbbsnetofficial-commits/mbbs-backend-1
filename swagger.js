@@ -32,6 +32,10 @@ const swaggerOptions = {
                 description: 'Select subjects and chapters, start a test, and submit answers'
             },
             {
+                name: 'Test Leaderboard',
+                description: 'Rank active students by their best completed test performance'
+            },
+            {
                 name: 'Test Review Chatbot',
                 description: 'Gemini-powered review chat grounded in a student\'s wrong test answers'
             },
@@ -1316,6 +1320,46 @@ const swaggerOptions = {
                         403: { description: 'Current password is incorrect.' },
                         404: { description: 'User account not found.' },
                         500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/test/leaderboard': {
+                get: {
+                    tags: ['Test Leaderboard'],
+                    summary: 'Get the paginated test leaderboard',
+                    description: 'Uses each active student’s best completed attempt. Ranking order is normalized score, correct answers, accuracy, lower time spent, then earlier submission.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'test_type', in: 'query', schema: { type: 'string', enum: ['Quick Test', 'Previous Year'] }, example: 'Previous Year' },
+                        { name: 'previous_year_paper_id', in: 'query', description: 'Optional paper filter; valid only for Previous Year tests.', schema: { type: 'integer', minimum: 1 }, example: 15 },
+                        { name: 'period', in: 'query', schema: { type: 'string', enum: ['ALL', 'DAILY', 'WEEKLY', 'MONTHLY'], default: 'ALL' } },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } }
+                    ],
+                    responses: {
+                        200: { description: 'Leaderboard entries and pagination returned.' },
+                        400: { description: 'A filter or pagination value is invalid.' },
+                        401: { description: 'Student access token is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/test/leaderboard/me': {
+                get: {
+                    tags: ['Test Leaderboard'],
+                    summary: 'Get the logged-in student’s leaderboard rank',
+                    description: 'Accepts the same test_type, previous_year_paper_id, and period filters as the main leaderboard.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'test_type', in: 'query', schema: { type: 'string', enum: ['Quick Test', 'Previous Year'] } },
+                        { name: 'previous_year_paper_id', in: 'query', schema: { type: 'integer', minimum: 1 } },
+                        { name: 'period', in: 'query', schema: { type: 'string', enum: ['ALL', 'DAILY', 'WEEKLY', 'MONTHLY'], default: 'ALL' } }
+                    ],
+                    responses: {
+                        200: { description: 'The student’s best eligible attempt and rank returned.' },
+                        400: { description: 'A filter value is invalid.' },
+                        401: { description: 'Student access token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'The student has no eligible completed test for these filters.' }
                     }
                 }
             },

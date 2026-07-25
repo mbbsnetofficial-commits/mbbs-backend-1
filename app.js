@@ -34,7 +34,8 @@ const {
     studentProfileRouter,
     questionFeedbackRouter,
     reviewCommentRouter,
-    notificationRouter
+    notificationRouter,
+    testLeaderboardRouter
 } = require("./routes/neet-routes");
 
 // Railway terminates HTTPS at its proxy. This also makes req.ip use forwarded data.
@@ -94,6 +95,7 @@ app.use("/api/v1/admin", (req, res) => {
 
 app.use("/api/v1", qodRouter);
 app.use("/api/v1", testQuestionRouter);
+app.use("/api/v1", testLeaderboardRouter);
 app.use("/api/v1/previous-year-tests", previousYearQuestionRouter);
 app.use("/api/v1", chatRouter);
 app.use("/api/v1", studentActivityRouter);

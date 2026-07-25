@@ -10,5 +10,6 @@ module.exports = {
     studentProfileRouter: require("./studentProfile.routes"),
     questionFeedbackRouter: require("./questionFeedback.routes"),
     reviewCommentRouter: require("./reviewComment.routes"),
-    notificationRouter: require("./notification.routes")
+    notificationRouter: require("./notification.routes"),
+    testLeaderboardRouter: require("./testLeaderboard.routes")
 };

@@ -135,6 +135,13 @@ const testSessionSchema = new mongoose.Schema({
 
 // Speeds up student test-history and active-session queries.
 testSessionSchema.index({ student_id: 1, status: 1, started_at: -1 });
+// Supports completed-test leaderboard filtering and deterministic ranking.
+testSessionSchema.index({
+    status: 1,
+    test_type: 1,
+    previous_year_paper_id: 1,
+    submitted_at: -1
+});
 
 module.exports = mongoose.model(
     "TestSession",
