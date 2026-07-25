@@ -24,6 +24,13 @@ const questionSubmissionSchema = new mongoose.Schema(
             required: true
         },
 
+        qod_date_key: {
+            type: String,
+            match: /^\d{4}-\d{2}-\d{2}$/,
+            default: null,
+            index: true
+        },
+
         submitted_at: {
             type: Date,
             default: Date.now
@@ -32,6 +39,18 @@ const questionSubmissionSchema = new mongoose.Schema(
     {
         timestamps: true,
         collection: "question-submissions"
+    }
+);
+
+questionSubmissionSchema.index(
+    { student_id: 1, question_id: 1 },
+    { unique: true }
+);
+questionSubmissionSchema.index(
+    { student_id: 1, qod_date_key: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { qod_date_key: { $type: "string" } }
     }
 );
 

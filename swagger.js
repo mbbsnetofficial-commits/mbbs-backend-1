@@ -908,7 +908,31 @@ const swaggerOptions = {
                         explanation: {
                             type: 'string',
                             example: 'Mitochondria produce most of the cell\'s ATP.'
-                        }
+                        },
+                        streak: { $ref: '#/components/schemas/QodStreak' }
+                    }
+                },
+                QodStreak: {
+                    type: 'object',
+                    properties: {
+                        current_streak: { type: 'integer', minimum: 0, example: 5 },
+                        longest_streak: { type: 'integer', minimum: 0, example: 12 },
+                        total_days_answered: { type: 'integer', minimum: 0, example: 30 },
+                        correct_answer_count: { type: 'integer', minimum: 0, example: 24 },
+                        last_answered_date: { type: 'string', nullable: true, example: '2026-07-25' },
+                        streak_started_at: { type: 'string', nullable: true, example: '2026-07-21' },
+                        answered_today: { type: 'boolean', example: true },
+                        today_correct: { type: 'boolean', nullable: true, example: true },
+                        timezone: { type: 'string', example: 'Asia/Kolkata' }
+                    }
+                },
+                QodStreakHistoryEntry: {
+                    type: 'object',
+                    properties: {
+                        date: { type: 'string', example: '2026-07-25' },
+                        answered: { type: 'boolean', example: true },
+                        is_correct: { type: 'boolean', example: true },
+                        question_id: { type: 'integer', example: 4029 }
                     }
                 },
                 // StudentActivity: {
@@ -3182,6 +3206,73 @@ const swaggerOptions = {
                             description: 'An unexpected server or database error occurred.',
                             content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
                         }
+                    }
+                }
+            },
+            '/api/v1/question-of-the-day/streak': {
+                get: {
+                    tags: ['Question of the Day'],
+                    summary: 'Get the logged-in student QOD streak',
+                    description: 'Rebuilds the streak summary from unique QOD participation days and stores it in qod-streaks. A current streak remains active when the last answer was today or yesterday.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: 'Current and longest streak statistics returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            data: { $ref: '#/components/schemas/QodStreak' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/question-of-the-day/streak/history': {
+                get: {
+                    tags: ['Question of the Day'],
+                    summary: 'Get monthly QOD streak history',
+                    description: 'Returns unique QOD participation dates for the requested month. The current month is used when month is omitted.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        {
+                            name: 'month',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'string', pattern: '^\\d{4}-(0[1-9]|1[0-2])$' },
+                            example: '2026-07'
+                        }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Monthly QOD answer history returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            month: { type: 'string', example: '2026-07' },
+                                            timezone: { type: 'string', example: 'Asia/Kolkata' },
+                                            data: {
+                                                type: 'array',
+                                                items: { $ref: '#/components/schemas/QodStreakHistoryEntry' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'month is not in YYYY-MM format.' },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
                     }
                 }
             }

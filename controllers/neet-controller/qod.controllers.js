@@ -1,5 +1,6 @@
 const QuestionOfTheDay = require("../../model/neet-models/qod");
 const QuestionSubmission = require("../../model/neet-models/qodsubmission");
+const qodStreakService = require("../../services/qodStreak.service");
 
 // ==========================================
 // GET QUESTION OF THE DAY
@@ -11,21 +12,8 @@ exports.getQuestionOfTheDay = async (req, res) => {
         // Get Student ID from JWT
         const studentId = req.user.student_id;
 
-        // Today's Date
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Tomorrow's Date
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-
-        // Find Today's Question
-        const question = await QuestionOfTheDay.findOne({
-            question_date: {
-                $gte: today,
-                $lt: tomorrow
-            }
-        });
+        // Find the question using the configured application timezone.
+        const question = await qodStreakService.findTodaysQuestion();
 
         if (!question) {
             return res.status(404).json({
@@ -101,16 +89,14 @@ exports.submitQuestionOfTheDay = async (req, res) => {
 
         }
 
-        // Find Question
-        const question = await QuestionOfTheDay.findOne({
-            id: question_id
-        });
+        // A streak-eligible submission must be for the question scheduled today.
+        const question = await qodStreakService.findTodaysQuestion();
 
-        if (!question) {
+        if (!question || Number(question.id) !== Number(question_id)) {
 
             return res.status(404).json({
                 status: "fail",
-                message: "Question not found."
+                message: "Today's Question of the Day was not found for the supplied question_id."
             });
 
         }
@@ -143,9 +129,13 @@ exports.submitQuestionOfTheDay = async (req, res) => {
 
             selected_option,
 
-            is_correct: isCorrect
+            is_correct: isCorrect,
+
+            qod_date_key: qodStreakService.dateKey(question.question_date)
 
         });
+
+        const streak = await qodStreakService.getStudentStreak(studentId);
 
         return res.status(201).json({
 
@@ -163,13 +153,22 @@ exports.submitQuestionOfTheDay = async (req, res) => {
 
                 is_correct: isCorrect,
 
-                explanation: question.explanation
+                explanation: question.explanation,
+
+                streak
 
             }
 
         });
 
     } catch (error) {
+
+        if (error.code === 11000) {
+            return res.status(409).json({
+                status: "fail",
+                message: "You have already answered today's question."
+            });
+        }
 
         return res.status(500).json({
 
