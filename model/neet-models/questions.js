@@ -36,6 +36,17 @@ const questionSchema = new mongoose.Schema(
         type: Number,
         required: true,
         index: true
+    },
+
+    is_active: {
+        type: Boolean,
+        default: true,
+        index: true
+    },
+
+    deactivated_at: {
+        type: Date,
+        default: null
     }
 },
 {

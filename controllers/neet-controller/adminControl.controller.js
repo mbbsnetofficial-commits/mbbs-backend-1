@@ -10,7 +10,10 @@ const PlatformAdmin = require("../../model/neet-models/platformAdmin");
 const TestSession = require("../../model/neet-models/testSession");
 const PlatformTest = require("../../model/neet-models/platformTest");
 const PreviousYearQuestion = require("../../model/neet-models/previousYearQuestion");
-const { createNotificationService } = require("../../services/notification.service");
+const {
+    createNotificationService,
+    broadcastNotificationService
+} = require("../../services/notification.service");
 const { SUBJECT_ENUM, REVIEW_STATUS_ENUM, NOTIFICATION_TYPE_ENUM, NOTIFICATION_PRIORITY_ENUM } = require("../../constants/enum");
 
 const pagination = query => {
@@ -90,7 +93,7 @@ exports.listStudents = async (req, res) => {
 
 exports.updateStudent = async (req, res) => {
     try {
-        const allowed = ["is_active", "is_verified", "email_verified", "is_institution_student", "subscription_plan", "subscription_expires_at", "target_exam_year"];
+        const allowed = ["is_active", "is_verified", "email_verified", "is_institution_student", "subscription_plan", "subscription_expires_at", "target_exam_year", "batch", "course"];
         const updates = Object.fromEntries(allowed.filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]]));
         if (!Object.keys(updates).length) return res.status(400).json({ status: "fail", message: "No adjustable student fields were supplied." });
 
@@ -120,6 +123,14 @@ const listContent = Model => async (req, res) => {
             { name: { $regex: req.query.search, $options: "i" } },
             { chapter: { $regex: req.query.search, $options: "i" } }
         ] } : {};
+        if (req.query.is_active !== undefined) {
+            if (!["true", "false"].includes(req.query.is_active)) {
+                return res.status(400).json({ status: "fail", message: "is_active must be true or false." });
+            }
+            filter.is_active = req.query.is_active === "true"
+                ? { $ne: false }
+                : false;
+        }
         const [data, total] = await Promise.all([
             Model.find(filter).sort({ id: -1 }).skip(skip).limit(limit).lean(),
             Model.countDocuments(filter)
@@ -133,6 +144,51 @@ const listContent = Model => async (req, res) => {
 exports.listQuestions = listContent(Question);
 exports.listTopics = listContent(Topic);
 exports.listQod = listContent(QuestionOfTheDay);
+
+const updateContentStatus = (Model, label, paramName = "id") => async (req, res) => {
+    try {
+        if (typeof req.body.is_active !== "boolean") {
+            return res.status(400).json({
+                status: "fail",
+                message: "is_active must be boolean."
+            });
+        }
+        const id = Number(req.params[paramName]);
+        if (!Number.isInteger(id)) {
+            return res.status(400).json({ status: "fail", message: `${paramName} must be an integer.` });
+        }
+        const item = await Model.findOneAndUpdate(
+            { id },
+            {
+                $set: {
+                    is_active: req.body.is_active,
+                    deactivated_at: req.body.is_active ? null : new Date()
+                }
+            },
+            { returnDocument: "after", runValidators: true }
+        );
+        if (!item) {
+            return res.status(404).json({ status: "fail", message: `${label} not found.` });
+        }
+        return res.status(200).json({
+            status: "success",
+            message: `${label} ${req.body.is_active ? "activated" : "deactivated"} successfully.`,
+            data: item
+        });
+    } catch (error) {
+        return res.status(400).json({ status: "fail", message: error.message });
+    }
+};
+
+exports.updateQuestionStatus = updateContentStatus(Question, "Question");
+exports.updateTopicStatus = updateContentStatus(Topic, "Topic");
+exports.updateQodStatus = updateContentStatus(QuestionOfTheDay, "Question of the Day");
+exports.updatePlatformTestStatus = updateContentStatus(PlatformTest, "Platform test", "testId");
+exports.updatePreviousYearTestStatus = updateContentStatus(
+    PreviousYearQuestion,
+    "Previous-year test",
+    "paperId"
+);
 
 exports.createQuestion = async (req, res) => {
     try {
@@ -209,19 +265,105 @@ exports.sendNotification = async (req, res) => {
     try {
         const user = await Auth.findOne({ student_id: req.body.student_id }).lean();
         if (!user) return res.status(404).json({ status: "fail", message: "Student not found." });
-        if (!NOTIFICATION_TYPE_ENUM.includes(req.body.notification_type || "system") || !NOTIFICATION_PRIORITY_ENUM.includes(req.body.priority || "normal")) return res.status(400).json({ status: "fail", message: "Invalid notification type or priority." });
+        const notificationType = String(req.body.notification_type || "system").toLowerCase();
+        const priority = String(req.body.priority || "normal").toLowerCase();
+        if (!NOTIFICATION_TYPE_ENUM.includes(notificationType) || !NOTIFICATION_PRIORITY_ENUM.includes(priority)) return res.status(400).json({ status: "fail", message: "Invalid notification type or priority." });
         const notification = await createNotificationService({
             userId: user._id,
             studentId: user.student_id,
             title: req.body.title,
             message: req.body.message,
-            notificationType: req.body.notification_type || "system",
-            priority: req.body.priority || "normal",
+            notificationType,
+            priority,
             actionUrl: req.body.action_url || null,
             data: req.body.data || null
         });
         return res.status(201).json({ status: "success", data: notification });
     } catch (error) { return res.status(400).json({ status: "fail", message: error.message }); }
+};
+
+exports.broadcastNotification = async (req, res) => {
+    try {
+        const audiences = [
+            "ALL_STUDENTS",
+            "ACTIVE_STUDENTS",
+            "SELECTED_STUDENTS",
+            "BATCH",
+            "COURSE",
+            "YEAR"
+        ];
+        const audience = String(req.body.audience || "").toUpperCase();
+        const title = typeof req.body.title === "string" ? req.body.title.trim() : "";
+        const message = typeof req.body.message === "string" ? req.body.message.trim() : "";
+        const notificationType = String(req.body.notification_type || "general").toLowerCase();
+        const priority = String(req.body.priority || "normal").toLowerCase();
+        const studentIds = Array.isArray(req.body.student_ids)
+            ? [...new Set(req.body.student_ids.map(value => String(value).trim()).filter(Boolean))]
+            : [];
+
+        if (!audiences.includes(audience)) {
+            return res.status(400).json({ status: "fail", message: `audience must be one of: ${audiences.join(", ")}.` });
+        }
+        if (!title || title.length > 150 || !message || message.length > 1000) {
+            return res.status(400).json({
+                status: "fail",
+                message: "title (maximum 150 characters) and message (maximum 1000 characters) are required."
+            });
+        }
+        if (!NOTIFICATION_TYPE_ENUM.includes(notificationType) ||
+            !NOTIFICATION_PRIORITY_ENUM.includes(priority)) {
+            return res.status(400).json({
+                status: "fail",
+                message: `Invalid notification type or priority.`
+            });
+        }
+        if (audience === "SELECTED_STUDENTS" &&
+            (studentIds.length === 0 || studentIds.length > 1000)) {
+            return res.status(400).json({
+                status: "fail",
+                message: "SELECTED_STUDENTS requires between 1 and 1000 unique student_ids."
+            });
+        }
+        const batch = typeof req.body.batch === "string" ? req.body.batch.trim() : "";
+        const course = typeof req.body.course === "string" ? req.body.course.trim() : "";
+        const year = Number(req.body.year);
+        if (audience === "BATCH" && !batch) {
+            return res.status(400).json({ status: "fail", message: "batch is required for the BATCH audience." });
+        }
+        if (audience === "COURSE" && !course) {
+            return res.status(400).json({ status: "fail", message: "course is required for the COURSE audience." });
+        }
+        if (audience === "YEAR" && (!Number.isInteger(year) || year < 2000 || year > 2200)) {
+            return res.status(400).json({ status: "fail", message: "A valid year is required for the YEAR audience." });
+        }
+        const actionUrl = typeof req.body.action_url === "string"
+            ? req.body.action_url.trim() || null
+            : null;
+        if (actionUrl && actionUrl.length > 500) {
+            return res.status(400).json({ status: "fail", message: "action_url cannot exceed 500 characters." });
+        }
+
+        const result = await broadcastNotificationService({
+            audience,
+            studentIds,
+            batch,
+            course,
+            year,
+            title,
+            message,
+            notificationType,
+            priority,
+            actionUrl,
+            data: req.body.data ?? null
+        });
+        return res.status(201).json({
+            status: "success",
+            message: "Broadcast notification created successfully.",
+            data: result
+        });
+    } catch (error) {
+        return res.status(500).json({ status: "fail", message: error.message });
+    }
 };
 
 exports.listAdmins = async (req, res) => {

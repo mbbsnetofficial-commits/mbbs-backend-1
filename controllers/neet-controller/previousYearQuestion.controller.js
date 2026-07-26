@@ -69,7 +69,10 @@ exports.startPreviousYearTest = async (req, res) => {
             });
         }
 
-        const questions = await Question.find({ id: { $in: questionIds } })
+        const questions = await Question.find({
+            id: { $in: questionIds },
+            is_active: { $ne: false }
+        })
             .select("-_id -correct_answer -explanation -createdAt -updatedAt -__v")
             .lean();
         if (questions.length !== questionIds.length) {
@@ -79,7 +82,10 @@ exports.startPreviousYearTest = async (req, res) => {
         const questionById = new Map(questions.map(question => [question.id, question]));
         const orderedQuestions = questionIds.map(id => questionById.get(id));
         const topicIds = [...new Set(questions.map(question => question.topic_id).filter(Number.isFinite))];
-        const topics = await Topic.find({ id: { $in: topicIds } }).select("-_id subject chapter").lean();
+        const topics = await Topic.find({
+            id: { $in: topicIds },
+            is_active: { $ne: false }
+        }).select("-_id subject chapter").lean();
         const subjects = [...new Set(topics.map(topic => topic.subject).filter(Boolean))];
         const chapters = [...new Set(topics.map(topic => topic.chapter).filter(Boolean))];
 

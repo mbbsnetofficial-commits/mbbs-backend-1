@@ -8,6 +8,7 @@ const previousYearQuestionSchema = new mongoose.Schema({
     question_count: { type: Number, required: true, min: 1 },
     exam_type: { type: String, required: true, trim: true },
     is_active: { type: Boolean, default: true, index: true },
+    deactivated_at: { type: Date, default: null },
     institution_id: { type: Number },
     uploaded_by_id: { type: Number },
     question_ids: [{ type: Number }]

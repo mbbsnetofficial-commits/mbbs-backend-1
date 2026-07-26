@@ -6,7 +6,7 @@ const mongoose = require("mongoose");
 
 exports.getSubjects = async (req, res) => {
     try {
-        const storedSubjects = await Topic.distinct("subject");
+        const storedSubjects = await Topic.distinct("subject", { is_active: { $ne: false } });
 
         // Return only enum values, using the enum's canonical capitalization.
         const subjects = SUBJECT_ENUM.filter(subject =>
@@ -45,6 +45,7 @@ exports.getChapters = async (req, res) => {
          const chapters = await Topic.aggregate([
             {
                 $match: {
+                    is_active: { $ne: false },
                     subject: {
                         $in: subjects
                     }
@@ -110,6 +111,8 @@ exports.getTopics = async (req, res) => {
 
         const topics = await Topic.find({
 
+            is_active: { $ne: false },
+
             subject: {
 
                 $in: subjects
@@ -172,6 +175,8 @@ exports.startQuickTest = async (req, res) => {
 
         const topics = await Topic.find({
 
+            is_active: { $ne: false },
+
             subject: {
 
                 $in: subjects
@@ -193,6 +198,8 @@ exports.startQuickTest = async (req, res) => {
             {
 
                 $match: {
+
+                    is_active: { $ne: false },
 
                     topic_id: {
 

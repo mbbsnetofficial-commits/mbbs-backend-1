@@ -8,6 +8,8 @@ const studentProfileSchema = new mongoose.Schema({
     date_of_birth: { type: Date },
     school_name: { type: String, trim: true, maxlength: 200 },
     target_exam_year: { type: Number },
+    batch: { type: String, trim: true, maxlength: 100, index: true },
+    course: { type: String, trim: true, maxlength: 100, index: true },
     subscription_plan: { type: String, trim: true },
     subscription_expires_at: { type: Date },
     is_active: { type: Boolean, default: true },

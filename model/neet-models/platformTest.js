@@ -11,6 +11,7 @@ const platformTestSchema = new mongoose.Schema({
     total_questions: { type: Number, required: true, min: 1 },
     selected_topics: [{ type: Number }],
     is_active: { type: Boolean, default: false, index: true },
+    deactivated_at: { type: Date, default: null },
     scheduled_date_time: { type: Date },
     exam_type: { type: String, default: "neet", trim: true },
     is_institution_test: { type: Boolean, default: false },

@@ -104,6 +104,7 @@ const calculateSummary = history => {
 exports.findTodaysQuestion = async () => {
     const now = new Date();
     const nearbyQuestions = await QuestionOfTheDay.find({
+        is_active: { $ne: false },
         question_date: {
             $gte: new Date(now.getTime() - 36 * 60 * 60 * 1000),
             $lte: new Date(now.getTime() + 36 * 60 * 60 * 1000)

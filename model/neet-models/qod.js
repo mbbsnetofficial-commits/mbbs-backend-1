@@ -70,6 +70,17 @@ question_date: {
         topic_id: {
             type: Number,
             required: true
+        },
+
+        is_active: {
+            type: Boolean,
+            default: true,
+            index: true
+        },
+
+        deactivated_at: {
+            type: Date,
+            default: null
         }
     },
     {

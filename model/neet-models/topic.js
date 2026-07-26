@@ -35,6 +35,17 @@ const topicSchema = new mongoose.Schema(
     icon: {
         type: String,
         default: "📚"
+    },
+
+    is_active: {
+        type: Boolean,
+        default: true,
+        index: true
+    },
+
+    deactivated_at: {
+        type: Date,
+        default: null
     }
 },
 {

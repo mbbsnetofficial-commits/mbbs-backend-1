@@ -2139,31 +2139,41 @@ const swaggerOptions = {
                     requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: {
                         is_active: { type: 'boolean' }, is_verified: { type: 'boolean' }, email_verified: { type: 'boolean' },
                         is_institution_student: { type: 'boolean' }, subscription_plan: { type: 'string' },
-                        subscription_expires_at: { type: 'string', format: 'date-time' }, target_exam_year: { type: 'integer' }
+                        subscription_expires_at: { type: 'string', format: 'date-time' }, target_exam_year: { type: 'integer' },
+                        batch: { type: 'string', example: 'NEET-2027-A' }, course: { type: 'string', example: 'NEET UG' }
                     } } } } },
                     responses: { 200: { description: 'Student settings updated.' }, 400: { description: 'Invalid settings.' }, 404: { description: 'Student not found.' } }
                 }
             },
             '/api/v1/admin/questions': {
-                get: { tags: ['Platform Admin'], summary: 'List questions', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Questions returned.' } } },
+                get: { tags: ['Platform Admin'], summary: 'List questions', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'is_active', in: 'query', schema: { type: 'boolean' } }], responses: { 200: { description: 'Questions returned.' } } },
                 post: { tags: ['Platform Admin'], summary: 'Create a question', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 201: { description: 'Question created.' }, 400: { description: 'Invalid question.' } } }
             },
             '/api/v1/admin/questions/{id}': {
                 patch: { tags: ['Platform Admin'], summary: 'Update a question', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Question updated.' }, 404: { description: 'Question not found.' } } }
             },
+            '/api/v1/admin/questions/{id}/status': {
+                patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate a question', description: 'Soft-deactivation keeps the record but excludes it from newly generated tests.', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean', example: false } } } } } }, responses: { 200: { description: 'Question status updated.' }, 400: { description: 'Invalid ID or status.' }, 404: { description: 'Question not found.' } } }
+            },
             '/api/v1/admin/topics': {
-                get: { tags: ['Platform Admin'], summary: 'List topics', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Topics returned.' } } },
+                get: { tags: ['Platform Admin'], summary: 'List topics', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'is_active', in: 'query', schema: { type: 'boolean' } }], responses: { 200: { description: 'Topics returned.' } } },
                 post: { tags: ['Platform Admin'], summary: 'Create a topic', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 201: { description: 'Topic created.' } } }
             },
             '/api/v1/admin/topics/{id}': {
                 patch: { tags: ['Platform Admin'], summary: 'Update a topic', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Topic updated.' }, 404: { description: 'Topic not found.' } } }
             },
+            '/api/v1/admin/topics/{id}/status': {
+                patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate a topic', description: 'Soft-deactivation keeps the topic but excludes it from new test selection.', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean', example: false } } } } } }, responses: { 200: { description: 'Topic status updated.' }, 400: { description: 'Invalid ID or status.' }, 404: { description: 'Topic not found.' } } }
+            },
             '/api/v1/admin/qod': {
-                get: { tags: ['Platform Admin'], summary: 'List Questions of the Day', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'QOD records returned.' } } },
+                get: { tags: ['Platform Admin'], summary: 'List Questions of the Day', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'is_active', in: 'query', schema: { type: 'boolean' } }], responses: { 200: { description: 'QOD records returned.' } } },
                 post: { tags: ['Platform Admin'], summary: 'Create a Question of the Day', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 201: { description: 'QOD created.' } } }
             },
             '/api/v1/admin/qod/{id}': {
                 patch: { tags: ['Platform Admin'], summary: 'Update a Question of the Day', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'QOD updated.' }, 404: { description: 'QOD not found.' } } }
+            },
+            '/api/v1/admin/qod/{id}/status': {
+                patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate a Question of the Day', description: 'A deactivated QOD is not returned to students and does not accept a new submission.', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean', example: false } } } } } }, responses: { 200: { description: 'QOD status updated.' }, 400: { description: 'Invalid ID or status.' }, 404: { description: 'QOD not found.' } } }
             },
             '/api/v1/admin/moderation/{resource}': {
                 get: { tags: ['Platform Admin'], summary: 'List question feedback or review comments', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'resource', in: 'path', required: true, schema: { type: 'string', enum: ['question-feedback', 'review-comments'] } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'reviewed', 'resolved', 'rejected'] } }], responses: { 200: { description: 'Moderation items returned.' } } }
@@ -2173,6 +2183,44 @@ const swaggerOptions = {
             },
             '/api/v1/admin/notifications': {
                 post: { tags: ['Platform Admin'], summary: 'Send a notification to one student', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['student_id', 'title', 'message'], properties: { student_id: { type: 'string' }, title: { type: 'string' }, message: { type: 'string' }, notification_type: { type: 'string' }, priority: { type: 'string' }, action_url: { type: 'string' }, data: { type: 'object' } } } } } }, responses: { 201: { description: 'Notification created.' }, 404: { description: 'Student not found.' } } }
+            },
+            '/api/v1/admin/notifications/broadcast': {
+                post: {
+                    tags: ['Platform Admin'],
+                    summary: 'Broadcast a notification to a student audience',
+                    description: 'Creates one notification per matched student. BATCH and COURSE use student-profile fields; YEAR uses target_exam_year.',
+                    security: [{ adminBearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['audience', 'title', 'message'],
+                                    properties: {
+                                        audience: { type: 'string', enum: ['ALL_STUDENTS', 'ACTIVE_STUDENTS', 'SELECTED_STUDENTS', 'BATCH', 'COURSE', 'YEAR'], example: 'ALL_STUDENTS' },
+                                        student_ids: { type: 'array', maxItems: 1000, items: { type: 'string' }, example: [] },
+                                        batch: { type: 'string', example: 'NEET-2027-A' },
+                                        course: { type: 'string', example: 'NEET UG' },
+                                        year: { type: 'integer', minimum: 2000, maximum: 2200, example: 2027 },
+                                        title: { type: 'string', maxLength: 150, example: 'Platform announcement' },
+                                        message: { type: 'string', maxLength: 1000, example: 'A new test is available.' },
+                                        notification_type: { type: 'string', enum: ['GENERAL', 'SYSTEM', 'TEST', 'QOD', 'CHATBOT', 'ACCOUNT', 'REMINDER'], default: 'GENERAL' },
+                                        priority: { type: 'string', enum: ['LOW', 'NORMAL', 'HIGH'], default: 'NORMAL' },
+                                        action_url: { type: 'string', maxLength: 500, nullable: true, example: '/tests' },
+                                        data: { type: 'object', nullable: true }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'Notifications created for all matched recipients.' },
+                        400: { description: 'Audience, selector, content, type, or priority is invalid.' },
+                        401: { description: 'Admin access token is missing or invalid.' },
+                        500: { description: 'Database error while creating the broadcast.' }
+                    }
+                }
             },
             '/api/v1/admin/admins': {
                 get: { tags: ['Platform Admin'], summary: 'List platform admins', security: [{ adminBearerAuth: [] }], responses: { 200: { description: 'Admins returned without password hashes.' } } },
@@ -2974,6 +3022,9 @@ const swaggerOptions = {
             '/api/v1/admin/platform-tests/{testId}': {
                 patch: { tags: ['Platform Admin'], summary: 'Update a platform test', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'testId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Platform test updated.' }, 404: { description: 'Platform test not found.' } } }
             },
+            '/api/v1/admin/platform-tests/{testId}/status': {
+                patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate a platform test', description: 'Soft-deactivation preserves the test record and prevents it from being offered as active content.', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'testId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean', example: false } } } } } }, responses: { 200: { description: 'Platform test status updated.' }, 400: { description: 'Invalid testId or status.' }, 404: { description: 'Platform test not found.' } } }
+            },
             '/api/v1/admin/test-sessions': {
                 get: { tags: ['Platform Admin'], summary: 'List student test sessions', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'student_id', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'test_type', in: 'query', schema: { type: 'string' } }], responses: { 200: { description: 'Test sessions returned.' } } }
             },
@@ -2986,6 +3037,9 @@ const swaggerOptions = {
             },
             '/api/v1/admin/previous-year-tests/{paperId}': {
                 patch: { tags: ['Platform Admin'], summary: 'Update metadata or question mapping for a previous-year paper', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'paperId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'Previous-year paper updated.' }, 400: { description: 'Mapping is invalid.' }, 404: { description: 'Paper not found.' } } }
+            },
+            '/api/v1/admin/previous-year-tests/{paperId}/status': {
+                patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate a previous-year test', description: 'Soft-deactivation preserves the paper and mapping but removes it from the student previous-year test list.', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'paperId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean', example: false } } } } } }, responses: { 200: { description: 'Previous-year test status updated.' }, 400: { description: 'Invalid paperId or status.' }, 404: { description: 'Previous-year test not found.' } } }
             },
             '/api/v1/pages/home': {
                 get: {
