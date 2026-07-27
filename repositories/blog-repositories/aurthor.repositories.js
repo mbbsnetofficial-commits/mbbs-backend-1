@@ -31,6 +31,25 @@ const findFeatured = limit => BlogAuthor
     .limit(limit)
     .lean();
 
+const findPublic = ({ filter = {}, skip, limit }) => BlogAuthor
+    .find({ ...filter, isDeleted: false, status: true })
+    .sort({ isFeatured: -1, displayOrder: 1, totalBlogs: -1, fullName: 1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+const countPublic = (filter = {}) => BlogAuthor.countDocuments({
+    ...filter,
+    isDeleted: false,
+    status: true
+});
+
+const findPublicById = id => BlogAuthor.findOne({
+    _id: id,
+    isDeleted: false,
+    status: true
+}).lean();
+
 const getStatistics = () => BlogAuthor.aggregate([
     { $match: { isDeleted: false } },
     {
@@ -58,6 +77,9 @@ module.exports = {
     count,
     findDropdown,
     findFeatured,
+    findPublic,
+    countPublic,
+    findPublicById,
     getStatistics,
     save
 };

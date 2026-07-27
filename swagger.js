@@ -80,6 +80,10 @@ const swaggerOptions = {
                 description: 'Platform-admin APIs for creating and managing blog authors'
             },
             {
+                name: 'Author Following',
+                description: 'Student APIs for browsing, following, and unfollowing active authors'
+            },
+            {
                 name: 'Blogs',
                 description: 'Platform-admin CMS APIs for drafting, scheduling, publishing, and managing blogs'
             },
@@ -1137,6 +1141,65 @@ const swaggerOptions = {
                         updated_at: { type: 'string', format: 'date-time' }
                     }
                 },
+                StudentAuthorCard: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', example: '66a59ced88c5dcf13d81f030' },
+                        authorCode: { type: 'string', example: 'AUT_DR_SANJAY_KUMAR_A1B2C3' },
+                        fullName: { type: 'string', example: 'Dr. Sanjay Kumar' },
+                        slug: { type: 'string', example: 'dr-sanjay-kumar' },
+                        designation: { type: 'string', example: 'Senior Medical Content Specialist' },
+                        bio: { type: 'string', example: 'Medical author specializing in NEET preparation.' },
+                        authorType: { type: 'string', example: 'DOCTOR' },
+                        profileImage: { type: 'string', nullable: true },
+                        coverImage: { type: 'string', nullable: true },
+                        experience: { type: 'integer', example: 10 },
+                        qualifications: { type: 'array', items: { type: 'string' } },
+                        specializations: { type: 'array', items: { type: 'string' } },
+                        languages: { type: 'array', items: { type: 'string' } },
+                        totalBlogs: { type: 'integer', example: 4 },
+                        isFeatured: { type: 'boolean', example: true },
+                        followerCount: { type: 'integer', example: 125 },
+                        isFollowing: { type: 'boolean', example: true },
+                        followedAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            nullable: true,
+                            example: '2026-07-27T15:30:00.000Z'
+                        }
+                    }
+                },
+                AuthorFollowState: {
+                    type: 'object',
+                    properties: {
+                        authorId: { type: 'string', example: '66a59ced88c5dcf13d81f030' },
+                        isFollowing: { type: 'boolean', example: true },
+                        followerCount: { type: 'integer', example: 125 },
+                        followedAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            nullable: true
+                        }
+                    }
+                },
+                AuthorListData: {
+                    type: 'object',
+                    properties: {
+                        authors: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/StudentAuthorCard' }
+                        },
+                        pagination: {
+                            type: 'object',
+                            properties: {
+                                page: { type: 'integer', example: 1 },
+                                limit: { type: 'integer', example: 20 },
+                                total: { type: 'integer', example: 1 },
+                                totalPages: { type: 'integer', example: 1 }
+                            }
+                        }
+                    }
+                },
                 PlatformAdminLoginRequest: {
                     type: 'object',
                     required: ['username', 'password'],
@@ -1148,6 +1211,168 @@ const swaggerOptions = {
             }
         },
         paths: {
+            '/api/v1/authors': {
+                get: {
+                    tags: ['Author Following'],
+                    summary: 'List active authors for the student UI',
+                    description: 'Returns author cards with the logged-in student’s follow state and the current follower count.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'search', in: 'query', schema: { type: 'string', maxLength: 100 } },
+                        { name: 'featured', in: 'query', schema: { type: 'boolean' } }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Authors returned successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/AuthorListData' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'Invalid query parameters.' },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' }
+                    }
+                }
+            },
+            '/api/v1/authors/following': {
+                get: {
+                    tags: ['Author Following'],
+                    summary: 'List authors followed by the logged-in student',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'search', in: 'query', schema: { type: 'string', maxLength: 100 } }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Followed authors returned successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/AuthorListData' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' }
+                    }
+                }
+            },
+            '/api/v1/authors/{authorId}': {
+                get: {
+                    tags: ['Author Following'],
+                    summary: 'Get one active author profile and follow state',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'authorId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    responses: {
+                        200: {
+                            description: 'Author profile returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/StudentAuthorCard' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'Invalid authorId.' },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Author not found or unavailable.' }
+                    }
+                }
+            },
+            '/api/v1/authors/{authorId}/follow': {
+                post: {
+                    tags: ['Author Following'],
+                    summary: 'Follow an author',
+                    description: 'Idempotent: following the same author more than once does not create duplicates.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'authorId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    responses: {
+                        200: {
+                            description: 'Author is followed.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/AuthorFollowState' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'Invalid authorId.' },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Author not found or unavailable.' }
+                    }
+                },
+                delete: {
+                    tags: ['Author Following'],
+                    summary: 'Unfollow an author',
+                    description: 'Idempotent: the result remains successful if the student already unfollowed the author.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'authorId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    responses: {
+                        200: {
+                            description: 'Author is not followed.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/AuthorFollowState' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'Invalid authorId.' },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Author not found or unavailable.' }
+                    }
+                }
+            },
             '/api/v1/auth/sign-up': {
                 post: {
                     tags: ['Authentication'],

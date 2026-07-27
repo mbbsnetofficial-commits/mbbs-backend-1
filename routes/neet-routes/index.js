@@ -11,5 +11,6 @@ module.exports = {
     questionFeedbackRouter: require("./questionFeedback.routes"),
     reviewCommentRouter: require("./reviewComment.routes"),
     notificationRouter: require("./notification.routes"),
-    testLeaderboardRouter: require("./testLeaderboard.routes")
+    testLeaderboardRouter: require("./testLeaderboard.routes"),
+    authorFollowRouter: require("./authorFollow.routes")
 };
