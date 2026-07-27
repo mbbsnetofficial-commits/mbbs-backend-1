@@ -74,6 +74,9 @@ app.get("/health", (req, res) => {
 
 
 // Interactive API documentation. This does not change the authentication routes.
+app.get('/api-docs.json', (req, res) => {
+    res.type('application/json').send(swaggerDocument);
+});
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // API routes. Keep admin before student routers because admin login is public.

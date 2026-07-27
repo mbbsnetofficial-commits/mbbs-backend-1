@@ -10,16 +10,12 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: 'https://api.mbbs-abroad.com',
-                description: 'Custom production API domain'
+                url: process.env.PUBLIC_API_URL || 'https://api.mbbs.net',
+                description: 'Production API server'
             },
             {
                 url: 'http://localhost:3000',
                 description: 'Local development server'
-            },
-            {
-                url: process.env.PUBLIC_API_URL || 'https://mbbs-backend-production-dc64.up.railway.app',
-                description: 'Railway production server'
             }
         ],
         tags: [
