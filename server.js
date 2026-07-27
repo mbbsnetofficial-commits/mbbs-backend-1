@@ -1,6 +1,13 @@
 const dotenv = require("dotenv");
 const path = require("path");
 
+// MongoDB Driver 7 uses the Web Crypto API. Node 20.19+ exposes it globally,
+// but some deployment runtimes do not, even though Node's implementation is
+// available. Install the built-in implementation before loading Mongoose.
+if (!globalThis.crypto) {
+    globalThis.crypto = require("node:crypto").webcrypto;
+}
+
 // Railway supplies environment variables directly. This file remains useful locally.
 dotenv.config({ path: path.join(__dirname, "config", "config.env") });
 
