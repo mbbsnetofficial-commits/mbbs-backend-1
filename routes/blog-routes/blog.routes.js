@@ -3,6 +3,13 @@ const controller = require("../../controllers/blog-controllers/blog.controller")
 const { protectAdmin } = require("../../utilities/adminAuth");
 const { validate } = require("../../middleware/blog-middleware/blog.middleware");
 const {
+    uploadSingle,
+    validateActualSize,
+    handleUploadError,
+    validate: validateMedia
+} = require("../../middleware/blog-middleware/media.middleware");
+const { uploadSchema } = require("../../validation/blog-validation/media.valaidation");
+const {
     createBlogSchema,
     updateBlogSchema,
     blogIdSchema,
@@ -29,6 +36,15 @@ router.post(
 );
 router.post("/:id/duplicate", validate(blogIdSchema, "params"), controller.duplicateBlog);
 router.patch("/:id/restore", validate(blogIdSchema, "params"), controller.restoreBlog);
+router.post(
+    "/:id/featured-image",
+    validate(blogIdSchema, "params"),
+    uploadSingle,
+    handleUploadError,
+    validateActualSize,
+    validateMedia(uploadSchema),
+    controller.uploadFeaturedImage
+);
 
 router
     .route("/:id")

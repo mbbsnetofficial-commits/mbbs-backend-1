@@ -28,3 +28,7 @@ exports.duplicateBlog = handler(req => service.duplicateBlog(req.params.id, req.
 exports.deleteBlog = handler(req => service.deleteBlog(req.params.id, req.admin), MESSAGES.DELETE_SUCCESS);
 exports.restoreBlog = handler(req => service.restoreBlog(req.params.id, req.admin), MESSAGES.RESTORE_SUCCESS);
 exports.getStatistics = handler(() => service.getStatistics(), MESSAGES.STATISTICS_SUCCESS);
+exports.uploadFeaturedImage = handler(
+    req => service.uploadFeaturedImage(req.params.id, req.file, req.body, req.admin),
+    "Featured image uploaded and attached successfully."
+);

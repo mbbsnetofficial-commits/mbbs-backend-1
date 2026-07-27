@@ -84,6 +84,10 @@ const swaggerOptions = {
                 description: 'Student APIs for browsing, following, and unfollowing active authors'
             },
             {
+                name: 'Blog Engagement',
+                description: 'Student APIs for browsing, liking, and saving published blogs'
+            },
+            {
                 name: 'Blogs',
                 description: 'Platform-admin CMS APIs for drafting, scheduling, publishing, and managing blogs'
             },
@@ -1200,6 +1204,74 @@ const swaggerOptions = {
                         }
                     }
                 },
+                StudentBlogCard: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', example: '66a59ced88c5dcf13d81f030' },
+                        blogCode: { type: 'string', example: 'BLOG_NEET_PREPARATION_A1B2C3' },
+                        title: { type: 'string', example: 'How to Prepare for NEET' },
+                        slug: { type: 'string', example: 'how-to-prepare-for-neet' },
+                        shortDescription: { type: 'string' },
+                        excerpt: { type: 'string' },
+                        content: { type: 'object', additionalProperties: true },
+                        blogType: { type: 'string', example: 'BLOG' },
+                        featuredImage: {
+                            type: 'object',
+                            properties: {
+                                url: { type: 'string', format: 'uri' },
+                                alt: { type: 'string' },
+                                caption: { type: 'string' }
+                            }
+                        },
+                        author: { type: 'object', additionalProperties: true },
+                        category: { type: 'object', additionalProperties: true },
+                        tags: { type: 'array', items: { type: 'object', additionalProperties: true } },
+                        readingTime: { type: 'integer', example: 6 },
+                        totalViews: { type: 'integer', example: 500 },
+                        totalLikes: { type: 'integer', example: 42 },
+                        totalShares: { type: 'integer', example: 10 },
+                        publishedAt: { type: 'string', format: 'date-time' },
+                        isFeatured: { type: 'boolean' },
+                        isTrending: { type: 'boolean' },
+                        isLiked: { type: 'boolean', example: true },
+                        likedAt: { type: 'string', format: 'date-time', nullable: true },
+                        isSaved: { type: 'boolean', example: true },
+                        savedAt: { type: 'string', format: 'date-time', nullable: true }
+                    }
+                },
+                StudentBlogListData: {
+                    type: 'object',
+                    properties: {
+                        blogs: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/StudentBlogCard' }
+                        },
+                        pagination: {
+                            type: 'object',
+                            properties: {
+                                page: { type: 'integer', example: 1 },
+                                limit: { type: 'integer', example: 20 },
+                                total: { type: 'integer', example: 10 },
+                                totalPages: { type: 'integer', example: 1 }
+                            }
+                        }
+                    }
+                },
+                BlogLikeState: {
+                    type: 'object',
+                    properties: {
+                        blogId: { type: 'string', example: '66a59ced88c5dcf13d81f030' },
+                        isLiked: { type: 'boolean', example: true },
+                        totalLikes: { type: 'integer', example: 43 }
+                    }
+                },
+                BlogSaveState: {
+                    type: 'object',
+                    properties: {
+                        blogId: { type: 'string', example: '66a59ced88c5dcf13d81f030' },
+                        isSaved: { type: 'boolean', example: true }
+                    }
+                },
                 PlatformAdminLoginRequest: {
                     type: 'object',
                     required: ['username', 'password'],
@@ -1211,6 +1283,241 @@ const swaggerOptions = {
             }
         },
         paths: {
+            '/api/v1/blogs': {
+                get: {
+                    tags: ['Blog Engagement'],
+                    summary: 'List published blogs with the student’s like/save state',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'search', in: 'query', schema: { type: 'string', maxLength: 150 } },
+                        { name: 'author', in: 'query', schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'category', in: 'query', schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'tag', in: 'query', schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Published blogs returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/StudentBlogListData' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' }
+                    }
+                }
+            },
+            '/api/v1/blogs/saved': {
+                get: {
+                    tags: ['Blog Engagement'],
+                    summary: 'List blogs saved by the logged-in student',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'search', in: 'query', schema: { type: 'string', maxLength: 150 } }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Saved blogs returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/StudentBlogListData' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' }
+                    }
+                }
+            },
+            '/api/v1/blogs/{blogId}': {
+                get: {
+                    tags: ['Blog Engagement'],
+                    summary: 'Get a published blog with like/save state',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'blogId',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    responses: {
+                        200: {
+                            description: 'Blog returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/StudentBlogCard' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Published blog not found.' }
+                    }
+                }
+            },
+            '/api/v1/blogs/{blogId}/like': {
+                post: {
+                    tags: ['Blog Engagement'],
+                    summary: 'Like a blog',
+                    description: 'Idempotent: repeated requests do not create duplicate likes or increment the counter twice.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'blogId', in: 'path', required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    responses: {
+                        200: {
+                            description: 'Blog liked.',
+                            content: { 'application/json': { schema: {
+                                type: 'object',
+                                properties: {
+                                    status: { type: 'string', example: 'success' },
+                                    message: { type: 'string' },
+                                    data: { $ref: '#/components/schemas/BlogLikeState' }
+                                }
+                            } } }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Published blog not found.' }
+                    }
+                },
+                delete: {
+                    tags: ['Blog Engagement'],
+                    summary: 'Remove the student’s like from a blog',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'blogId', in: 'path', required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    responses: {
+                        200: {
+                            description: 'Blog unliked.',
+                            content: { 'application/json': { schema: {
+                                type: 'object',
+                                properties: {
+                                    status: { type: 'string', example: 'success' },
+                                    message: { type: 'string' },
+                                    data: { $ref: '#/components/schemas/BlogLikeState' }
+                                }
+                            } } }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Published blog not found.' }
+                    }
+                }
+            },
+            '/api/v1/blogs/{blogId}/save': {
+                post: {
+                    tags: ['Blog Engagement'],
+                    summary: 'Save a blog to the student’s private reading list',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'blogId', in: 'path', required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    responses: {
+                        200: {
+                            description: 'Blog saved.',
+                            content: { 'application/json': { schema: {
+                                type: 'object',
+                                properties: {
+                                    status: { type: 'string', example: 'success' },
+                                    message: { type: 'string' },
+                                    data: { $ref: '#/components/schemas/BlogSaveState' }
+                                }
+                            } } }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Published blog not found.' }
+                    }
+                },
+                delete: {
+                    tags: ['Blog Engagement'],
+                    summary: 'Remove a blog from the student’s saved list',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{
+                        name: 'blogId', in: 'path', required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    responses: {
+                        200: {
+                            description: 'Blog removed from saved list.',
+                            content: { 'application/json': { schema: {
+                                type: 'object',
+                                properties: {
+                                    status: { type: 'string', example: 'success' },
+                                    message: { type: 'string' },
+                                    data: { $ref: '#/components/schemas/BlogSaveState' }
+                                }
+                            } } }
+                        },
+                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        404: { description: 'Published blog not found.' }
+                    }
+                }
+            },
+            '/api/v1/admin/blogs/{id}/featured-image': {
+                post: {
+                    tags: ['Blogs'],
+                    summary: 'Upload an image from the admin device and attach it to a blog',
+                    description: 'Uploads the selected image through the media library to Cloudinary and sets the blog featuredImage URL.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [{
+                        name: 'id',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                    }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'multipart/form-data': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['file'],
+                                    properties: {
+                                        file: { type: 'string', format: 'binary' },
+                                        altText: { type: 'string', maxLength: 500 },
+                                        caption: { type: 'string', maxLength: 1000 },
+                                        displayName: { type: 'string', maxLength: 250 },
+                                        folder: { type: 'string', default: 'mbbs-cms/blogs' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Image uploaded and attached to the blog.' },
+                        400: { description: 'Invalid blog ID, missing file, or unsupported image.' },
+                        401: { description: 'Admin token is missing, invalid, or expired.' },
+                        404: { description: 'Blog not found.' },
+                        413: { description: 'Image exceeds the configured size limit.' }
+                    }
+                }
+            },
             '/api/v1/authors': {
                 get: {
                     tags: ['Author Following'],

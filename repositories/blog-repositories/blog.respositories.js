@@ -26,6 +26,42 @@ const findAll = ({ filter, sort, skip, limit }) => populate(
 const count = filter => Blog.countDocuments(filter);
 const save = blog => blog.save();
 
+const publicFilter = {
+    isDeleted: false,
+    status: "PUBLISHED",
+    visibility: "PUBLIC"
+};
+
+const findPublished = ({ filter = {}, skip, limit }) => populate(
+    Blog.find({ ...publicFilter, ...filter })
+        .select("-password")
+        .sort({ isPinned: -1, publishedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+).lean();
+
+const countPublished = (filter = {}) => Blog.countDocuments({
+    ...publicFilter,
+    ...filter
+});
+
+const findPublishedById = id => populate(Blog.findOne({
+    ...publicFilter,
+    _id: id
+}).select("-password")).lean();
+
+const updateLikeCount = (id, amount) => Blog.findOneAndUpdate(
+    { ...publicFilter, _id: id },
+    [{
+        $set: {
+            totalLikes: {
+                $max: [0, { $add: [{ $ifNull: ["$totalLikes", 0] }, amount] }]
+            }
+        }
+    }],
+    { new: true }
+).select("totalLikes").lean();
+
 const validateRelations = async ({ template, category, author, tags = [], relatedBlogs = [] }) => {
     const [templateExists, categoryExists, authorExists, tagCount, relatedCount] = await Promise.all([
         BlogTemplate.exists({ _id: template, isDeleted: false, status: true }),
@@ -77,6 +113,10 @@ module.exports = {
     findAll,
     count,
     save,
+    findPublished,
+    countPublished,
+    findPublishedById,
+    updateLikeCount,
     validateRelations,
     updateAssignmentCounts,
     statistics

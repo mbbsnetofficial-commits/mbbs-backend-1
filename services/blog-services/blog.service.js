@@ -1,5 +1,10 @@
 const bcrypt = require("bcryptjs");
 const repository = require("../../repositories/blog-repositories/blog.respositories");
+const mediaService = require("./media.service");
+const {
+    MIME_TYPES,
+    CLOUDINARY_FOLDERS
+} = require("../../constants/blog-constants/media.const");
 const {
     BLOG_STATUS,
     BLOG_VISIBILITY,
@@ -194,4 +199,36 @@ exports.duplicateBlog = async (id, actor) => {
 exports.getStatistics = async () => {
     const [stats] = await repository.statistics();
     return stats || { totalBlogs: 0, drafts: 0, inReview: 0, scheduled: 0, published: 0, archived: 0, totalViews: 0, totalLikes: 0 };
+};
+
+exports.uploadFeaturedImage = async (id, file, body, actor) => {
+    const blog = await getDocument(id);
+    if (!file) throw error("Please select an image from your device.", 400);
+    if (!MIME_TYPES.IMAGE.includes(file.mimetype)) {
+        throw error("The featured image must be a supported image file.", 400);
+    }
+
+    const media = await mediaService.uploadOne(file, {
+        ...body,
+        folder: body.folder || CLOUDINARY_FOLDERS.BLOGS,
+        resourceType: "image"
+    }, actor);
+
+    try {
+        blog.featuredImage = {
+            url: media.secureUrl || media.url,
+            alt: body.altText || media.altText || blog.title,
+            caption: body.caption || media.caption || ""
+        };
+        blog.updatedBy = actorId(actor);
+        await repository.save(blog);
+    } catch (uploadError) {
+        await mediaService.remove(media._id).catch(() => {});
+        throw uploadError;
+    }
+
+    return {
+        blog: formatBlogResponse(await repository.findActiveById(id)),
+        media
+    };
 };
