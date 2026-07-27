@@ -53,6 +53,17 @@ app.use(cors({
 
 app.use(express.json({ limit: "1mb" }));
 
+// A simple landing response makes it clear that the backend domain is routed
+// correctly when it is opened directly in a browser.
+app.get("/", (req, res) => {
+    res.status(200).json({
+        status: "success",
+        message: "MBBS NEET API is running",
+        health: "/health",
+        documentation: "/api-docs"
+    });
+});
+
 app.get("/health", (req, res) => {
     res.status(200).json({
         status: "success",
