@@ -10,6 +10,10 @@ const swaggerOptions = {
         },
         servers: [
             {
+                url: 'https://api.mbbs-abroad.com',
+                description: 'Custom production API domain'
+            },
+            {
                 url: 'http://localhost:3000',
                 description: 'Local development server'
             },
@@ -90,6 +94,10 @@ const swaggerOptions = {
             {
                 name: 'Blog SEO',
                 description: 'Platform-admin APIs for managing meta, social, sitemap, and schema.org settings'
+            },
+            {
+                name: 'Blog AI',
+                description: 'Gemini-powered admin tools for SEO, editorial analysis, and content assistance'
             },
             {
                 name: 'Blog Reviews',
@@ -933,6 +941,34 @@ const swaggerOptions = {
                         answered: { type: 'boolean', example: true },
                         is_correct: { type: 'boolean', example: true },
                         question_id: { type: 'integer', example: 4029 }
+                    }
+                },
+                AIContentRequest: {
+                    type: 'object',
+                    required: ['title', 'content'],
+                    properties: {
+                        title: { type: 'string', minLength: 2, maxLength: 250, example: 'NEET 2027 Preparation Guide' },
+                        content: { type: 'string', minLength: 20, maxLength: 50000, example: 'A complete guide for students preparing for NEET 2027...' },
+                        targetAudience: { type: 'string', maxLength: 200, default: 'NEET and MBBS aspirants' },
+                        primaryKeyword: { type: 'string', maxLength: 150, example: 'NEET 2027 preparation' }
+                    }
+                },
+                AIResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        message: { type: 'string', example: 'SEO generated successfully.' },
+                        data: { type: 'object', additionalProperties: true },
+                        meta: {
+                            type: 'object',
+                            properties: {
+                                feature: { type: 'string', example: 'SEO' },
+                                model: { type: 'string', example: 'gemini-3.5-flash' },
+                                duration_ms: { type: 'integer', example: 1840 },
+                                prompt_tokens: { type: 'integer', example: 420 },
+                                output_tokens: { type: 'integer', example: 180 }
+                            }
+                        }
                     }
                 },
                 // StudentActivity: {
@@ -2234,6 +2270,92 @@ const swaggerOptions = {
             },
             '/api/v1/admin/admins/{adminId}/status': {
                 patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate another admin', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'adminId', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean' } } } } } }, responses: { 200: { description: 'Admin status updated and existing tokens revoked.' }, 400: { description: 'Cannot deactivate own account.' }, 404: { description: 'Admin not found.' } } }
+            },
+            '/api/v1/admin/ai/seo': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Generate a complete SEO suggestion', security: [{ adminBearerAuth: [] }],
+                    description: 'Returns suggested metadata, social metadata, sitemap settings, slug, and schema type. It does not automatically save or overwrite Blog SEO.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AIContentRequest' } } } },
+                    responses: { 200: { description: 'SEO suggestion generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid content.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/faq': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Generate FAQs from blog content', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/AIContentRequest' }, { type: 'object', properties: { count: { type: 'integer', minimum: 1, maximum: 20, default: 5 } } }] } } } },
+                    responses: { 200: { description: 'FAQ suggestions generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid content or count.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/schema': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Generate schema.org JSON-LD', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/AIContentRequest' }, { type: 'object', required: ['pageUrl'], properties: { pageUrl: { type: 'string', format: 'uri', example: 'https://mbbs-abroad.com/blogs/neet-2027-guide' }, schemaType: { type: 'string', enum: ['Article', 'BlogPosting', 'FAQPage', 'WebPage'], default: 'Article' } } }] } } } },
+                    responses: { 200: { description: 'JSON-LD generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid content, URL, or schema type.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/keywords': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Extract SEO keywords and entities', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/AIContentRequest' }, { type: 'object', properties: { count: { type: 'integer', minimum: 1, maximum: 50, default: 15 } } }] } } } },
+                    responses: { 200: { description: 'Keywords generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid request.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/slug': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Generate an SEO-friendly slug', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['title'], properties: { title: { type: 'string', minLength: 2, maxLength: 250, example: 'NEET 2027 Preparation Guide' } } } } } },
+                    responses: { 200: { description: 'Slug generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid title.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/meta': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Generate meta title and description', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AIContentRequest' } } } },
+                    responses: { 200: { description: 'Meta title and description generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid content.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/image-alt': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Generate accessible image ALT text', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['imageUrl', 'title'], properties: { imageUrl: { type: 'string', format: 'uri' }, title: { type: 'string', maxLength: 250 }, context: { type: 'string', maxLength: 1000 } } } } } },
+                    responses: { 200: { description: 'ALT text generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid image URL or context.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/internal-links': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Suggest verified internal blog links', security: [{ adminBearerAuth: [] }],
+                    description: 'Gemini can select only from real published public Blog records returned by the repository.',
+                    requestBody: { required: true, content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/AIContentRequest' }, { type: 'object', properties: { blogId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }, count: { type: 'integer', minimum: 1, maximum: 20, default: 5 } } }] } } } },
+                    responses: { 200: { description: 'Verified internal links generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid request.' }, 401: { description: 'Invalid admin token.' }, 404: { description: 'No published link candidates.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/readability': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Analyze content readability', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AIContentRequest' } } } },
+                    responses: { 200: { description: 'Readability analysis generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid content.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/summary': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Generate a blog summary and key points', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/AIContentRequest' }, { type: 'object', properties: { maxWords: { type: 'integer', minimum: 20, maximum: 500, default: 120 } } }] } } } },
+                    responses: { 200: { description: 'Summary generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid request.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/translation': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Translate blog content', description: 'Prepared for future multilingual publishing. The output is a suggestion and is not saved automatically.', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['content', 'targetLanguage'], properties: { content: { type: 'string', minLength: 20, maxLength: 50000 }, sourceLanguage: { type: 'string', default: 'English', example: 'English' }, targetLanguage: { type: 'string', example: 'Tamil' } } } } } },
+                    responses: { 200: { description: 'Translation generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid content or language.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
+            },
+            '/api/v1/admin/ai/content-score': {
+                post: {
+                    tags: ['Blog AI'], summary: 'Generate an editorial and SEO content score', security: [{ adminBearerAuth: [] }],
+                    requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AIContentRequest' } } } },
+                    responses: { 200: { description: 'Content scores and recommendations generated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AIResponse' } } } }, 400: { description: 'Invalid content.' }, 401: { description: 'Invalid admin token.' }, 429: { description: 'AI rate limit exceeded.' }, 503: { description: 'Gemini unavailable.' } }
+                }
             },
             '/api/v1/admin/blog-analytics/dashboard': {
                 get: {

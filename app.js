@@ -17,6 +17,7 @@ const {
 const searchRouter = require("./routes/blog-routes/search.routes");
 const analyticsRouter = require("./routes/blog-routes/analytics.routes");
 const pageRouter = require("./routes/blog-routes/page.routes");
+const { aiRouter } = require("./src/modules/ai");
 const {
     apiLimiter,
     mutationLimiter,
@@ -82,6 +83,7 @@ app.use("/api/v1/admin/blog-media", adminLimiter, mediaRouter);
 app.use("/api/v1/admin/blog-seo", adminLimiter, seoRouter);
 app.use("/api/v1/admin/blog-reviews", adminLimiter, adminReviewRouter);
 app.use("/api/v1/admin/blog-analytics", adminLimiter, analyticsRouter);
+app.use("/api/v1/admin/ai", adminLimiter, aiRouter);
 app.use("/api/v1/admin", adminLimiter, platformAdminRouter);
 
 // Do not allow an unmatched admin URL to fall through into student routers.

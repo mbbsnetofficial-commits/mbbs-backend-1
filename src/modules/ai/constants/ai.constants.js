@@ -1,0 +1,29 @@
+"use strict";
+
+const AI_FEATURES = Object.freeze({
+    SEO: "SEO",
+    FAQ: "FAQ",
+    SCHEMA: "SCHEMA",
+    KEYWORDS: "KEYWORDS",
+    SLUG: "SLUG",
+    META: "META",
+    IMAGE_ALT: "IMAGE_ALT",
+    INTERNAL_LINKS: "INTERNAL_LINKS",
+    READABILITY: "READABILITY",
+    SUMMARY: "SUMMARY",
+    TRANSLATION: "TRANSLATION",
+    CONTENT_SCORE: "CONTENT_SCORE"
+});
+
+const LIMITS = Object.freeze({
+    TITLE: 250,
+    CONTENT: 50000,
+    URL: 1000,
+    LANGUAGE: 60,
+    FAQ_COUNT: 20,
+    KEYWORD_COUNT: 50,
+    LINK_COUNT: 20
+});
+
+module.exports = { AI_FEATURES, LIMITS };
+
