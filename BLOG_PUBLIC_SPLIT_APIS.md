@@ -18,6 +18,19 @@ Categories, authors, and testimonials are no longer included in this response.
 Featured blogs can also appear in `publishedBlogs`, because featured is a
 presentation flag and those records are still published blogs.
 
+## Blogs-only list
+
+`GET /api/v1/pages/blogs?page=1&limit=10`
+
+Returns:
+
+- `data.blogs`: published, public, non-deleted blogs only.
+- `data.pagination`: pagination for the blogs list.
+
+This endpoint does not return home SEO, featured sections, authors, categories,
+or testimonials. Use it for a standalone "All Blogs" page or whenever the
+frontend needs only one clean published-blog list.
+
 ## Authors
 
 `GET /api/v1/pages/authors?page=1&limit=10`
@@ -43,6 +56,7 @@ For one category and its published blogs, continue using:
 ## Choosing an API
 
 - Use `/pages/home` when the screen needs featured and published blog cards.
+- Use `/pages/blogs` when the screen needs only a paginated published-blog list.
 - Use `/pages/authors` when the screen needs an author directory.
 - Use `/pages/categories` when the screen needs a category directory or menu.
 - Use the existing slug detail APIs when the user opens one author or category.

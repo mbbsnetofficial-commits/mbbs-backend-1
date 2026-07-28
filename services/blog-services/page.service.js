@@ -30,6 +30,14 @@ exports.getHomePage = async (page, limit) => {
     });
 };
 
+exports.getBlogs = async (page, limit) => {
+    const data = await repository.getBlogs(page, limit);
+    return {
+        blogs: data.blogs,
+        pagination: buildPagination(page, limit, data.total)
+    };
+};
+
 exports.getAuthors = async (page, limit) => {
     const data = await repository.getAuthors(page, limit);
     return {

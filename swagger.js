@@ -3742,6 +3742,23 @@ const swaggerOptions = {
                     }
                 }
             },
+            '/api/v1/pages/blogs': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'List published public blogs only',
+                    description: 'Dedicated blogs-only list endpoint. Returns published, public, non-deleted blogs ordered by pinned status and publication date. It does not return home SEO, featured sections, authors, categories, or testimonials.',
+                    security: [],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'Published blogs and pagination returned successfully.' },
+                        400: { description: 'Pagination is invalid.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
             '/api/v1/pages/authors': {
                 get: {
                     tags: ['Blog Pages'],

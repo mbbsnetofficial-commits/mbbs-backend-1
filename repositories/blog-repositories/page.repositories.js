@@ -43,6 +43,10 @@ exports.getHomePageData = async (page, limit) => {
     return { featuredBlogs, publishedBlogs, total, seo };
 };
 
+exports.getBlogs = async (page, limit) => {
+    return paginateBlogs({}, page, limit);
+};
+
 exports.getAuthors = async (page, limit) => {
     const filter = { isDeleted: false, status: true };
     const skip = (page - 1) * limit;

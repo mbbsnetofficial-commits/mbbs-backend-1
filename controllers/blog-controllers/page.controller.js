@@ -26,6 +26,10 @@ exports.getHomePage = handler(req => {
     const query = input(req, "query");
     return service.getHomePage(query.page, query.limit);
 });
+exports.getBlogs = handler(req => {
+    const query = input(req, "query");
+    return service.getBlogs(query.page, query.limit);
+});
 exports.getAuthors = handler(req => {
     const query = input(req, "query");
     return service.getAuthors(query.page, query.limit);
