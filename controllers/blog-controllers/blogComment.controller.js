@@ -15,7 +15,12 @@ exports.list = async (req, res) => {
     try {
         const params = input(req, "params");
         const query = input(req, "query");
-        const data = await service.list(params.slug, query.page, query.limit);
+        const data = await service.list(
+            params.slug,
+            query.page,
+            query.limit,
+            req.user
+        );
         return res.status(200).json({
             success: true,
             message: "Blog comments loaded successfully.",
@@ -69,6 +74,34 @@ exports.remove = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Comment deleted successfully."
+        });
+    } catch (error) {
+        return sendError(res, error);
+    }
+};
+
+exports.like = async (req, res) => {
+    try {
+        const params = input(req, "params");
+        const data = await service.like(params.slug, params.commentId, req.user);
+        return res.status(200).json({
+            success: true,
+            message: "Comment liked successfully.",
+            data
+        });
+    } catch (error) {
+        return sendError(res, error);
+    }
+};
+
+exports.unlike = async (req, res) => {
+    try {
+        const params = input(req, "params");
+        const data = await service.unlike(params.slug, params.commentId, req.user);
+        return res.status(200).json({
+            success: true,
+            message: "Comment unliked successfully.",
+            data
         });
     } catch (error) {
         return sendError(res, error);

@@ -23,23 +23,29 @@ const studentProfile = async user => {
     return student;
 };
 
-const format = comment => ({
+const format = (comment, likedCommentIds = new Set()) => ({
     id: comment._id,
     student_id: comment.student_id,
     commenterName: comment.commenterName,
     profilePicture: comment.profilePicture || null,
     comment: comment.comment,
     isEdited: comment.isEdited,
+    totalLikes: comment.totalLikes || 0,
+    isLiked: likedCommentIds.has(String(comment._id)),
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt
 });
 
-exports.list = async (slug, page, limit) => {
+exports.list = async (slug, page, limit, user = null) => {
     const blog = await publishedBlog(slug);
     const data = await repository.list(blog._id, page, limit);
+    const likedCommentIds = new Set(await repository.findLikedCommentIds(
+        data.comments.map(comment => comment._id),
+        user?.id
+    ));
     return {
         blog: { id: blog._id, slug: blog.slug, title: blog.title },
-        comments: data.comments.map(format),
+        comments: data.comments.map(comment => format(comment, likedCommentIds)),
         pagination: buildPagination(page, limit, data.total)
     };
 };
@@ -82,5 +88,54 @@ exports.remove = async (slug, commentId, user) => {
     comment.isDeleted = true;
     comment.deletedAt = new Date();
     await comment.save();
-    await repository.decrementCount(blog._id);
+    await Promise.all([
+        repository.decrementCount(blog._id),
+        repository.deleteLikesForComment(comment._id)
+    ]);
+};
+
+exports.like = async (slug, commentId, user) => {
+    const [blog, student] = await Promise.all([
+        publishedBlog(slug),
+        studentProfile(user)
+    ]);
+    const comment = await repository.findActiveComment(commentId, blog._id);
+    if (!comment) throw error("Comment not found.", 404);
+
+    try {
+        await repository.createLike({
+            comment: comment._id,
+            studentId: student._id,
+            student_id: student.student_id
+        });
+    } catch (likeError) {
+        if (likeError.code === 11000) {
+            return {
+                commentId: comment._id,
+                totalLikes: comment.totalLikes || 0,
+                isLiked: true
+            };
+        }
+        throw likeError;
+    }
+
+    const updated = await repository.incrementLikes(comment._id);
+    return {
+        commentId: comment._id,
+        totalLikes: updated?.totalLikes ?? (comment.totalLikes || 0) + 1,
+        isLiked: true
+    };
+};
+
+exports.unlike = async (slug, commentId, user) => {
+    const blog = await publishedBlog(slug);
+    const comment = await repository.findActiveComment(commentId, blog._id);
+    if (!comment) throw error("Comment not found.", 404);
+    const result = await repository.deleteLike(comment._id, user.id);
+    let totalLikes = comment.totalLikes || 0;
+    if (result.deletedCount > 0) {
+        const updated = await repository.decrementLikes(comment._id);
+        totalLikes = updated?.totalLikes ?? Math.max(0, totalLikes - 1);
+    }
+    return { commentId: comment._id, totalLikes, isLiked: false };
 };

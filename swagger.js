@@ -3898,6 +3898,40 @@ const swaggerOptions = {
                     }
                 }
             },
+            '/api/v1/pages/blog/{slug}/comments/{commentId}/like': {
+                post: {
+                    tags: ['Blog Pages'],
+                    summary: 'Like a blog comment',
+                    description: 'Requires a logged-in student. Repeating the request is idempotent and does not add more than one like from the same student.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' } },
+                        { name: 'commentId', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }
+                    ],
+                    responses: {
+                        200: { description: 'Returns commentId, totalLikes, and isLiked=true.' },
+                        400: { description: 'Slug or commentId is invalid.' },
+                        401: { description: 'Student access token is missing or invalid.' },
+                        404: { description: 'Published blog or active comment not found.' }
+                    }
+                },
+                delete: {
+                    tags: ['Blog Pages'],
+                    summary: 'Unlike a blog comment',
+                    description: 'Requires a logged-in student. Repeating the request is safe and does not decrement the count more than once.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' } },
+                        { name: 'commentId', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }
+                    ],
+                    responses: {
+                        200: { description: 'Returns commentId, totalLikes, and isLiked=false.' },
+                        400: { description: 'Slug or commentId is invalid.' },
+                        401: { description: 'Student access token is missing or invalid.' },
+                        404: { description: 'Published blog or active comment not found.' }
+                    }
+                }
+            },
             '/api/v1/pages/category/{slug}': {
                 get: {
                     tags: ['Blog Pages'],

@@ -72,3 +72,34 @@ exports.protect = async (req, res, next) => {
 
     }
 };
+
+// Public endpoints can use this to enrich a response for a logged-in student
+// without requiring authentication from anonymous visitors.
+exports.optionalProtect = async (req, res, next) => {
+    try {
+        const authorization = req.headers.authorization;
+        if (!authorization?.startsWith("Bearer ")) return next();
+        const token = authorization.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.SECRET_KEY);
+        const user = await Auth.findById(decoded.id)
+            .select("student_id token_version is_active")
+            .lean();
+        if (!user || user.is_active === false ||
+            (decoded.token_version ?? 0) !== (user.token_version ?? 0)) {
+            return next();
+        }
+        if (decoded.session_id) {
+            const activeSession = await AuthSession.exists({
+                _id: decoded.session_id,
+                user_id: decoded.id,
+                is_revoked: false,
+                expires_at: { $gt: new Date() }
+            });
+            if (!activeSession) return next();
+        }
+        req.user = { ...decoded, student_id: user.student_id };
+        return next();
+    } catch {
+        return next();
+    }
+};

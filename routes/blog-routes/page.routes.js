@@ -3,7 +3,7 @@
 const express = require("express");
 const controller = require("../../controllers/blog-controllers/page.controller");
 const commentController = require("../../controllers/blog-controllers/blogComment.controller");
-const { protect } = require("../../utilities/auth");
+const { protect, optionalProtect } = require("../../utilities/auth");
 const { validate, cacheControl } = require("../../middleware/blog-middleware/page.middleware");
 const {
     pagination,
@@ -29,6 +29,7 @@ router.get("/categories", validate(pagination), controller.getCategories);
 router.get("/search", validate(search), controller.searchPage);
 router.get(
     "/blog/:slug/comments",
+    optionalProtect,
     validate(blogParams, "params"),
     validate(pagination),
     commentController.list
@@ -52,6 +53,18 @@ router.delete(
     protect,
     validate(commentParams, "params"),
     commentController.remove
+);
+router.post(
+    "/blog/:slug/comments/:commentId/like",
+    protect,
+    validate(commentParams, "params"),
+    commentController.like
+);
+router.delete(
+    "/blog/:slug/comments/:commentId/like",
+    protect,
+    validate(commentParams, "params"),
+    commentController.unlike
 );
 router.get(
     "/blog/:slug",

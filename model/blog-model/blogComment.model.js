@@ -44,6 +44,11 @@ const blogCommentSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
+        totalLikes: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
         isDeleted: {
             type: Boolean,
             default: false,
