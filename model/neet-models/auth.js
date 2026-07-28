@@ -36,14 +36,18 @@ const authSchema = new mongoose.Schema(
 
         password: {
             type: String,
-            required: [true, "Password is required"],
+            required: function () {
+                return !this.firebase_uid;
+            },
             trim: true,
             minlength: [8, "Password must be at least 8 characters long"]
         },
 
         confirmPassword: {
             type: String,
-            required: [true, "Confirm password is required"],
+            required: function () {
+                return !this.firebase_uid && this.isNew;
+            },
             trim: true,
             minlength: [8, "Confirm password must be at least 8 characters long"],
             validate: {
@@ -56,12 +60,35 @@ const authSchema = new mongoose.Schema(
 
         phoneNumber: {
             type: String,
-            required: [true, "Phone number is required"],
+            required: function () {
+                return !this.firebase_uid;
+            },
             unique: true,
+            sparse: true,
             validate: {
                 validator: value => /^\+[1-9]\d{7,14}$/.test(value),
                 message: "Phone number must use international format"
             }
+        },
+
+        firebase_uid: {
+            type: String,
+            unique: true,
+            sparse: true,
+            trim: true
+        },
+
+        auth_providers: {
+            type: [{
+                type: String,
+                enum: ["password", "google"]
+            }],
+            default: ["password"]
+        },
+
+        profile_picture: {
+            type: String,
+            trim: true
         },
 
         token_version: {
@@ -87,7 +114,7 @@ const authSchema = new mongoose.Schema(
 // Generate Student ID & Hash Password
 // ==========================================
 authSchema.pre("validate", function () {
-    if (this.isModified("phoneNumber")) {
+    if (this.isModified("phoneNumber") && this.phoneNumber) {
         const cleaned = this.phoneNumber.trim().replace(/[\s()-]/g, "");
         this.phoneNumber = /^\d{10}$/.test(cleaned) ? `+91${cleaned}` : cleaned;
     }

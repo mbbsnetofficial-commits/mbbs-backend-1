@@ -1,4 +1,5 @@
 const Auth = require('../../model/neet-models/auth');
+const { getFirebaseAuth } = require("../../config/firebaseAdmin");
 const {
     createAuthSession,
     rotateAuthSession,
@@ -74,6 +75,13 @@ exports.login = async (req, res) => {
         }
         // compare passsord
 
+        if (!user.password) {
+            return res.status(403).json({
+                status: "fail",
+                message: "This account uses Google sign-in."
+            });
+        }
+
         const match = await user.comparePassword(password, user.password);
 
         if (!match) {
@@ -99,6 +107,91 @@ exports.login = async (req, res) => {
         })
     }
 }
+
+const safeName = (value, fallback) => {
+    const lettersOnly = String(value || "").replace(/[^a-zA-Z]/g, "");
+    return lettersOnly || fallback;
+};
+
+exports.googleLogin = async (req, res) => {
+    try {
+        const idToken = typeof req.body.idToken === "string" ? req.body.idToken.trim() : "";
+        if (!idToken) {
+            return res.status(400).json({ status: "fail", message: "idToken is required." });
+        }
+
+        const decoded = await getFirebaseAuth().verifyIdToken(idToken, true);
+        if (decoded.firebase?.sign_in_provider !== "google.com") {
+            return res.status(401).json({ status: "fail", message: "This endpoint accepts Google sign-in tokens only." });
+        }
+        if (!decoded.email || decoded.email_verified !== true) {
+            return res.status(401).json({ status: "fail", message: "Google must provide a verified email address." });
+        }
+
+        const email = decoded.email.trim().toLowerCase();
+        let user = await Auth.findOne({
+            $or: [{ firebase_uid: decoded.uid }, { email }]
+        });
+
+        if (user && user.is_active === false) {
+            return res.status(403).json({ status: "fail", message: "This account has been deactivated." });
+        }
+
+        const displayParts = String(decoded.name || "").trim().split(/\s+/).filter(Boolean);
+        const firstName = safeName(displayParts.shift(), "google");
+        const lastName = safeName(displayParts.join(" "), "user");
+        let isNewUser = false;
+
+        if (!user) {
+            user = await Auth.create({
+                firstName,
+                lastName,
+                email,
+                firebase_uid: decoded.uid,
+                auth_providers: ["google"],
+                profile_picture: decoded.picture
+            });
+            isNewUser = true;
+        } else {
+            if (user.firebase_uid && user.firebase_uid !== decoded.uid) {
+                return res.status(409).json({ status: "fail", message: "This email is already linked to another Google account." });
+            }
+            user.firebase_uid = decoded.uid;
+            user.auth_providers = [...new Set([...(user.auth_providers || ["password"]), "google"])];
+            if (decoded.picture) user.profile_picture = decoded.picture;
+            await user.save();
+        }
+
+        const { accessToken, refreshToken } = await createAuthSession(user, req);
+        return res.status(isNewUser ? 201 : 200).json({
+            status: "success",
+            message: isNewUser ? "Google account created and logged in." : "Google login successful.",
+            data: {
+                user: {
+                    id: user._id,
+                    student_id: user.student_id,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email,
+                    phoneNumber: user.phoneNumber || null,
+                    profilePicture: user.profile_picture || null,
+                    authProviders: user.auth_providers
+                },
+                accessToken,
+                refreshToken,
+                isNewUser
+            }
+        });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ status: "fail", message: "This Google account or email is already registered." });
+        }
+        if (String(error.code || "").startsWith("auth/")) {
+            return res.status(401).json({ status: "fail", message: "Invalid or expired Google sign-in token." });
+        }
+        return res.status(500).json({ status: "fail", message: error.message });
+    }
+};
 
 exports.refreshToken = async (req, res) => {
     try {

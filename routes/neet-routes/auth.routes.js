@@ -22,6 +22,8 @@ authRouter.post('/sign-up/verify-otp', otpVerificationLimiter, signupController.
 authRouter.route('/login')
     .post(loginLimiter, authController.login)
 
+authRouter.post('/google', loginLimiter, authController.googleLogin);
+
 authRouter.post('/refresh-token', tokenLimiter, authController.refreshToken);
 authRouter.post('/logout', protect, authController.logout);
 authRouter.post('/logout-all', protect, authController.logoutAll);
