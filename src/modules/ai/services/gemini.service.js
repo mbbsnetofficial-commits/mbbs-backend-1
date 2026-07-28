@@ -41,7 +41,6 @@ exports.generateStructured = async ({
                     }],
                     config: {
                         systemInstruction,
-                        temperature: config.temperature,
                         maxOutputTokens: config.maxOutputTokens,
                         responseMimeType: "application/json"
                     }
@@ -90,4 +89,3 @@ exports.generateStructured = async ({
         temporary ? 503 : 502
     );
 };
-
