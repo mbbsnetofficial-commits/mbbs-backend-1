@@ -2,6 +2,8 @@
 
 const express = require("express");
 const controller = require("../../controllers/blog-controllers/page.controller");
+const commentController = require("../../controllers/blog-controllers/blogComment.controller");
+const { protect } = require("../../utilities/auth");
 const { validate, cacheControl } = require("../../middleware/blog-middleware/page.middleware");
 const {
     pagination,
@@ -11,6 +13,11 @@ const {
     tagPageValidation,
     authorPageValidation
 } = require("../../validation/blog-validation/page.validation");
+const {
+    blogParams,
+    commentParams,
+    commentBody
+} = require("../../validation/blog-validation/blogComment.validation");
 
 const router = express.Router();
 router.use(cacheControl);
@@ -20,6 +27,32 @@ router.get("/blogs", validate(pagination), controller.getBlogs);
 router.get("/authors", validate(pagination), controller.getAuthors);
 router.get("/categories", validate(pagination), controller.getCategories);
 router.get("/search", validate(search), controller.searchPage);
+router.get(
+    "/blog/:slug/comments",
+    validate(blogParams, "params"),
+    validate(pagination),
+    commentController.list
+);
+router.post(
+    "/blog/:slug/comments",
+    protect,
+    validate(blogParams, "params"),
+    validate(commentBody, "body"),
+    commentController.create
+);
+router.patch(
+    "/blog/:slug/comments/:commentId",
+    protect,
+    validate(commentParams, "params"),
+    validate(commentBody, "body"),
+    commentController.update
+);
+router.delete(
+    "/blog/:slug/comments/:commentId",
+    protect,
+    validate(commentParams, "params"),
+    commentController.remove
+);
 router.get(
     "/blog/:slug",
     validate(blogPageValidation, "params"),

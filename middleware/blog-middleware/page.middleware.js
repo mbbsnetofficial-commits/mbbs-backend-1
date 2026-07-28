@@ -20,6 +20,11 @@ const validate = (schema, source = "query") => (req, res, next) => {
 };
 
 const cacheControl = (req, res, next) => {
+    const isCommentRequest = /\/comments(?:\/|$)/.test(req.path);
+    if (!["GET", "HEAD"].includes(req.method) || isCommentRequest) {
+        res.setHeader("Cache-Control", "no-store");
+        return next();
+    }
     res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
     return next();
 };

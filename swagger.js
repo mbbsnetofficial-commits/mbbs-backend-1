@@ -3806,6 +3806,98 @@ const swaggerOptions = {
                     }
                 }
             },
+            '/api/v1/pages/blog/{slug}/comments': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'List comments for one published blog',
+                    description: 'Public endpoint for rendering a blog comment section. Comments are returned newest first with commenter display information and pagination.',
+                    security: [],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' } },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'Blog identity, comments, and pagination returned.' },
+                        400: { description: 'Slug or pagination is invalid.' },
+                        404: { description: 'Published public blog not found.' }
+                    }
+                },
+                post: {
+                    tags: ['Blog Pages'],
+                    summary: 'Post a comment on one published blog',
+                    description: 'Requires a logged-in student backend access token. The commenter name and student identity are read from the authenticated account, not trusted from the request body.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' } }
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['comment'],
+                                    properties: {
+                                        comment: { type: 'string', minLength: 1, maxLength: 2000, example: 'This article was helpful.' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'Comment posted and returned.' },
+                        400: { description: 'Comment or slug is invalid.' },
+                        401: { description: 'Student access token is missing or invalid.' },
+                        404: { description: 'Published public blog not found.' }
+                    }
+                }
+            },
+            '/api/v1/pages/blog/{slug}/comments/{commentId}': {
+                patch: {
+                    tags: ['Blog Pages'],
+                    summary: 'Edit the logged-in student’s comment',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string' } },
+                        { name: 'commentId', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['comment'],
+                                    properties: { comment: { type: 'string', minLength: 1, maxLength: 2000 } }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Owned comment updated.' },
+                        400: { description: 'Request is invalid.' },
+                        401: { description: 'Student access token is missing or invalid.' },
+                        404: { description: 'Blog or owned comment not found.' }
+                    }
+                },
+                delete: {
+                    tags: ['Blog Pages'],
+                    summary: 'Delete the logged-in student’s comment',
+                    description: 'Soft-deletes the owned comment and decrements the blog comment count.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'slug', in: 'path', required: true, schema: { type: 'string' } },
+                        { name: 'commentId', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }
+                    ],
+                    responses: {
+                        200: { description: 'Owned comment deleted.' },
+                        400: { description: 'Request is invalid.' },
+                        401: { description: 'Student access token is missing or invalid.' },
+                        404: { description: 'Blog or owned comment not found.' }
+                    }
+                }
+            },
             '/api/v1/pages/category/{slug}': {
                 get: {
                     tags: ['Blog Pages'],
