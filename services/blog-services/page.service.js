@@ -14,20 +14,36 @@ const notFound = message => {
     return error;
 };
 
-exports.getHomePage = async () => {
-    const data = await repository.getHomePageData();
+exports.getHomePage = async (page, limit) => {
+    const data = await repository.getHomePageData(page, limit);
     return buildPageResponse({
         page: "HOME",
         seo: data.seo,
         content: {
             featuredBlogs: data.featuredBlogs,
-            latestBlogs: data.latestBlogs,
-            categories: data.categories,
-            featuredAuthors: data.featuredAuthors,
-            testimonials: data.testimonials
+            publishedBlogs: data.publishedBlogs
         },
-        breadcrumbs: [HOME_BREADCRUMB]
+        breadcrumbs: [HOME_BREADCRUMB],
+        extras: {
+            pagination: buildPagination(page, limit, data.total)
+        }
     });
+};
+
+exports.getAuthors = async (page, limit) => {
+    const data = await repository.getAuthors(page, limit);
+    return {
+        authors: data.authors,
+        pagination: buildPagination(page, limit, data.total)
+    };
+};
+
+exports.getCategories = async (page, limit) => {
+    const data = await repository.getCategories(page, limit);
+    return {
+        categories: data.categories,
+        pagination: buildPagination(page, limit, data.total)
+    };
 };
 
 exports.getBlogPage = async slug => {

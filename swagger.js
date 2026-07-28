@@ -3728,11 +3728,50 @@ const swaggerOptions = {
             '/api/v1/pages/home': {
                 get: {
                     tags: ['Blog Pages'],
-                    summary: 'Load the public blog home page',
-                    description: 'Combines featured and latest published blogs, active categories, featured authors, approved testimonials, and home SEO. The response is publicly cached for five minutes.',
+                    summary: 'Load featured and published public blogs',
+                    description: 'Keeps the existing home URL but now returns only blog datasets: up to six featured blogs and a paginated publishedBlogs list. Home SEO and breadcrumbs remain as page metadata. The response is publicly cached for five minutes.',
                     security: [],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
                     responses: {
-                        200: { description: 'Home page data returned successfully.' },
+                        200: { description: 'Featured blogs, published blogs, and pagination returned successfully.' },
+                        400: { description: 'Pagination is invalid.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/pages/authors': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'List active public blog authors',
+                    description: 'Returns authors separately from the home blog response. Featured authors appear first, followed by display order and name.',
+                    security: [],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'Authors and pagination returned successfully.' },
+                        400: { description: 'Pagination is invalid.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/pages/categories': {
+                get: {
+                    tags: ['Blog Pages'],
+                    summary: 'List active public blog categories',
+                    description: 'Returns categories separately from the home blog response, ordered by display order and category name.',
+                    security: [],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'Categories and pagination returned successfully.' },
+                        400: { description: 'Pagination is invalid.' },
                         500: { description: 'Server or database error.' }
                     }
                 }

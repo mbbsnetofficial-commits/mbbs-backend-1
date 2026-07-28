@@ -26,25 +26,51 @@ const paginateBlogs = async (filter, page, limit) => {
     return { blogs, total };
 };
 
-exports.getHomePageData = async () => {
-    const [featuredBlogs, latestBlogs, categories, featuredAuthors, testimonials, seo] =
+exports.getHomePageData = async (page, limit) => {
+    const skip = (page - 1) * limit;
+    const [featuredBlogs, publishedBlogs, total, seo] =
         await Promise.all([
             populateBlog(Blog.find({ ...publishedFilter, isFeatured: true })
                 .select("-password").sort({ publishedAt: -1 }).limit(6)).lean(),
             populateBlog(Blog.find(publishedFilter)
-                .select("-password").sort({ publishedAt: -1 }).limit(10)).lean(),
-            Category.find({ isDeleted: false, status: true })
-                .select("categoryName slug description icon bannerImage totalBlogs")
-                .sort({ displayOrder: 1, categoryName: 1 }).lean(),
-            Author.find({ isDeleted: false, status: true, isFeatured: true })
-                .select("fullName slug designation profileImage bio totalBlogs")
-                .sort({ displayOrder: 1 }).limit(10).lean(),
-            Review.find({ isDeleted: false, status: "APPROVED", isFeatured: true })
-                .select("reviewerName title review rating isVerified createdAt")
-                .sort({ featuredAt: -1 }).limit(10).lean(),
+                .select("-password")
+                .sort({ isPinned: -1, publishedAt: -1 })
+                .skip(skip)
+                .limit(limit)).lean(),
+            Blog.countDocuments(publishedFilter),
             SEO.findOne({ module: "HOME", isDeleted: false, isActive: true }).lean()
         ]);
-    return { featuredBlogs, latestBlogs, categories, featuredAuthors, testimonials, seo };
+    return { featuredBlogs, publishedBlogs, total, seo };
+};
+
+exports.getAuthors = async (page, limit) => {
+    const filter = { isDeleted: false, status: true };
+    const skip = (page - 1) * limit;
+    const [authors, total] = await Promise.all([
+        Author.find(filter)
+            .select("fullName slug designation bio authorType profileImage coverImage experience qualifications specializations languages country city socialLinks totalBlogs totalViews totalLikes totalComments isFeatured")
+            .sort({ isFeatured: -1, displayOrder: 1, fullName: 1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        Author.countDocuments(filter)
+    ]);
+    return { authors, total };
+};
+
+exports.getCategories = async (page, limit) => {
+    const filter = { isDeleted: false, status: true };
+    const skip = (page - 1) * limit;
+    const [categories, total] = await Promise.all([
+        Category.find(filter)
+            .select("categoryName categoryCode categoryType slug description icon bannerImage parentCategory level displayOrder isFeatured totalBlogs")
+            .sort({ displayOrder: 1, categoryName: 1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        Category.countDocuments(filter)
+    ]);
+    return { categories, total };
 };
 
 exports.getBlogPageData = async slug => {

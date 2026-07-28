@@ -22,7 +22,18 @@ const handler = action => async (req, res) => {
     }
 };
 
-exports.getHomePage = handler(() => service.getHomePage());
+exports.getHomePage = handler(req => {
+    const query = input(req, "query");
+    return service.getHomePage(query.page, query.limit);
+});
+exports.getAuthors = handler(req => {
+    const query = input(req, "query");
+    return service.getAuthors(query.page, query.limit);
+});
+exports.getCategories = handler(req => {
+    const query = input(req, "query");
+    return service.getCategories(query.page, query.limit);
+});
 exports.getBlogPage = handler(req => {
     const params = input(req, "params");
     return service.getBlogPage(params.slug);

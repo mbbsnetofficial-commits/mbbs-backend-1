@@ -15,7 +15,9 @@ const {
 const router = express.Router();
 router.use(cacheControl);
 
-router.get("/home", controller.getHomePage);
+router.get("/home", validate(pagination), controller.getHomePage);
+router.get("/authors", validate(pagination), controller.getAuthors);
+router.get("/categories", validate(pagination), controller.getCategories);
 router.get("/search", validate(search), controller.searchPage);
 router.get(
     "/blog/:slug",
