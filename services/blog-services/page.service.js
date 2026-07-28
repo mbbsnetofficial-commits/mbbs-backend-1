@@ -23,7 +23,9 @@ exports.getHomePage = async (page, limit) => {
             featuredBlogs: data.featuredBlogs,
             publishedBlogs: data.publishedBlogs,
             // Backward-compatible name used by the existing frontend.
-            latestBlogs: data.publishedBlogs
+            latestBlogs: data.publishedBlogs,
+            categories: data.categories,
+            featuredAuthors: data.featuredAuthors
         },
         breadcrumbs: [HOME_BREADCRUMB],
         extras: {

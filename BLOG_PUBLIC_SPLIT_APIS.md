@@ -13,16 +13,22 @@ Returns:
 - `data.content.publishedBlogs`: all published public blogs for the requested page.
 - `data.content.latestBlogs`: backward-compatible alias containing the same
   items as `publishedBlogs`, for the existing frontend.
+- `data.content.categories`: active categories retained for the existing home UI.
+- `data.content.featuredAuthors`: featured active authors retained for the
+  existing home UI.
 - `data.pagination`: pagination for `publishedBlogs`.
 - `data.seo` and `data.breadcrumbs`: home-page metadata.
 
-Categories, authors, and testimonials are no longer included in this response.
+Testimonials are no longer included in this response.
 Featured blogs can also appear in `publishedBlogs`, because featured is a
 presentation flag and those records are still published blogs.
 
 The frontend can continue reading `latestBlogs` without any immediate code
 change. New frontend work should prefer `publishedBlogs`; both names will remain
 available during the compatibility period.
+
+The separate author and category APIs remain available for dedicated screens,
+even though the compatibility fields are also present in the home response.
 
 ## Blogs-only list
 

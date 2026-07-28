@@ -28,7 +28,7 @@ const paginateBlogs = async (filter, page, limit) => {
 
 exports.getHomePageData = async (page, limit) => {
     const skip = (page - 1) * limit;
-    const [featuredBlogs, publishedBlogs, total, seo] =
+    const [featuredBlogs, publishedBlogs, categories, featuredAuthors, total, seo] =
         await Promise.all([
             populateBlog(Blog.find({ ...publishedFilter, isFeatured: true })
                 .select("-password").sort({ publishedAt: -1 }).limit(6)).lean(),
@@ -37,10 +37,19 @@ exports.getHomePageData = async (page, limit) => {
                 .sort({ isPinned: -1, publishedAt: -1 })
                 .skip(skip)
                 .limit(limit)).lean(),
+            Category.find({ isDeleted: false, status: true })
+                .select("categoryName slug description icon bannerImage totalBlogs")
+                .sort({ displayOrder: 1, categoryName: 1 })
+                .lean(),
+            Author.find({ isDeleted: false, status: true, isFeatured: true })
+                .select("fullName slug designation profileImage bio totalBlogs")
+                .sort({ displayOrder: 1, fullName: 1 })
+                .limit(10)
+                .lean(),
             Blog.countDocuments(publishedFilter),
             SEO.findOne({ module: "HOME", isDeleted: false, isActive: true }).lean()
         ]);
-    return { featuredBlogs, publishedBlogs, total, seo };
+    return { featuredBlogs, publishedBlogs, categories, featuredAuthors, total, seo };
 };
 
 exports.getBlogs = async (page, limit) => {
