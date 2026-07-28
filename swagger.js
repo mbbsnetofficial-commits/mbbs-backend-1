@@ -3729,7 +3729,7 @@ const swaggerOptions = {
                 get: {
                     tags: ['Blog Pages'],
                     summary: 'Load featured and published public blogs',
-                    description: 'Keeps the existing home URL but now returns only blog datasets: up to six featured blogs and a paginated publishedBlogs list. Home SEO and breadcrumbs remain as page metadata. The response is publicly cached for five minutes.',
+                    description: 'Keeps the existing home URL and returns only blog datasets: up to six featured blogs and a paginated publishedBlogs list. For backward compatibility with the existing frontend, latestBlogs contains the same list as publishedBlogs. Home SEO and breadcrumbs remain as page metadata. The response is publicly cached for five minutes.',
                     security: [],
                     parameters: [
                         { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },

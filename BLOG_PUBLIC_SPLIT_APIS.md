@@ -11,12 +11,18 @@ Returns:
 
 - `data.content.featuredBlogs`: up to six featured, published, public blogs.
 - `data.content.publishedBlogs`: all published public blogs for the requested page.
+- `data.content.latestBlogs`: backward-compatible alias containing the same
+  items as `publishedBlogs`, for the existing frontend.
 - `data.pagination`: pagination for `publishedBlogs`.
 - `data.seo` and `data.breadcrumbs`: home-page metadata.
 
 Categories, authors, and testimonials are no longer included in this response.
 Featured blogs can also appear in `publishedBlogs`, because featured is a
 presentation flag and those records are still published blogs.
+
+The frontend can continue reading `latestBlogs` without any immediate code
+change. New frontend work should prefer `publishedBlogs`; both names will remain
+available during the compatibility period.
 
 ## Blogs-only list
 

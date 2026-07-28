@@ -21,7 +21,9 @@ exports.getHomePage = async (page, limit) => {
         seo: data.seo,
         content: {
             featuredBlogs: data.featuredBlogs,
-            publishedBlogs: data.publishedBlogs
+            publishedBlogs: data.publishedBlogs,
+            // Backward-compatible name used by the existing frontend.
+            latestBlogs: data.publishedBlogs
         },
         breadcrumbs: [HOME_BREADCRUMB],
         extras: {
