@@ -47,7 +47,9 @@ exports.createAuthSession = async (user, req) => {
 };
 
 exports.rotateAuthSession = async (refreshToken, req) => {
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY);
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY, {
+        algorithms: ["HS256"]
+    });
     if (decoded.token_type !== "refresh" || !decoded.session_id || !decoded.jti) {
         throw Object.assign(new Error("Invalid refresh token."), { statusCode: 401 });
     }

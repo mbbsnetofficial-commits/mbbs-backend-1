@@ -14,9 +14,15 @@ exports.protectAdmin = async (req, res, next) => {
 
         const decoded = jwt.verify(
             token,
-            process.env.ADMIN_SECRET_KEY || process.env.SECRET_KEY
+            process.env.ADMIN_SECRET_KEY,
+            { algorithms: ["HS256"] }
         );
-        if (decoded.role !== "platform_admin") {
+        if (
+            decoded.role !== "platform_admin" ||
+            decoded.token_type !== "admin_access" ||
+            !decoded.id ||
+            !decoded.jti
+        ) {
             return res.status(403).json({ status: "fail", message: "Platform admin access is required." });
         }
 

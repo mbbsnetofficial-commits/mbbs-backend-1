@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require("cors");
+const helmet = require("helmet");
 const app = express();
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger');
@@ -23,6 +24,7 @@ const {
     mutationLimiter,
     adminLimiter
 } = require("./middleware/rateLimit.middleware");
+const { rejectUnsafeRequestKeys } = require("./middleware/security.middleware");
 const {
     authRouter,
     platformAdminRouter,
@@ -44,16 +46,40 @@ const {
 // Railway terminates HTTPS at its proxy. This also makes req.ip use forwarded data.
 app.set("trust proxy", 1);
 
-const allowedOrigins = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(",").map(origin => origin.trim())
-    : true;
+const allowedOrigins = (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean);
+const isProduction = process.env.NODE_ENV === "production";
 
 app.use(cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+        // Non-browser clients such as mobile apps, server jobs, and curl do not
+        // send Origin and are not governed by browser CORS.
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (!isProduction && !allowedOrigins.length) return callback(null, true);
+        return callback(Object.assign(new Error("Origin is not allowed by CORS."), {
+            statusCode: 403
+        }));
+    },
     credentials: true
 }));
 
-app.use(express.json({ limit: "1mb" }));
+app.disable("x-powered-by");
+app.use(helmet({
+    // Swagger UI uses inline assets. API responses still receive Helmet's
+    // remaining protections, while CSP can be configured separately for docs.
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+}));
+
+app.use(express.json({
+    limit: "1mb",
+    strict: true,
+    type: "application/json"
+}));
+app.use(rejectUnsafeRequestKeys);
 
 // A simple landing response makes it clear that the backend domain is routed
 // correctly when it is opened directly in a browser.
@@ -124,6 +150,20 @@ app.use("/api/v1", reviewCommentRouter);
 app.use("/api/v1", notificationRouter);
 app.use("/api/v1", authorFollowRouter);
 app.use("/api/v1", blogEngagementRouter);
+
+app.use((error, req, res, next) => {
+    if (res.headersSent) return next(error);
+    const malformedJson = error.type === "entity.parse.failed";
+    const statusCode = error.statusCode || (malformedJson ? 400 : 500);
+    return res.status(statusCode).json({
+        status: "fail",
+        message: malformedJson
+            ? "Request body contains invalid JSON."
+            : error.statusCode
+            ? error.message
+            : "An unexpected server error occurred."
+    });
+});
 
 
 module.exports = app;

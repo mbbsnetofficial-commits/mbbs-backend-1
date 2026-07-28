@@ -24,10 +24,20 @@ exports.protect = async (req, res, next) => {
         }
 
         // Verify Token
-        const decoded = jwt.verify(
-            token,
-            process.env.SECRET_KEY
-        );
+        const decoded = jwt.verify(token, process.env.SECRET_KEY, {
+            algorithms: ["HS256"]
+        });
+        if (
+            decoded.token_type !== "access" ||
+            !decoded.id ||
+            !decoded.session_id ||
+            !decoded.jti
+        ) {
+            return res.status(401).json({
+                status: "fail",
+                message: "Invalid access token."
+            });
+        }
 
         const user = await Auth.findById(decoded.id)
             .select("student_id token_version is_active")
@@ -80,7 +90,17 @@ exports.optionalProtect = async (req, res, next) => {
         const authorization = req.headers.authorization;
         if (!authorization?.startsWith("Bearer ")) return next();
         const token = authorization.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.SECRET_KEY);
+        const decoded = jwt.verify(token, process.env.SECRET_KEY, {
+            algorithms: ["HS256"]
+        });
+        if (
+            decoded.token_type !== "access" ||
+            !decoded.id ||
+            !decoded.session_id ||
+            !decoded.jti
+        ) {
+            return next();
+        }
         const user = await Auth.findById(decoded.id)
             .select("student_id token_version is_active")
             .lean();
