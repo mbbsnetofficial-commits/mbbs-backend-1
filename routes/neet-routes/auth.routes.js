@@ -2,12 +2,14 @@ const express = require('express');
 const authRouter = express.Router();
 const authController = require('../../controllers/neet-controller/auth.contorllers');
 const passwordResetController = require('../../controllers/neet-controller/passwordReset.controller');
-const passwordSetupController = require('../../controllers/neet-controller/passwordSetup.controller');
+// Google authentication is temporarily disabled. Keep this import commented so
+// the password-setup implementation can be restored with the routes below.
+// const passwordSetupController = require('../../controllers/neet-controller/passwordSetup.controller');
 const { protect } = require('../../utilities/auth');
 const signupController = require('../../controllers/neet-controller/signup.controller');
 const {
     loginLimiter,
-    googleLoginLimiter,
+    // googleLoginLimiter,
     signupLimiter,
     otpLimiter,
     otpVerificationLimiter,
@@ -24,18 +26,21 @@ authRouter.post('/sign-up/verify-otp', otpVerificationLimiter, signupController.
 authRouter.route('/login')
     .post(loginLimiter, authController.login)
 
-authRouter.post('/google', googleLoginLimiter, authController.googleLogin);
-authRouter.post(
-    '/google/password/setup-link',
-    protect,
-    otpLimiter,
-    passwordSetupController.requestSetupEmail
-);
-authRouter.post(
-    '/google/password',
-    otpVerificationLimiter,
-    passwordSetupController.setPassword
-);
+// Google login and its password-setup routes are temporarily disabled.
+// The controller/service code and existing database fields are intentionally
+// preserved so the feature can be restored without a data migration.
+// authRouter.post('/google', googleLoginLimiter, authController.googleLogin);
+// authRouter.post(
+//     '/google/password/setup-link',
+//     protect,
+//     otpLimiter,
+//     passwordSetupController.requestSetupEmail
+// );
+// authRouter.post(
+//     '/google/password',
+//     otpVerificationLimiter,
+//     passwordSetupController.setPassword
+// );
 
 authRouter.post('/refresh-token', tokenLimiter, authController.refreshToken);
 authRouter.post('/logout', protect, authController.logout);

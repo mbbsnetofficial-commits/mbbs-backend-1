@@ -1788,30 +1788,27 @@ const swaggerOptions = {
                     }
                 }
             },
-            '/api/v1/auth/google': {
-                post: {
-                    tags: ['Authentication'],
-                    summary: 'Create or log in a student with Google',
-                    description: 'User-frontend endpoint only. Verifies a Google Firebase ID token, creates or links the student by verified email, and returns the normal backend access and refresh tokens. It does not authenticate platform admins.',
-                    requestBody: {
-                        required: true,
-                        content: {
-                            'application/json': {
-                                schema: { $ref: '#/components/schemas/GoogleLoginRequest' }
-                            }
-                        }
-                    },
-                    responses: {
-                        200: { description: 'Existing student logged in successfully.' },
-                        201: { description: 'New student created and logged in successfully.' },
-                        400: { description: 'idToken is missing.' },
-                        401: { description: 'Token is invalid, expired, revoked, not from Google, or lacks a verified email.' },
-                        403: { description: 'Student account is deactivated.' },
-                        409: { description: 'Google identity conflicts with an existing linked account.' },
-                        500: { description: 'Firebase Admin configuration or server error.' }
-                    }
-                }
-            },
+            // Google authentication is temporarily disabled in auth.routes.js.
+            // Keep its Swagger definition commented for straightforward restore.
+            // '/api/v1/auth/google': {
+            //     post: {
+            //         tags: ['Authentication'],
+            //         summary: 'Create or log in a student with Google',
+            //         description: 'Verifies a Google Firebase ID token and returns backend tokens.',
+            //         requestBody: {
+            //             required: true,
+            //             content: {
+            //                 'application/json': {
+            //                     schema: { $ref: '#/components/schemas/GoogleLoginRequest' }
+            //                 }
+            //             }
+            //         },
+            //         responses: {
+            //             200: { description: 'Existing student logged in successfully.' },
+            //             201: { description: 'New student created and logged in successfully.' }
+            //         }
+            //     }
+            // },
             '/api/v1/auth/refresh-token': {
                 post: {
                     tags: ['Authentication'],
