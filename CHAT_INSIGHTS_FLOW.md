@@ -31,6 +31,11 @@ revision checkpoints, and the motivational phrase. Scores, counts, accuracy,
 and time totals are calculated by the backend from test data rather than
 trusted to the model.
 
+For the insights endpoint, the Gemini request explicitly uses
+`responseMimeType: application/json` and a JSON schema for `focus_zone`,
+`repeated_mistake`, `checkpoints`, and `g_phrase`. The backend also safely
+extracts JSON from legacy fenced or text-wrapped responses before validation.
+
 ## Model configuration
 
 The chat service uses the shared Gemini configuration:

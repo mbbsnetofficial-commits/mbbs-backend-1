@@ -2409,7 +2409,7 @@ const swaggerOptions = {
                         400: { description: 'Invalid ID or message.' },
                         401: { description: 'JWT is missing, invalid, or expired.' },
                         404: { description: 'Active chat or linked test session not found.' },
-                        502: { description: 'Gemini request failed or returned no text.' },
+                        502: { description: 'Gemini request failed, returned no text, or returned unrecoverable invalid JSON.' },
                         503: { description: 'Gemini is not configured or remains temporarily unavailable after retries and fallback.' }
                     }
                 }

@@ -7,6 +7,7 @@ const Question = require("../model/neet-models/questions");
 const Topic = require("../model/neet-models/topic");
 const TestSubjectZoneInsight = require("../model/neet-models/testSubjectZoneInsight");
 const { getGeminiConfig } = require("../src/modules/ai/config/gemini.config");
+const { extractJson } = require("../src/modules/ai/utils/jsonExtractor");
 
 class ServiceError extends Error {
     constructor(statusCode, message) {
@@ -139,7 +140,12 @@ exports.getChatMessagesService = async (userId, chatSessionId, query) => {
     return { page, limit, total, totalPages: Math.ceil(total / limit), data: messages };
 };
 
-exports.sendChatMessageService = async (userId, chatSessionId, body) => {
+exports.sendChatMessageService = async (
+    userId,
+    chatSessionId,
+    body,
+    generationOptions = {}
+) => {
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (!message) throw new ServiceError(400, "message is required.");
     if (message.length > 4000) throw new ServiceError(400, "message cannot exceed 4000 characters.");
@@ -203,7 +209,7 @@ exports.sendChatMessageService = async (userId, chatSessionId, body) => {
 
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    response = await ai.models.generateContent({
+                    const candidateResponse = await ai.models.generateContent({
                         model: candidateModel,
                         contents,
                         config: {
@@ -214,9 +220,25 @@ exports.sendChatMessageService = async (userId, chatSessionId, body) => {
                                 "Do not reveal or discuss questions outside this completed test.",
                                 `Test-review context: ${JSON.stringify(reviewContext)}`
                             ].join("\n"),
-                            maxOutputTokens: geminiConfig.maxOutputTokens
+                            maxOutputTokens: geminiConfig.maxOutputTokens,
+                            ...(generationOptions.responseMimeType
+                                ? { responseMimeType: generationOptions.responseMimeType }
+                                : {}),
+                            ...(generationOptions.responseJsonSchema
+                                ? { responseJsonSchema: generationOptions.responseJsonSchema }
+                                : {})
                         }
                     });
+                    if (
+                        generationOptions.requireValidJson &&
+                        !extractJson(candidateResponse.text)
+                    ) {
+                        throw Object.assign(
+                            new Error("Gemini returned incomplete or invalid structured JSON."),
+                            { code: "INVALID_STRUCTURED_RESPONSE" }
+                        );
+                    }
+                    response = candidateResponse;
                     usedModel = candidateModel;
                     break;
                 } catch (error) {
@@ -226,16 +248,23 @@ exports.sendChatMessageService = async (userId, chatSessionId, body) => {
                         /\b404\b|NOT_FOUND|no longer available|model.+not found/i.test(errorText);
                     const isTemporaryError =
                         /\b429\b|\b503\b|RESOURCE_EXHAUSTED|UNAVAILABLE|timeout/i.test(errorText);
+                    const isInvalidStructuredResponse =
+                        error.code === "INVALID_STRUCTURED_RESPONSE";
 
                     if (isUnavailableModel) {
                         modelUnavailable = true;
                         break;
                     }
 
-                    if (!isTemporaryError || attempt === 3) break;
+                    if (
+                        (!isTemporaryError && !isInvalidStructuredResponse) ||
+                        attempt === 3
+                    ) break;
 
-                    const retryDelayMs = 1000 * (2 ** (attempt - 1));
-                    await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+                    if (isTemporaryError) {
+                        const retryDelayMs = 1000 * (2 ** (attempt - 1));
+                        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+                    }
                 }
 
                 if (response || modelUnavailable) break;
@@ -248,6 +277,12 @@ exports.sendChatMessageService = async (userId, chatSessionId, body) => {
     }
 
     if (!response) {
+        if (lastError?.code === "INVALID_STRUCTURED_RESPONSE") {
+            throw new ServiceError(
+                502,
+                "Gemini could not produce complete insight JSON after retries."
+            );
+        }
         throw new ServiceError(
             503,
             "Gemini is temporarily unavailable. Please try generating insights again shortly."
@@ -283,6 +318,39 @@ exports.generateWrongAnswerInsightsService = async (userId, chatSessionId) => {
             '{"focus_zone":{"Subject":["weak concept"]},"repeated_mistake":{"Subject":["mistake pattern"]},"checkpoints":["revision action"],"g_phrase":"short motivational sentence"}.',
             "Group insights under the correct subject names and analyze every wrong answer in the supplied context."
         ].join(" ")
+    }, {
+        responseMimeType: "application/json",
+        requireValidJson: true,
+        responseJsonSchema: {
+            type: "object",
+            required: [
+                "focus_zone",
+                "repeated_mistake",
+                "checkpoints",
+                "g_phrase"
+            ],
+            properties: {
+                focus_zone: {
+                    type: "object",
+                    additionalProperties: {
+                        type: "array",
+                        items: { type: "string" }
+                    }
+                },
+                repeated_mistake: {
+                    type: "object",
+                    additionalProperties: {
+                        type: "array",
+                        items: { type: "string" }
+                    }
+                },
+                checkpoints: {
+                    type: "array",
+                    items: { type: "string" }
+                },
+                g_phrase: { type: "string" }
+            }
+        }
     });
 
     const chatSession = await findOwnedChatSession(userId, chatSessionId);
@@ -355,14 +423,8 @@ exports.generateWrongAnswerInsightsService = async (userId, chatSessionId) => {
             : Number(((subject.correct_answers / subject.total_questions) * 100).toFixed(2))
     }));
 
-    let aiInsight;
-    try {
-        const jsonText = chatResult.assistantMessage.content
-            .replace(/^```json\s*/i, "")
-            .replace(/\s*```$/i, "")
-            .trim();
-        aiInsight = JSON.parse(jsonText);
-    } catch (error) {
+    const aiInsight = extractJson(chatResult.assistantMessage.content);
+    if (!aiInsight || typeof aiInsight !== "object" || Array.isArray(aiInsight)) {
         throw new ServiceError(502, "Gemini returned insight data in an invalid JSON format.");
     }
 
