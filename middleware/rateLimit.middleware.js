@@ -41,6 +41,16 @@ const loginLimiter = buildLimiter({
     message: "Too many failed login attempts. Please try again after 15 minutes."
 });
 
+// Google already rate-limits its OAuth flow and Firebase verifies every ID
+// token. Keep a separate, less aggressive backend allowance so popup retries
+// and shared networks do not exhaust the password-login limit.
+const googleLoginLimiter = buildLimiter({
+    windowMs: numberFromEnv("RATE_LIMIT_GOOGLE_LOGIN_WINDOW_MS", 15 * 60 * 1000),
+    limit: numberFromEnv("RATE_LIMIT_GOOGLE_LOGIN_MAX", 30),
+    skipSuccessfulRequests: true,
+    message: "Too many failed Google sign-in attempts. Please try again later."
+});
+
 const signupLimiter = buildLimiter({
     windowMs: numberFromEnv("RATE_LIMIT_SIGNUP_WINDOW_MS", 60 * 60 * 1000),
     limit: numberFromEnv("RATE_LIMIT_SIGNUP_MAX", 5),
@@ -92,6 +102,7 @@ const adminLimiter = buildLimiter({
 module.exports = {
     apiLimiter,
     loginLimiter,
+    googleLoginLimiter,
     signupLimiter,
     otpLimiter,
     otpVerificationLimiter,

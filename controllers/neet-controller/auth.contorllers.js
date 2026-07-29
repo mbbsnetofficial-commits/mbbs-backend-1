@@ -113,6 +113,12 @@ const safeName = (value, fallback) => {
     return lettersOnly || fallback;
 };
 
+const firebaseConfigurationErrors = new Set([
+    "app/invalid-credential",
+    "app/invalid-options",
+    "auth/invalid-credential"
+]);
+
 exports.googleLogin = async (req, res) => {
     try {
         const idToken = typeof req.body.idToken === "string" ? req.body.idToken.trim() : "";
@@ -186,9 +192,17 @@ exports.googleLogin = async (req, res) => {
         if (error.code === 11000) {
             return res.status(409).json({ status: "fail", message: "This Google account or email is already registered." });
         }
+        if (firebaseConfigurationErrors.has(error.code)) {
+            console.error("Firebase Admin configuration error:", error.message);
+            return res.status(503).json({
+                status: "fail",
+                message: "Google sign-in is temporarily unavailable because the server Firebase configuration is invalid."
+            });
+        }
         if (String(error.code || "").startsWith("auth/")) {
             return res.status(401).json({ status: "fail", message: "Invalid or expired Google sign-in token." });
         }
+        console.error("Google sign-in failed:", error);
         return res.status(500).json({ status: "fail", message: error.message });
     }
 };

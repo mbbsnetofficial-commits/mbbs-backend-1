@@ -6,6 +6,7 @@ const { protect } = require('../../utilities/auth');
 const signupController = require('../../controllers/neet-controller/signup.controller');
 const {
     loginLimiter,
+    googleLoginLimiter,
     signupLimiter,
     otpLimiter,
     otpVerificationLimiter,
@@ -22,7 +23,7 @@ authRouter.post('/sign-up/verify-otp', otpVerificationLimiter, signupController.
 authRouter.route('/login')
     .post(loginLimiter, authController.login)
 
-authRouter.post('/google', loginLimiter, authController.googleLogin);
+authRouter.post('/google', googleLoginLimiter, authController.googleLogin);
 
 authRouter.post('/refresh-token', tokenLimiter, authController.refreshToken);
 authRouter.post('/logout', protect, authController.logout);
