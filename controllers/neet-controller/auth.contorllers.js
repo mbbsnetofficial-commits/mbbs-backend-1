@@ -6,6 +6,9 @@ const {
     revokeSession,
     revokeAllSessions
 } = require('../../services/authToken.service');
+const {
+    recordSuccessfulLogin
+} = require("../../services/userLoginActivity.service");
 
 exports.register = async (req, res) => {
     try {
@@ -95,7 +98,18 @@ exports.login = async (req, res) => {
             })
         }
 
-        const { accessToken, refreshToken } = await createAuthSession(user, req);
+        const {
+            accessToken,
+            refreshToken,
+            sessionId
+        } = await createAuthSession(user, req);
+        try {
+            await recordSuccessfulLogin({ user, sessionId, req });
+        } catch (activityError) {
+            // Audit storage should not invalidate an already-created login
+            // session. Log server-side without exposing database details.
+            console.error("Unable to store user login activity:", activityError.message);
+        }
         res.status(200).json({
             status: 'success',
             data: {

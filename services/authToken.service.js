@@ -43,7 +43,7 @@ exports.createAuthSession = async (user, req) => {
         ip_address: clientIp(req),
         expires_at: new Date(decodedRefresh.exp * 1000)
     });
-    return tokens;
+    return { ...tokens, sessionId };
 };
 
 exports.rotateAuthSession = async (refreshToken, req) => {

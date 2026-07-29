@@ -1,6 +1,9 @@
 const express = require("express");
 const platformAdminController = require("../../controllers/neet-controller/platformAdmin.controller");
 const adminControlController = require("../../controllers/neet-controller/adminControl.controller");
+const adminUserLoginActivityController = require(
+    "../../controllers/neet-controller/adminUserLoginActivity.controller"
+);
 const { protectAdmin } = require("../../utilities/adminAuth");
 const { loginLimiter } = require("../../middleware/rateLimit.middleware");
 
@@ -12,6 +15,10 @@ platformAdminRouter.use(protectAdmin);
 
 platformAdminRouter.get("/dashboard", adminControlController.getDashboard);
 platformAdminRouter.get("/students", adminControlController.listStudents);
+platformAdminRouter.get(
+    "/user-login-activity",
+    adminUserLoginActivityController.listUserLoginActivity
+);
 platformAdminRouter.patch("/students/:studentId", adminControlController.updateStudent);
 
 platformAdminRouter.route("/questions")

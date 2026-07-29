@@ -1014,6 +1014,24 @@ const swaggerOptions = {
                         user_agent: { type: 'string', example: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
                     }
                 },
+                UserLoginActivity: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string', example: '6a6a28502a1e32be268ed1a0' },
+                        user_id: { type: 'string', example: '6a69cae58d322957929252f1' },
+                        student_id: { type: 'string', example: 'STU1750000000000ABC123' },
+                        email: { type: 'string', format: 'email', example: 'student@example.com' },
+                        first_name: { type: 'string', example: 'student' },
+                        last_name: { type: 'string', example: 'user' },
+                        event_type: { type: 'string', enum: ['login'], example: 'login' },
+                        auth_method: { type: 'string', enum: ['password'], example: 'password' },
+                        login_at: { type: 'string', format: 'date-time' },
+                        session_id: { type: 'string' },
+                        ip_address: { type: 'string', example: '203.0.113.10' },
+                        user_agent: { type: 'string' },
+                        created_at: { type: 'string', format: 'date-time' }
+                    }
+                },
                 StudentProfileRequest: {
                     type: 'object',
                     properties: {
@@ -2726,6 +2744,51 @@ const swaggerOptions = {
                         { name: 'search', in: 'query', schema: { type: 'string' } }
                     ],
                     responses: { 200: { description: 'Students returned without password data.' }, 401: { description: 'Invalid admin token.' } }
+                }
+            },
+            '/api/v1/admin/user-login-activity': {
+                get: {
+                    tags: ['Platform Admin'],
+                    summary: 'List user login activity',
+                    description: 'Returns append-only successful password-login events from neet-app-user-activity. Passwords, password hashes, access tokens, and refresh tokens are never stored or returned.',
+                    security: [{ adminBearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+                        { name: 'search', in: 'query', description: 'Search email, student ID, name, IP address, or user agent.', schema: { type: 'string' } },
+                        { name: 'user_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'student_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'email', in: 'query', schema: { type: 'string', format: 'email' } },
+                        { name: 'ip_address', in: 'query', schema: { type: 'string' } },
+                        { name: 'date_from', in: 'query', schema: { type: 'string', format: 'date-time' } },
+                        { name: 'date_to', in: 'query', schema: { type: 'string', format: 'date-time' } }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Paginated login activity returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            page: { type: 'integer', example: 1 },
+                                            limit: { type: 'integer', example: 20 },
+                                            total: { type: 'integer', example: 42 },
+                                            totalPages: { type: 'integer', example: 3 },
+                                            data: {
+                                                type: 'array',
+                                                items: { $ref: '#/components/schemas/UserLoginActivity' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'A filter or date is invalid.' },
+                        401: { description: 'Admin token is missing, invalid, or expired.' },
+                        503: { description: 'Admin authentication secrets are unavailable.' }
+                    }
                 }
             },
             '/api/v1/admin/students/{studentId}': {
