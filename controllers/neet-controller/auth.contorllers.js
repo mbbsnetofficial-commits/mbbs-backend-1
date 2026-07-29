@@ -44,9 +44,11 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const email = req.body.email;
+        const email = typeof req.body.email === "string"
+            ? req.body.email.trim().toLowerCase()
+            : "";
         const password = req.body.password;
-        if (!email || email === '') {
+        if (!email) {
             return res.status(400).json({
                 status: 'fail',
                 message: "please enter the valid email"
@@ -59,12 +61,14 @@ exports.login = async (req, res) => {
             })
         }
 
-        const user = await Auth.findOne({ email: email }) //checking email present in the database
+        // Authentication eligibility is decided only from the registered
+        // neet-auth account. The frontend never decides whether an email exists.
+        const user = await Auth.findOne({ email });
 
         if (!user) {
-            return res.status(404).json({
+            return res.status(401).json({
                 status: "fail",
-                message: "invalid credentials"
+                message: "Invalid email or password."
             })
         }
         if (user.is_active === false) {
@@ -76,18 +80,18 @@ exports.login = async (req, res) => {
         // compare passsord
 
         if (!user.password) {
-            return res.status(403).json({
+            return res.status(401).json({
                 status: "fail",
-                message: "This account uses Google sign-in."
+                message: "Invalid email or password."
             });
         }
 
         const match = await user.comparePassword(password, user.password);
 
         if (!match) {
-            return res.status(403).json({
-                status: 'Fail',
-                message: 'UserName or passward is incorrect'
+            return res.status(401).json({
+                status: 'fail',
+                message: 'Invalid email or password.'
             })
         }
 
