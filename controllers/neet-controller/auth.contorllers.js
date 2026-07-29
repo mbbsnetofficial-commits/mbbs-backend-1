@@ -151,7 +151,11 @@ const sendGoogleLoginResponse = async ({ user, isNewUser, req, res }) => {
                 email: user.email,
                 phoneNumber: user.phoneNumber || null,
                 profilePicture: user.profile_picture || null,
-                authProviders: user.auth_providers
+                authProviders: user.auth_providers,
+                hasPassword: Boolean(user.password),
+                canSetPassword: Boolean(
+                    !user.password && user.auth_providers?.includes("google")
+                )
             },
             accessToken,
             refreshToken,
