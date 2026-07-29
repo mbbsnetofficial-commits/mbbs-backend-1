@@ -6,6 +6,7 @@ const TestSession = require("../model/neet-models/testSession");
 const Question = require("../model/neet-models/questions");
 const Topic = require("../model/neet-models/topic");
 const TestSubjectZoneInsight = require("../model/neet-models/testSubjectZoneInsight");
+const { getGeminiConfig } = require("../src/modules/ai/config/gemini.config");
 
 class ServiceError extends Error {
     constructor(statusCode, message) {
@@ -142,8 +143,6 @@ exports.sendChatMessageService = async (userId, chatSessionId, body) => {
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (!message) throw new ServiceError(400, "message is required.");
     if (message.length > 4000) throw new ServiceError(400, "message cannot exceed 4000 characters.");
-    if (!process.env.GEMINI_API_KEY) throw new ServiceError(503, "Gemini API is not configured.");
-
     const chatSession = await findOwnedChatSession(userId, chatSessionId, true);
     const testSession = await TestSession.findById(chatSession.test_session_id).lean();
     if (!testSession) throw new ServiceError(404, "Linked test session not found.");
@@ -183,54 +182,66 @@ exports.sendChatMessageService = async (userId, chatSessionId, body) => {
     }));
     contents.push({ role: "user", parts: [{ text: message }] });
 
-    const configuredModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
-    const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
-    const models = [...new Set([configuredModel, fallbackModel])];
-    const ai = new GoogleGenAI({
-        apiKey: process.env.GEMINI_API_KEY,
-        httpOptions: { timeout: Number(process.env.GEMINI_TIMEOUT_MS) || 60000 }
-    });
+    const geminiConfig = getGeminiConfig();
+    const models = [...new Set([
+        geminiConfig.model,
+        geminiConfig.fallbackModel
+    ])];
 
     let response;
     let usedModel;
     let lastError;
 
     for (const candidateModel of models) {
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-                response = await ai.models.generateContent({
-                    model: candidateModel,
-                    contents,
-                    config: {
-                        systemInstruction: [
-                            "You are an NEET exam tutor reviewing a student's wrong answers.",
-                            "Use only the supplied test-review context for question-specific claims.",
-                            "Explain why the student's choice is wrong, why the correct choice is right, and give a concise memory aid.",
-                            "Do not reveal or discuss questions outside this completed test.",
-                            `Test-review context: ${JSON.stringify(reviewContext)}`
-                        ].join("\n"),
-                        temperature: Number(process.env.GEMINI_TEMPERATURE) || 0.3,
-                        maxOutputTokens: Number(process.env.GEMINI_MAX_OUTPUT_TOKENS) || 4096
+        let modelUnavailable = false;
+
+        for (const apiKey of geminiConfig.apiKeys) {
+            const ai = new GoogleGenAI({
+                apiKey,
+                httpOptions: { timeout: geminiConfig.timeoutMs }
+            });
+
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    response = await ai.models.generateContent({
+                        model: candidateModel,
+                        contents,
+                        config: {
+                            systemInstruction: [
+                                "You are an NEET exam tutor reviewing a student's wrong answers.",
+                                "Use only the supplied test-review context for question-specific claims.",
+                                "Explain why the student's choice is wrong, why the correct choice is right, and give a concise memory aid.",
+                                "Do not reveal or discuss questions outside this completed test.",
+                                `Test-review context: ${JSON.stringify(reviewContext)}`
+                            ].join("\n"),
+                            maxOutputTokens: geminiConfig.maxOutputTokens
+                        }
+                    });
+                    usedModel = candidateModel;
+                    break;
+                } catch (error) {
+                    lastError = error;
+                    const errorText = `${error.status || ""} ${error.message || ""}`;
+                    const isUnavailableModel =
+                        /\b404\b|NOT_FOUND|no longer available|model.+not found/i.test(errorText);
+                    const isTemporaryError =
+                        /\b429\b|\b503\b|RESOURCE_EXHAUSTED|UNAVAILABLE|timeout/i.test(errorText);
+
+                    if (isUnavailableModel) {
+                        modelUnavailable = true;
+                        break;
                     }
-                });
-                usedModel = candidateModel;
-                break;
-            } catch (error) {
-                lastError = error;
-                const errorText = `${error.status || ""} ${error.message || ""}`;
-                const isTemporaryError = /\b429\b|\b503\b|RESOURCE_EXHAUSTED|UNAVAILABLE/i.test(errorText);
 
-                if (!isTemporaryError) {
-                    throw new ServiceError(502, `Gemini request failed: ${error.message}`);
-                }
+                    if (!isTemporaryError || attempt === 3) break;
 
-                if (attempt < 3) {
                     const retryDelayMs = 1000 * (2 ** (attempt - 1));
                     await new Promise(resolve => setTimeout(resolve, retryDelayMs));
                 }
+
+                if (response || modelUnavailable) break;
             }
 
-            if (response) break;
+            if (response || modelUnavailable) break;
         }
 
         if (response) break;
@@ -239,7 +250,7 @@ exports.sendChatMessageService = async (userId, chatSessionId, body) => {
     if (!response) {
         throw new ServiceError(
             503,
-            `Gemini is temporarily unavailable after retries: ${lastError?.message || "Unknown error"}`
+            "Gemini is temporarily unavailable. Please try generating insights again shortly."
         );
     }
 
