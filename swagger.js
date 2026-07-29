@@ -2705,7 +2705,8 @@ const swaggerOptions = {
                         200: { description: 'Admin login successful and JWT returned.' },
                         400: { description: 'username or password is missing.' },
                         401: { description: 'Credentials are invalid or the admin is inactive.' },
-                        500: { description: 'Server or database error.' }
+                        500: { description: 'Server or database error.' },
+                        503: { description: 'Neither ADMIN_SECRET_KEY nor SECRET_KEY is configured on the backend.' }
                     }
                 }
             },

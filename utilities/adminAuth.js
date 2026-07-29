@@ -1,8 +1,17 @@
 const jwt = require("jsonwebtoken");
 const PlatformAdmin = require("../model/neet-models/platformAdmin");
+const { getAdminSigningKey } = require("../config/adminAuth");
 
 exports.protectAdmin = async (req, res, next) => {
     try {
+        const signingKey = getAdminSigningKey();
+        if (!signingKey) {
+            return res.status(503).json({
+                status: "fail",
+                message: "Admin authentication is unavailable because server authentication secrets are not configured."
+            });
+        }
+
         const authorization = req.headers.authorization || "";
         const token = authorization.startsWith("Bearer ")
             ? authorization.slice(7).trim()
@@ -14,7 +23,7 @@ exports.protectAdmin = async (req, res, next) => {
 
         const decoded = jwt.verify(
             token,
-            process.env.ADMIN_SECRET_KEY,
+            signingKey.key,
             { algorithms: ["HS256"] }
         );
         if (

@@ -1,13 +1,15 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const PlatformAdmin = require("../../model/neet-models/platformAdmin");
+const { getAdminSigningKey } = require("../../config/adminAuth");
 
 exports.loginPlatformAdmin = async (req, res) => {
     try {
-        if (!process.env.ADMIN_SECRET_KEY) {
+        const signingKey = getAdminSigningKey();
+        if (!signingKey) {
             return res.status(503).json({
                 status: "fail",
-                message: "Admin authentication is unavailable."
+                message: "Admin authentication is unavailable because server authentication secrets are not configured."
             });
         }
         const username = typeof req.body.username === "string"
@@ -52,7 +54,7 @@ exports.loginPlatformAdmin = async (req, res) => {
                 jti: crypto.randomUUID(),
                 token_version: admin.token_version || 0
             },
-            process.env.ADMIN_SECRET_KEY,
+            signingKey.key,
             {
                 algorithm: "HS256",
                 expiresIn: process.env.ADMIN_LOGIN_EXPIRES || "8h"
