@@ -13,7 +13,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "repair:auth-phone-index": "node scripts/repairAuthPhoneIndex.js"
   },
   "dependencies": {
     "@google/genai": "^2.12.0",

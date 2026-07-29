@@ -63,8 +63,6 @@ const authSchema = new mongoose.Schema(
             required: function () {
                 return !this.firebase_uid;
             },
-            unique: true,
-            sparse: true,
             validate: {
                 validator: value => /^\+[1-9]\d{7,14}$/.test(value),
                 message: "Phone number must use international format"
@@ -106,6 +104,18 @@ const authSchema = new mongoose.Schema(
     {
         collection: "neet-auth",
         timestamps: true
+    }
+);
+
+// Google accounts do not have to provide a phone number. A normal unique
+// index also indexes a missing value as null, which allows only one phone-less
+// account. Only real string phone numbers should participate in uniqueness.
+authSchema.index(
+    { phoneNumber: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { phoneNumber: { $type: "string" } },
+        name: "phoneNumber_1"
     }
 );
 

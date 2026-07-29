@@ -228,6 +228,16 @@ exports.googleLogin = async (req, res) => {
                 error = recoveryError;
             }
         }
+        const phoneIndexConflict = error.keyPattern?.phoneNumber ||
+            Object.prototype.hasOwnProperty.call(error.keyValue || {}, "phoneNumber") ||
+            String(error.message || "").includes("index: phoneNumber_1");
+        if (error.code === 11000 && phoneIndexConflict) {
+            console.error("Google sign-in blocked by the neet-auth phoneNumber index:", error.message);
+            return res.status(503).json({
+                status: "fail",
+                message: "Google sign-in is temporarily unavailable while the account index is being updated."
+            });
+        }
         if (error.statusCode) {
             return res.status(error.statusCode).json({
                 status: "fail",

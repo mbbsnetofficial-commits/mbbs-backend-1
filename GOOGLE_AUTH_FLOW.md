@@ -27,6 +27,23 @@ Configure `FIREBASE_PROJECT_ID` and either:
 
 Also include every browser origin in the comma-separated `FRONTEND_URL` value.
 
+### One-time phone index repair
+
+Google does not provide a verified phone number, so Google-created users omit
+`phoneNumber`. The `neet-auth.phoneNumber_1` index must be partial so only
+actual string phone numbers are unique.
+
+After deploying the index definition, run once against the production NEET
+database:
+
+```bash
+npm run repair:auth-phone-index
+```
+
+The command is idempotent. It replaces an older normal/sparse unique
+`phoneNumber_1` index with a partial unique index and does not modify user
+documents.
+
 ## Frontend request
 
 After Firebase completes Google sign-in, get a fresh Firebase ID token and send
@@ -93,3 +110,5 @@ Authorization: Bearer ACCESS_TOKEN
   `retryAfterSeconds`.
 - `503 Firebase configuration is invalid`: correct the backend Firebase Admin
   environment variables.
+- `503 account index is being updated`: run
+  `npm run repair:auth-phone-index` against the production NEET database.
