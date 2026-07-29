@@ -66,6 +66,9 @@ The backend then searches the `neet-auth` collection by Firebase UID or email.
 - Existing user: link/update the Google identity and create a login session.
 - New user: create a `neet-auth` document, generate `student_id`, and create a
   login session immediately.
+- Concurrent/duplicate first login: re-read the matching verified email or
+  Firebase UID, link it, and continue login instead of showing "already
+  registered."
 - Deactivated user: return `403` without logging in.
 
 Both new and existing users receive `data.accessToken`,

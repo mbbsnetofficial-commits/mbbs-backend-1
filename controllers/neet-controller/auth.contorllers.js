@@ -119,14 +119,58 @@ const firebaseConfigurationErrors = new Set([
     "auth/invalid-credential"
 ]);
 
+const linkGoogleIdentity = async (user, decoded) => {
+    if (user.firebase_uid && user.firebase_uid !== decoded.uid) {
+        throw Object.assign(
+            new Error("This email is already linked to another Google account."),
+            { statusCode: 409 }
+        );
+    }
+
+    user.firebase_uid = decoded.uid;
+    user.auth_providers = [...new Set([
+        ...(user.auth_providers || (user.password ? ["password"] : [])),
+        "google"
+    ])];
+    if (decoded.picture) user.profile_picture = decoded.picture;
+    await user.save();
+    return user;
+};
+
+const sendGoogleLoginResponse = async ({ user, isNewUser, req, res }) => {
+    const { accessToken, refreshToken } = await createAuthSession(user, req);
+    return res.status(isNewUser ? 201 : 200).json({
+        status: "success",
+        message: isNewUser ? "Google account created and logged in." : "Google login successful.",
+        data: {
+            user: {
+                id: user._id,
+                student_id: user.student_id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phoneNumber: user.phoneNumber || null,
+                profilePicture: user.profile_picture || null,
+                authProviders: user.auth_providers
+            },
+            accessToken,
+            refreshToken,
+            isNewUser
+        }
+    });
+};
+
 exports.googleLogin = async (req, res) => {
+    let decoded;
+    let email;
+
     try {
         const idToken = typeof req.body.idToken === "string" ? req.body.idToken.trim() : "";
         if (!idToken) {
             return res.status(400).json({ status: "fail", message: "idToken is required." });
         }
 
-        const decoded = await getFirebaseAuth().verifyIdToken(idToken, true);
+        decoded = await getFirebaseAuth().verifyIdToken(idToken, true);
         if (decoded.firebase?.sign_in_provider !== "google.com") {
             return res.status(401).json({ status: "fail", message: "This endpoint accepts Google sign-in tokens only." });
         }
@@ -134,7 +178,7 @@ exports.googleLogin = async (req, res) => {
             return res.status(401).json({ status: "fail", message: "Google must provide a verified email address." });
         }
 
-        const email = decoded.email.trim().toLowerCase();
+        email = decoded.email.trim().toLowerCase();
         let user = await Auth.findOne({
             $or: [{ firebase_uid: decoded.uid }, { email }]
         });
@@ -159,38 +203,36 @@ exports.googleLogin = async (req, res) => {
             });
             isNewUser = true;
         } else {
-            if (user.firebase_uid && user.firebase_uid !== decoded.uid) {
-                return res.status(409).json({ status: "fail", message: "This email is already linked to another Google account." });
-            }
-            user.firebase_uid = decoded.uid;
-            user.auth_providers = [...new Set([...(user.auth_providers || ["password"]), "google"])];
-            if (decoded.picture) user.profile_picture = decoded.picture;
-            await user.save();
+            await linkGoogleIdentity(user, decoded);
         }
 
-        const { accessToken, refreshToken } = await createAuthSession(user, req);
-        return res.status(isNewUser ? 201 : 200).json({
-            status: "success",
-            message: isNewUser ? "Google account created and logged in." : "Google login successful.",
-            data: {
-                user: {
-                    id: user._id,
-                    student_id: user.student_id,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    email: user.email,
-                    phoneNumber: user.phoneNumber || null,
-                    profilePicture: user.profile_picture || null,
-                    authProviders: user.auth_providers
-                },
-                accessToken,
-                refreshToken,
-                isNewUser
-            }
-        });
+        return sendGoogleLoginResponse({ user, isNewUser, req, res });
     } catch (error) {
-        if (error.code === 11000) {
-            return res.status(409).json({ status: "fail", message: "This Google account or email is already registered." });
+        if (error.code === 11000 && decoded?.uid && email) {
+            try {
+                const existingUser = await Auth.findOne({
+                    $or: [{ firebase_uid: decoded.uid }, { email }]
+                });
+                if (!existingUser) throw error;
+                if (existingUser.is_active === false) {
+                    return res.status(403).json({ status: "fail", message: "This account has been deactivated." });
+                }
+                await linkGoogleIdentity(existingUser, decoded);
+                return sendGoogleLoginResponse({
+                    user: existingUser,
+                    isNewUser: false,
+                    req,
+                    res
+                });
+            } catch (recoveryError) {
+                error = recoveryError;
+            }
+        }
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({
+                status: "fail",
+                message: error.message
+            });
         }
         if (firebaseConfigurationErrors.has(error.code)) {
             console.error("Firebase Admin configuration error:", error.message);
