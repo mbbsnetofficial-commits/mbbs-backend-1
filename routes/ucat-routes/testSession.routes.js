@@ -3,6 +3,10 @@
 const express = require("express");
 const router = express.Router();
 const testSessionController = require("../../controllers/ucat-controller/testSession.controller");
+const { protect } = require("../../utilities/auth");
+
+// All test session routes require a valid student JWT
+router.use(protect);
 
 // GET /api/v1/ucat/test/options - Enum options for test timing, question count, test types, and sections
 router.get("/options", testSessionController.getTestOptions);

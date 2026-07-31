@@ -3,6 +3,10 @@
 const express = require("express");
 const router = express.Router();
 const zoneInsightController = require("../../controllers/ucat-controller/zoneInsight.controller");
+const { protect } = require("../../utilities/auth");
+
+// All zone insight routes require a valid student JWT
+router.use(protect);
 
 // POST /api/v1/ucat/insights/generate - Generate zone insight for a test session
 router.post("/generate", zoneInsightController.generateZoneInsight);

@@ -3,6 +3,11 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../../controllers/ucat-controller/admin.controller");
+const { protectAdmin } = require("../../utilities/adminAuth");
+
+// ALL admin routes require a valid platform admin JWT (role: platform_admin)
+// Mounted with adminLimiter in app.js
+router.use(protectAdmin);
 
 // Dashboard Analytics
 router.get("/dashboard", adminController.getDashboard);

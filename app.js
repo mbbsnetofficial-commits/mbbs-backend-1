@@ -145,7 +145,7 @@ app.use("/api/v1/ucat/previous-year-tests", ucatPreviousYearRouter);
 app.use("/api/v1/ucat/streaks", ucatStreakRouter);
 app.use("/api/v1/ucat/chat", ucatChatRouter);
 app.use("/api/v1/ucat/insights", ucatZoneInsightRouter);
-app.use("/api/v1/ucat/admin", ucatAdminRouter);
+app.use("/api/v1/ucat/admin", adminLimiter, ucatAdminRouter);
 
 // Do not allow an unmatched admin URL to fall through into student routers.
 // This keeps authentication errors accurate when the method or path is wrong.
