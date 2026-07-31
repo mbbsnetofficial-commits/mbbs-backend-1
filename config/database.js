@@ -1,46 +1,76 @@
+"use strict";
+
 const mongoose = require("mongoose");
 
-// The default Mongoose connection is reserved for the existing NEET database.
-// Blog models are registered on this separate connection instance.
+// Blog database connection
 const blogConnection = mongoose.createConnection();
 
-const connectDatabases = async () => {
-    const mainConnectionString = process.env.CONNECTION_STRING;
-    const blogConnectionString = process.env.BLOG_CONNECTION_STRING || mainConnectionString;
-    const blogDatabaseName = process.env.BLOG_DATABASE_NAME || "blog";
+// UCAT database connection
+const ucatConnection = mongoose.createConnection();
 
-    if (!mainConnectionString) {
+const connectDatabases = async () => {
+    const connectionString = process.env.CONNECTION_STRING;
+
+    if (!connectionString) {
         throw new Error("CONNECTION_STRING is not configured.");
     }
 
-    await mongoose.connect(mainConnectionString);
-
     try {
-        await blogConnection.openUri(blogConnectionString, {
-            dbName: blogDatabaseName
+        await mongoose.connect(connectionString, {
+            dbName: "mbbs-neet"
         });
+
+        await blogConnection.openUri(connectionString, {
+            dbName: "blog"
+        });
+
+        await ucatConnection.openUri(connectionString, {
+            dbName: "mbbs-UCAT"
+        });
+
+        return {
+            neetDatabase: mongoose.connection.name,
+            blogDatabase: blogConnection.name,
+            ucatDatabase: ucatConnection.name
+        };
     } catch (error) {
-        await mongoose.disconnect();
+        await Promise.allSettled([
+            mongoose.connection.readyState !== 0
+                ? mongoose.disconnect()
+                : Promise.resolve(),
+
+            blogConnection.readyState !== 0
+                ? blogConnection.close()
+                : Promise.resolve(),
+
+            ucatConnection.readyState !== 0
+                ? ucatConnection.close()
+                : Promise.resolve()
+        ]);
+
         throw error;
     }
-
-    return {
-        neetDatabase: mongoose.connection.name,
-        blogDatabase: blogConnection.name
-    };
 };
 
 const disconnectDatabases = async () => {
-    await Promise.all([
-        mongoose.disconnect(),
-        blogConnection.readyState === 0
-            ? Promise.resolve()
-            : blogConnection.close()
+    await Promise.allSettled([
+        mongoose.connection.readyState !== 0
+            ? mongoose.disconnect()
+            : Promise.resolve(),
+
+        blogConnection.readyState !== 0
+            ? blogConnection.close()
+            : Promise.resolve(),
+
+        ucatConnection.readyState !== 0
+            ? ucatConnection.close()
+            : Promise.resolve()
     ]);
 };
 
 module.exports = {
     blogConnection,
+    ucatConnection,
     connectDatabases,
     disconnectDatabases
 };

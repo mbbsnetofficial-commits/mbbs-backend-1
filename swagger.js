@@ -118,6 +118,10 @@ const swaggerOptions = {
             {
                 name: 'Blog Pages',
                 description: 'Public page-composition APIs for rendering the blog website'
+            },
+            {
+                name: 'UCAT Questions',
+                description: 'Public APIs for fetching UCAT examination practice questions, section filtering, topics, and filters metadata'
             }
         ],
         components: {
@@ -136,6 +140,84 @@ const swaggerOptions = {
                 }
             },
             schemas: {
+                UcatOption: {
+                    type: 'object',
+                    properties: {
+                        key: { type: 'string', example: 'A' },
+                        text: { type: 'string', example: 'Conclusion follows logically' }
+                    }
+                },
+                UcatQuestion: {
+                    type: 'object',
+                    properties: {
+                        questionId: { type: 'number', example: 101 },
+                        section: {
+                            type: 'string',
+                            enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT'],
+                            example: 'VERBAL_REASONING'
+                        },
+                        topic: { type: 'string', example: 'Inference' },
+                        subtopic: { type: 'string', example: 'True/False/Cannot Tell' },
+                        difficulty: { type: 'string', enum: ['EASY', 'MEDIUM', 'HARD'], example: 'MEDIUM' },
+                        questionType: { type: 'string', example: 'MULTIPLE_CHOICE' },
+                        passageText: { type: 'string', example: 'Clinical trials demonstrate that treatment A is effective...' },
+                        prompt: { type: 'string', example: 'Based on the passage, is the statement true?' },
+                        options: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/UcatOption' }
+                        },
+                        correctAnswer: { type: 'string', example: 'A' },
+                        explanation: { type: 'string', example: 'The passage explicitly states...' },
+                        status: { type: 'string', example: 'ACTIVE' }
+                    }
+                },
+                UcatQuestionListResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        message: { type: 'string', example: 'UCAT questions fetched successfully.' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                questions: {
+                                    type: 'array',
+                                    items: { $ref: '#/components/schemas/UcatQuestion' }
+                                },
+                                total: { type: 'number', example: 50 },
+                                page: { type: 'number', example: 1 },
+                                limit: { type: 'number', example: 20 },
+                                totalPages: { type: 'number', example: 3 }
+                            }
+                        }
+                    }
+                },
+                UcatFiltersResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        message: { type: 'string', example: 'UCAT question filters fetched successfully.' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                sections: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    example: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT']
+                                },
+                                topics: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    example: ['Inference', 'Syllogisms', 'Venn Diagrams']
+                                },
+                                difficulties: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    example: ['EASY', 'MEDIUM', 'HARD']
+                                }
+                            }
+                        }
+                    }
+                },
                 SignupRequest: {
                     type: 'object',
                     required: ['firstName', 'lastName', 'email', 'password', 'confirmPassword'],
@@ -4253,6 +4335,209 @@ const swaggerOptions = {
                         },
                         400: { description: 'month is not in YYYY-MM format.' },
                         401: { description: 'Student token is missing, invalid, expired, or revoked.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/questions': {
+                get: {
+                    tags: ['UCAT Questions'],
+                    summary: 'List UCAT questions with pagination and filters',
+                    description: 'Retrieve active UCAT questions filtered by section, topic, difficulty, or questionType.',
+                    parameters: [
+                        {
+                            name: 'section',
+                            in: 'query',
+                            required: false,
+                            schema: {
+                                type: 'string',
+                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT']
+                            },
+                            description: 'UCAT exam section'
+                        },
+                        {
+                            name: 'topic',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'string' },
+                            description: 'Topic name filter'
+                        },
+                        {
+                            name: 'difficulty',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'string', enum: ['EASY', 'MEDIUM', 'HARD'] },
+                            description: 'Difficulty level'
+                        },
+                        {
+                            name: 'questionType',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'string' },
+                            description: 'Question type classification'
+                        },
+                        {
+                            name: 'page',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'integer', default: 1 },
+                            description: 'Page number'
+                        },
+                        {
+                            name: 'limit',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'integer', default: 20, maximum: 100 },
+                            description: 'Items per page'
+                        }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'UCAT questions fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatQuestionListResponse' }
+                                }
+                            }
+                        },
+                        400: { description: 'Invalid section or filter parameter.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/questions/filters': {
+                get: {
+                    tags: ['UCAT Questions'],
+                    summary: 'Get available UCAT filter options',
+                    description: 'Returns distinct sections, topics, and difficulties from active UCAT questions.',
+                    responses: {
+                        200: {
+                            description: 'UCAT filter metadata returned.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatFiltersResponse' }
+                                }
+                            }
+                        },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/questions/section/{section}': {
+                get: {
+                    tags: ['UCAT Questions'],
+                    summary: 'Get UCAT questions by section',
+                    description: 'Returns active UCAT questions belonging to a specific section.',
+                    parameters: [
+                        {
+                            name: 'section',
+                            in: 'path',
+                            required: true,
+                            schema: {
+                                type: 'string',
+                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT']
+                            },
+                            description: 'Target UCAT section'
+                        },
+                        {
+                            name: 'page',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'integer', default: 1 }
+                        },
+                        {
+                            name: 'limit',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'integer', default: 20, maximum: 100 }
+                        }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Section questions returned.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatQuestionListResponse' }
+                                }
+                            }
+                        },
+                        400: { description: 'Invalid UCAT section name.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/questions/topic/{topic}': {
+                get: {
+                    tags: ['UCAT Questions'],
+                    summary: 'Get UCAT questions by topic',
+                    description: 'Returns active UCAT questions belonging to a specific topic.',
+                    parameters: [
+                        {
+                            name: 'topic',
+                            in: 'path',
+                            required: true,
+                            schema: { type: 'string' },
+                            description: 'Topic name'
+                        },
+                        {
+                            name: 'page',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'integer', default: 1 }
+                        },
+                        {
+                            name: 'limit',
+                            in: 'query',
+                            required: false,
+                            schema: { type: 'integer', default: 20, maximum: 100 }
+                        }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Topic questions returned.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatQuestionListResponse' }
+                                }
+                            }
+                        },
+                        400: { description: 'Topic is required.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/questions/{id}': {
+                get: {
+                    tags: ['UCAT Questions'],
+                    summary: 'Get a single UCAT question by numeric ID',
+                    description: 'Returns complete question details including correct answer and explanation.',
+                    parameters: [
+                        {
+                            name: 'id',
+                            in: 'path',
+                            required: true,
+                            schema: { type: 'integer' },
+                            description: 'Numeric question ID'
+                        }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'UCAT question details returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            message: { type: 'string', example: 'UCAT question fetched successfully.' },
+                                            data: { $ref: '#/components/schemas/UcatQuestion' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'Valid question ID is required.' },
+                        404: { description: 'Question not found.' },
                         500: { description: 'Server or database error.' }
                     }
                 }
