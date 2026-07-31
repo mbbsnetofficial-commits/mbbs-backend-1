@@ -21,6 +21,7 @@ const analyticsRouter = require("./routes/blog-routes/analytics.routes");
 const pageRouter = require("./routes/blog-routes/page.routes");
 const { aiRouter } = require("./src/modules/ai");
 const ucatQuestionRouter = require("./routes/ucat-routes/question.routes");
+const ucatTopicRouter = require("./routes/ucat-routes/ucatTopic.routes");
 const {
     apiLimiter,
     mutationLimiter,
@@ -132,6 +133,7 @@ app.use("/api/v1/admin/blog-analytics", adminLimiter, analyticsRouter);
 app.use("/api/v1/admin/ai", adminLimiter, aiRouter);
 app.use("/api/v1/admin", adminLimiter, platformAdminRouter);
 app.use("/api/v1/ucat/questions", ucatQuestionRouter);
+app.use("/api/v1/ucat/topics", ucatTopicRouter);
 
 // Do not allow an unmatched admin URL to fall through into student routers.
 // This keeps authentication errors accurate when the method or path is wrong.

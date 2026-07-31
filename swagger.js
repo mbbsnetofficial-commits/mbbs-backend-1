@@ -122,6 +122,10 @@ const swaggerOptions = {
             {
                 name: 'UCAT Questions',
                 description: 'Public APIs for fetching UCAT examination practice questions, section filtering, topics, and filters metadata'
+            },
+            {
+                name: 'UCAT Topics',
+                description: 'Public APIs for browsing UCAT topics, section topic lists, and topic details'
             }
         ],
         components: {
@@ -140,6 +144,61 @@ const swaggerOptions = {
                 }
             },
             schemas: {
+                UcatTopic: {
+                    type: 'object',
+                    properties: {
+                        topicId: { type: 'number', example: 1 },
+                        name: { type: 'string', example: 'Reading Comprehension & Inference' },
+                        section: {
+                            type: 'string',
+                            enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT'],
+                            example: 'VERBAL_REASONING'
+                        },
+                        description: { type: 'string', example: 'Evaluate conclusions drawn from passages.' },
+                        icon: { type: 'string', example: '📖' },
+                        order: { type: 'number', example: 1 },
+                        status: { type: 'string', example: 'ACTIVE' }
+                    }
+                },
+                UcatTopicNameItem: {
+                    type: 'object',
+                    properties: {
+                        topicId: { type: 'number', example: 1 },
+                        name: { type: 'string', example: 'Reading Comprehension & Inference' },
+                        section: { type: 'string', example: 'VERBAL_REASONING' },
+                        order: { type: 'number', example: 1 }
+                    }
+                },
+                UcatTopicListResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        message: { type: 'string', example: 'UCAT topics fetched successfully.' },
+                        data: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/UcatTopic' }
+                        }
+                    }
+                },
+                UcatTopicNameListResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        message: { type: 'string', example: 'UCAT topic list fetched successfully.' },
+                        data: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/UcatTopicNameItem' }
+                        }
+                    }
+                },
+                UcatTopicSingleResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        message: { type: 'string', example: 'UCAT topic fetched successfully.' },
+                        data: { $ref: '#/components/schemas/UcatTopic' }
+                    }
+                },
                 UcatOption: {
                     type: 'object',
                     properties: {
@@ -4538,6 +4597,115 @@ const swaggerOptions = {
                         },
                         400: { description: 'Valid question ID is required.' },
                         404: { description: 'Question not found.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/topics': {
+                get: {
+                    tags: ['UCAT Topics'],
+                    summary: 'List all active UCAT topics',
+                    description: 'Retrieve all active UCAT topics sorted by section and display order.',
+                    responses: {
+                        200: {
+                            description: 'UCAT topics fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatTopicListResponse' }
+                                }
+                            }
+                        },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/topics/section/{section}/names': {
+                get: {
+                    tags: ['UCAT Topics'],
+                    summary: 'Get topic names and IDs for a section',
+                    description: 'Returns simplified topic metadata (topicId, name, section, order) for a specific exam section.',
+                    parameters: [
+                        {
+                            name: 'section',
+                            in: 'path',
+                            required: true,
+                            schema: {
+                                type: 'string',
+                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT']
+                            },
+                            description: 'Target UCAT section'
+                        }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Topic list fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatTopicNameListResponse' }
+                                }
+                            }
+                        },
+                        400: { description: 'Invalid UCAT section.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/topics/section/{section}': {
+                get: {
+                    tags: ['UCAT Topics'],
+                    summary: 'Get full topic details for a section',
+                    description: 'Returns complete topic objects for a specific UCAT section sorted by display order.',
+                    parameters: [
+                        {
+                            name: 'section',
+                            in: 'path',
+                            required: true,
+                            schema: {
+                                type: 'string',
+                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT']
+                            },
+                            description: 'Target UCAT section'
+                        }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Section topics fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatTopicListResponse' }
+                                }
+                            }
+                        },
+                        400: { description: 'Invalid UCAT section.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/topics/{id}': {
+                get: {
+                    tags: ['UCAT Topics'],
+                    summary: 'Get single UCAT topic by numeric ID',
+                    description: 'Returns full topic details for a specific numeric topic ID.',
+                    parameters: [
+                        {
+                            name: 'id',
+                            in: 'path',
+                            required: true,
+                            schema: { type: 'integer' },
+                            description: 'Numeric topic ID'
+                        }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Topic fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatTopicSingleResponse' }
+                                }
+                            }
+                        },
+                        400: { description: 'Valid topic ID is required.' },
+                        404: { description: 'UCAT topic not found.' },
                         500: { description: 'Server or database error.' }
                     }
                 }
