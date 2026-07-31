@@ -6,13 +6,12 @@ const topicService = require(
 
 const getAllTopics = async (req, res, next) => {
     try {
-        const topics =
-            await topicService.getAllTopics();
+        const result = await topicService.getAllTopics(req.query);
 
         return res.status(200).json({
             success: true,
             message: "UCAT topics fetched successfully.",
-            data: topics
+            data: result
         });
     } catch (error) {
         next(error);

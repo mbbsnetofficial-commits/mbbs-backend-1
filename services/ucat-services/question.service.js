@@ -6,8 +6,11 @@ const VALID_SECTIONS = [
     "VERBAL_REASONING",
     "DECISION_MAKING",
     "QUANTITATIVE_REASONING",
+    "ABSTRACT_REASONING",
     "SITUATIONAL_JUDGEMENT"
 ];
+
+const normalizeSection = (s) => (s || "").trim().toUpperCase().replace(/[ -]/g, "_");
 
 const VALID_DIFFICULTIES = [
     "EASY",
@@ -30,11 +33,12 @@ const getQuestions = async (query = {}) => {
     };
 
     if (section) {
-        if (!VALID_SECTIONS.includes(section)) {
+        const normSection = normalizeSection(section);
+        if (!VALID_SECTIONS.includes(normSection)) {
             throw new Error("Invalid UCAT section.");
         }
 
-        filters.section = section;
+        filters.section = normSection;
     }
 
     if (topic) {
@@ -89,12 +93,13 @@ const getQuestionsBySection = async (
     section,
     query = {}
 ) => {
-    if (!VALID_SECTIONS.includes(section)) {
-        throw new Error("Invalid UCAT section.");
+    const normSection = normalizeSection(section);
+    if (!VALID_SECTIONS.includes(normSection)) {
+        throw new Error("Invalid UCAT section. Valid sections: " + VALID_SECTIONS.join(", "));
     }
 
     return questionRepository.getQuestionsBySection(
-        section,
+        normSection,
         {
             page: Math.max(Number(query.page) || 1, 1),
             limit: Math.min(

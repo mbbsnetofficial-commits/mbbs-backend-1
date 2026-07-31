@@ -5,80 +5,30 @@ const { ucatConnection } = require("../../config/database");
 
 const ucatQuestionSchema = new mongoose.Schema(
     {
-        questionId: {
-            type: Number,
-            required: true,
-            unique: true,
-            index: true
-        },
-        section: {
-            type: String,
-            required: true,
-            enum: [
-                "VERBAL_REASONING",
-                "DECISION_MAKING",
-                "QUANTITATIVE_REASONING",
-                "SITUATIONAL_JUDGEMENT"
-            ],
-            index: true
-        },
-        topic: {
-            type: String,
-            required: true,
-            trim: true,
-            index: true
-        },
-        subtopic: {
-            type: String,
-            trim: true
-        },
-        difficulty: {
-            type: String,
-            enum: ["EASY", "MEDIUM", "HARD"],
-            default: "MEDIUM",
-            index: true
-        },
-        questionType: {
-            type: String,
-            trim: true,
-            index: true
-        },
-        passageText: {
-            type: String,
-            trim: true
-        },
-        prompt: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        options: [
-            {
-                key: { type: String, required: true },
-                text: { type: String, required: true }
-            }
-        ],
-        correctAnswer: {
-            type: String,
-            required: true
-        },
-        explanation: {
-            type: String,
-            trim: true
-        },
-        status: {
-            type: String,
-            enum: ["ACTIVE", "INACTIVE", "DRAFT"],
-            default: "ACTIVE",
-            index: true
-        }
+        id: { type: Number, required: true, unique: true, index: true },
+        question: { type: String, required: true, trim: true },
+        option_a: { type: String },
+        option_b: { type: String },
+        option_c: { type: String },
+        option_d: { type: String },
+        correct_answer: { type: String, required: true },
+        explanation: { type: String, trim: true },
+        difficulty: { type: String, index: true },
+        question_type: { type: String, index: true },
+        topic_id: { type: Number, index: true },
+        topic_name: { type: String, trim: true },
+        subject: { type: String, index: true },
+        chapter: { type: String, trim: true }
     },
     {
         timestamps: true,
-        collection: "ucat_questions"
+        collection: "ucat-questions",
+        strict: false
     }
 );
 
-const UcatQuestion = ucatConnection.model("UcatQuestion", ucatQuestionSchema);
+const UcatQuestion =
+    ucatConnection.models.UcatQuestion ||
+    ucatConnection.model("UcatQuestion", ucatQuestionSchema);
 
 module.exports = UcatQuestion;

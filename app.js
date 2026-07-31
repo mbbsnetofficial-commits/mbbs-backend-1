@@ -22,6 +22,12 @@ const pageRouter = require("./routes/blog-routes/page.routes");
 const { aiRouter } = require("./src/modules/ai");
 const ucatQuestionRouter = require("./routes/ucat-routes/question.routes");
 const ucatTopicRouter = require("./routes/ucat-routes/ucatTopic.routes");
+const ucatTestSessionRouter = require("./routes/ucat-routes/testSession.routes");
+const ucatPreviousYearRouter = require("./routes/ucat-routes/previousYear.routes");
+const ucatStreakRouter = require("./routes/ucat-routes/streak.routes");
+const ucatChatRouter = require("./routes/ucat-routes/chat.routes");
+const ucatZoneInsightRouter = require("./routes/ucat-routes/zoneInsight.routes");
+const ucatAdminRouter = require("./routes/ucat-routes/admin.routes");
 const {
     apiLimiter,
     mutationLimiter,
@@ -134,6 +140,12 @@ app.use("/api/v1/admin/ai", adminLimiter, aiRouter);
 app.use("/api/v1/admin", adminLimiter, platformAdminRouter);
 app.use("/api/v1/ucat/questions", ucatQuestionRouter);
 app.use("/api/v1/ucat/topics", ucatTopicRouter);
+app.use("/api/v1/ucat/test", ucatTestSessionRouter);
+app.use("/api/v1/ucat/previous-year-tests", ucatPreviousYearRouter);
+app.use("/api/v1/ucat/streaks", ucatStreakRouter);
+app.use("/api/v1/ucat/chat", ucatChatRouter);
+app.use("/api/v1/ucat/insights", ucatZoneInsightRouter);
+app.use("/api/v1/ucat/admin", ucatAdminRouter);
 
 // Do not allow an unmatched admin URL to fall through into student routers.
 // This keeps authentication errors accurate when the method or path is wrong.

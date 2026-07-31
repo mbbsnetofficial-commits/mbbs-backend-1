@@ -120,12 +120,36 @@ const swaggerOptions = {
                 description: 'Public page-composition APIs for rendering the blog website'
             },
             {
+                name: 'UCAT Platform Admin',
+                description: 'Platform Admin APIs for managing UCAT questions, topics, test sessions, past papers, and dashboard analytics'
+            },
+            {
                 name: 'UCAT Questions',
                 description: 'Public APIs for fetching UCAT examination practice questions, section filtering, topics, and filters metadata'
             },
             {
                 name: 'UCAT Topics',
                 description: 'Public APIs for browsing UCAT topics, section topic lists, and topic details'
+            },
+            {
+                name: 'UCAT Practice Tests',
+                description: 'APIs for generating custom test sessions, timed answer submissions, score calculation, and test history'
+            },
+            {
+                name: 'UCAT Previous Year Tests',
+                description: 'APIs for listing and taking past UCAT examination papers'
+            },
+            {
+                name: 'UCAT Streaks',
+                description: 'APIs for tracking user daily practice activity and streak statistics'
+            },
+            {
+                name: 'UCAT AI Review Chat',
+                description: 'APIs for AI-assisted review chat sessions grounded in wrong test answers'
+            },
+            {
+                name: 'UCAT Performance Insights',
+                description: 'APIs for generating and retrieving section accuracy and weak/strong zone analytics'
             }
         ],
         components: {
@@ -144,6 +168,147 @@ const swaggerOptions = {
                 }
             },
             schemas: {
+                UcatTestStartRequest: {
+                    type: 'object',
+                    properties: {
+                        student_id: { type: 'string', example: 'STU1784364902958UZ1WFH' },
+                        subjects: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            example: ['DECISION_MAKING', 'VERBAL_REASONING']
+                        },
+                        chapters: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            example: ['Reading Comprehension & Inference']
+                        },
+                        topic_ids: {
+                            type: 'array',
+                            items: { type: 'number' },
+                            example: []
+                        },
+                        limit: { type: 'number', example: 20 },
+                        duration: { type: 'number', example: 15 }
+                    }
+                },
+                UcatTestSubmitRequest: {
+                    type: 'object',
+                    required: ['sessionId'],
+                    properties: {
+                        sessionId: { type: 'string', example: 'UCAT_TEST_1722458400000_123' },
+                        answers: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    question_id: { type: 'number', example: 69 },
+                                    selected_option: { type: 'string', example: 'A' },
+                                    time_spent: { type: 'number', example: 24 }
+                                }
+                            }
+                        }
+                    }
+                },
+                UcatSubmitResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        score: { type: 'number', example: 6 },
+                        correct: { type: 'number', example: 2 },
+                        wrong: { type: 'number', example: 2 },
+                        skipped: { type: 'number', example: 11 },
+                        accuracy: { type: 'number', example: 13.33 },
+                        review: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    question_id: { type: 'number', example: 69 },
+                                    selected: { type: 'string', example: 'A' },
+                                    correct_answer: { type: 'string', example: 'D' },
+                                    isCorrect: { type: 'boolean', example: false }
+                                }
+                            }
+                        }
+                    }
+                },
+                UcatResultResponse: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                sessionId: { type: 'string', example: 'UCAT_TEST_1722458400000_123' },
+                                test_type: { type: 'string', example: 'Quick Test' },
+                                previous_year_paper_id: { type: 'string', example: null, nullable: true },
+                                status: { type: 'string', example: 'Completed' },
+                                score: { type: 'number', example: 6 },
+                                correct: { type: 'number', example: 2 },
+                                wrong: { type: 'number', example: 2 },
+                                skipped: { type: 'number', example: 11 },
+                                accuracy: { type: 'number', example: 13.33 },
+                                total_questions: { type: 'number', example: 15 },
+                                duration: { type: 'number', example: 15 },
+                                started_at: { type: 'string', example: '2026-07-31T21:42:31.986Z' },
+                                submitted_at: { type: 'string', example: '2026-07-31T21:43:25.187Z' },
+                                total_time_spent: { type: 'number', example: 48 },
+                                review: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            id: { type: 'number', example: 69 },
+                                            question: { type: 'string', example: 'Staffing in the department rose from 25 to 40...' },
+                                            option_a: { type: 'string', example: '14' },
+                                            option_b: { type: 'string', example: '11' },
+                                            option_c: { type: 'string', example: '27' },
+                                            option_d: { type: 'string', example: '9' },
+                                            correct_answer: { type: 'string', example: 'D' },
+                                            explanation: { type: 'string', example: 'The passage states this directly...' },
+                                            difficulty: { type: 'string', example: 'Easy' },
+                                            question_type: { type: 'string', example: 'multiple_choice' },
+                                            topic_id: { type: 'number', example: 101 },
+                                            selected_option: { type: 'string', example: 'A' },
+                                            is_correct: { type: 'boolean', example: false },
+                                            marks_awarded: { type: 'number', example: -1 },
+                                            time_spent: { type: 'number', example: 24 },
+                                            is_skipped: { type: 'boolean', example: false }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                UcatStreakRecordRequest: {
+                    type: 'object',
+                    properties: {
+                        activityType: { type: 'string', example: 'PRACTICE_TEST' }
+                    }
+                },
+                UcatChatSessionCreateRequest: {
+                    type: 'object',
+                    required: ['testSessionId'],
+                    properties: {
+                        testSessionId: { type: 'string', example: 'UCAT_TEST_1722458400000_123' },
+                        title: { type: 'string', example: 'Verbal Reasoning Test Review' }
+                    }
+                },
+                UcatChatMessageSendRequest: {
+                    type: 'object',
+                    required: ['content'],
+                    properties: {
+                        content: { type: 'string', example: 'Why was option A correct for question 101 instead of option B?' }
+                    }
+                },
+                UcatZoneInsightGenerateRequest: {
+                    type: 'object',
+                    required: ['testSessionId'],
+                    properties: {
+                        testSessionId: { type: 'string', example: 'UCAT_TEST_1722458400000_123' }
+                    }
+                },
                 UcatTopic: {
                     type: 'object',
                     properties: {
@@ -1560,14 +1725,18 @@ const swaggerOptions = {
                     responses: {
                         200: {
                             description: 'Blog liked.',
-                            content: { 'application/json': { schema: {
-                                type: 'object',
-                                properties: {
-                                    status: { type: 'string', example: 'success' },
-                                    message: { type: 'string' },
-                                    data: { $ref: '#/components/schemas/BlogLikeState' }
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/BlogLikeState' }
+                                        }
+                                    }
                                 }
-                            } } }
+                            }
                         },
                         401: { description: 'Student token is missing, invalid, expired, or revoked.' },
                         404: { description: 'Published blog not found.' }
@@ -1584,14 +1753,18 @@ const swaggerOptions = {
                     responses: {
                         200: {
                             description: 'Blog unliked.',
-                            content: { 'application/json': { schema: {
-                                type: 'object',
-                                properties: {
-                                    status: { type: 'string', example: 'success' },
-                                    message: { type: 'string' },
-                                    data: { $ref: '#/components/schemas/BlogLikeState' }
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/BlogLikeState' }
+                                        }
+                                    }
                                 }
-                            } } }
+                            }
                         },
                         401: { description: 'Student token is missing, invalid, expired, or revoked.' },
                         404: { description: 'Published blog not found.' }
@@ -1610,14 +1783,18 @@ const swaggerOptions = {
                     responses: {
                         200: {
                             description: 'Blog saved.',
-                            content: { 'application/json': { schema: {
-                                type: 'object',
-                                properties: {
-                                    status: { type: 'string', example: 'success' },
-                                    message: { type: 'string' },
-                                    data: { $ref: '#/components/schemas/BlogSaveState' }
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/BlogSaveState' }
+                                        }
+                                    }
                                 }
-                            } } }
+                            }
                         },
                         401: { description: 'Student token is missing, invalid, expired, or revoked.' },
                         404: { description: 'Published blog not found.' }
@@ -1634,14 +1811,18 @@ const swaggerOptions = {
                     responses: {
                         200: {
                             description: 'Blog removed from saved list.',
-                            content: { 'application/json': { schema: {
-                                type: 'object',
-                                properties: {
-                                    status: { type: 'string', example: 'success' },
-                                    message: { type: 'string' },
-                                    data: { $ref: '#/components/schemas/BlogSaveState' }
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string' },
+                                            data: { $ref: '#/components/schemas/BlogSaveState' }
+                                        }
+                                    }
                                 }
-                            } } }
+                            }
                         },
                         401: { description: 'Student token is missing, invalid, expired, or revoked.' },
                         404: { description: 'Published blog not found.' }
@@ -2936,12 +3117,20 @@ const swaggerOptions = {
                 patch: {
                     tags: ['Platform Admin'], summary: 'Adjust student account and subscription settings', security: [{ adminBearerAuth: [] }],
                     parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
-                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: {
-                        is_active: { type: 'boolean' }, is_verified: { type: 'boolean' }, email_verified: { type: 'boolean' },
-                        is_institution_student: { type: 'boolean' }, subscription_plan: { type: 'string' },
-                        subscription_expires_at: { type: 'string', format: 'date-time' }, target_exam_year: { type: 'integer' },
-                        batch: { type: 'string', example: 'NEET-2027-A' }, course: { type: 'string', example: 'NEET UG' }
-                    } } } } },
+                    requestBody: {
+                        required: true, content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object', properties: {
+                                        is_active: { type: 'boolean' }, is_verified: { type: 'boolean' }, email_verified: { type: 'boolean' },
+                                        is_institution_student: { type: 'boolean' }, subscription_plan: { type: 'string' },
+                                        subscription_expires_at: { type: 'string', format: 'date-time' }, target_exam_year: { type: 'integer' },
+                                        batch: { type: 'string', example: 'NEET-2027-A' }, course: { type: 'string', example: 'NEET UG' }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     responses: { 200: { description: 'Student settings updated.' }, 400: { description: 'Invalid settings.' }, 404: { description: 'Student not found.' } }
                 }
             },
@@ -4707,6 +4896,481 @@ const swaggerOptions = {
                         400: { description: 'Valid topic ID is required.' },
                         404: { description: 'UCAT topic not found.' },
                         500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/start': {
+                post: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Generate and start a custom UCAT practice test session',
+                    description: 'Creates a custom practice test session filtered by chosen sections, topics, question limit, and time limit.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/UcatTestStartRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'UCAT test session started successfully.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/submit': {
+                post: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Submit practice test answer sheet',
+                    description: 'Submits selected answer options for a test session, evaluates marks (+4/-1), and calculates accuracy percentage.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/UcatTestSubmitRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'UCAT test submitted successfully.' },
+                        404: { description: 'Test session not found.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/sessions/{sessionId}': {
+                get: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Get active test session state',
+                    description: 'Returns test session state and question payload for an active test attempt.',
+                    parameters: [
+                        { name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'UCAT test session fetched successfully.' },
+                        404: { description: 'Test session not found.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/sessions/{sessionId}/result': {
+                get: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Get test result score & question-by-question analysis',
+                    description: 'Returns total marks, accuracy percentage, correct/incorrect counts, and detailed answer explanations.',
+                    parameters: [
+                        { name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'UCAT test result fetched successfully.' },
+                        404: { description: 'Test session not found.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/history': {
+                get: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Get user test history',
+                    description: 'Returns paginated list of completed practice test sessions.',
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }
+                    ],
+                    responses: {
+                        200: { description: 'UCAT test history fetched successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/previous-year-tests': {
+                get: {
+                    tags: ['UCAT Previous Year Tests'],
+                    summary: 'List available past UCAT examination papers',
+                    description: 'Returns available past year examination papers sorted by year.',
+                    responses: {
+                        200: { description: 'Previous year UCAT papers fetched successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/previous-year-tests/{paperId}': {
+                get: {
+                    tags: ['UCAT Previous Year Tests'],
+                    summary: 'Get past examination paper details',
+                    description: 'Returns complete past exam paper details and question list.',
+                    parameters: [
+                        { name: 'paperId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'Previous year UCAT paper fetched successfully.' },
+                        404: { description: 'Paper not found.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/previous-year-tests/{paperId}/start': {
+                post: {
+                    tags: ['UCAT Previous Year Tests'],
+                    summary: 'Start a mapped previous-year test',
+                    description: 'Generates a mapped test session for a past UCAT examination paper.',
+                    parameters: [
+                        { name: 'paperId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    requestBody: {
+                        required: false,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        limit: { type: 'number', example: 30 },
+                                        duration: { type: 'number', example: 120 }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'Previous year UCAT paper test session started successfully.' },
+                        404: { description: 'Paper not found.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/previous-year-tests/submit': {
+                post: {
+                    tags: ['UCAT Previous Year Tests'],
+                    summary: 'Submit past paper exam answers',
+                    description: 'Submits selected answer options for a past paper exam session, evaluates marks (+4/-1), and returns score summary.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/UcatTestSubmitRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: {
+                            description: 'Previous year test submitted successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/UcatSubmitResponse' }
+                                }
+                            }
+                        },
+                        404: { description: 'Paper test session not found.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/admin/dashboard': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'UCAT Admin dashboard analytics',
+                    description: 'Returns total question count, topic count, test session count, and previous year paper count.',
+                    responses: {
+                        200: { description: 'UCAT Admin dashboard analytics fetched successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/admin/questions': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'List & search UCAT questions (Admin)',
+                    description: 'Returns paginated question documents with subject, topic, and text search filters.',
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                        { name: 'subject', in: 'query', schema: { type: 'string' } },
+                        { name: 'topic', in: 'query', schema: { type: 'string' } },
+                        { name: 'search', in: 'query', schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'UCAT questions fetched successfully.' }
+                    }
+                },
+                post: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Create a new UCAT question (Admin)',
+                    description: 'Creates a new question document in the UCAT questions repository.',
+                    responses: {
+                        201: { description: 'UCAT question created successfully.' },
+                        400: { description: 'Invalid input data.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/admin/questions/{id}': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Get single question details (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Question fetched successfully.' }, 404: { description: 'Question not found.' } }
+                },
+                patch: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Update UCAT question details (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Question updated successfully.' }, 404: { description: 'Question not found.' } }
+                },
+                delete: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Delete UCAT question document (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Question deleted successfully.' }, 404: { description: 'Question not found.' } }
+                }
+            },
+            '/api/v1/ucat/admin/topics': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'List & search UCAT topics (Admin)',
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+                        { name: 'subject', in: 'query', schema: { type: 'string' } }
+                    ],
+                    responses: { 200: { description: 'Topics fetched successfully.' } }
+                },
+                post: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Create a new UCAT topic (Admin)',
+                    responses: { 201: { description: 'Topic created successfully.' } }
+                }
+            },
+            '/api/v1/ucat/admin/topics/{id}': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Get single topic details (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Topic fetched successfully.' }, 404: { description: 'Topic not found.' } }
+                },
+                patch: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Update UCAT topic details (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Topic updated successfully.' }, 404: { description: 'Topic not found.' } }
+                },
+                delete: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Delete UCAT topic document (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Topic deleted successfully.' }, 404: { description: 'Topic not found.' } }
+                }
+            },
+            '/api/v1/ucat/admin/test-sessions': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Monitor student test sessions (Admin)',
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                        { name: 'status', in: 'query', schema: { type: 'string' } },
+                        { name: 'student_id', in: 'query', schema: { type: 'string' } }
+                    ],
+                    responses: { 200: { description: 'Test sessions fetched successfully.' } }
+                }
+            },
+            '/api/v1/ucat/admin/test-sessions/{id}': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Get full student test session attempt (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Test session details fetched successfully.' }, 404: { description: 'Test session not found.' } }
+                }
+            },
+            '/api/v1/ucat/admin/previous-year-tests': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'List previous year exam papers (Admin)',
+                    responses: { 200: { description: 'Previous year papers fetched successfully.' } }
+                },
+                post: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Create a new previous year paper record (Admin)',
+                    responses: { 201: { description: 'Previous year paper created successfully.' } }
+                }
+            },
+            '/api/v1/ucat/admin/previous-year-tests/{id}': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Get single previous year paper details (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Paper fetched successfully.' }, 404: { description: 'Paper not found.' } }
+                },
+                patch: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Update previous year paper details (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Paper updated successfully.' }, 404: { description: 'Paper not found.' } }
+                },
+                delete: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Delete previous year paper record (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Paper deleted successfully.' }, 404: { description: 'Paper not found.' } }
+                }
+            },
+            '/api/v1/ucat/admin/streaks': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'List student streaks (Admin)',
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }
+                    ],
+                    responses: { 200: { description: 'Student streaks fetched successfully.' } }
+                }
+            },
+            '/api/v1/ucat/admin/streaks/{studentId}': {
+                patch: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Update student streak record (Admin)',
+                    parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Student streak updated successfully.' } }
+                }
+            },
+            '/api/v1/ucat/admin/chat-sessions': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'List AI review chat sessions (Admin)',
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }
+                    ],
+                    responses: { 200: { description: 'Chat sessions fetched successfully.' } }
+                }
+            },
+            '/api/v1/ucat/admin/chat-sessions/{id}/messages': {
+                get: {
+                    tags: ['UCAT Platform Admin'],
+                    summary: 'Get message log for an AI review chat session (Admin)',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Chat messages fetched successfully.' } }
+                }
+            },
+            '/api/v1/ucat/streaks': {
+                get: {
+                    tags: ['UCAT Streaks'],
+                    summary: 'Get current user practice streak statistics',
+                    description: 'Returns current streak, longest streak, and last activity date.',
+                    responses: {
+                        200: { description: 'UCAT streak fetched successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/streaks/record': {
+                post: {
+                    tags: ['UCAT Streaks'],
+                    summary: 'Record daily practice activity to update streak',
+                    description: 'Records today practice activity and updates current & longest streaks.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/UcatStreakRecordRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'UCAT daily streak recorded successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/chat/sessions': {
+                get: {
+                    tags: ['UCAT AI Review Chat'],
+                    summary: 'List user active AI review chat sessions',
+                    description: 'Returns all active AI tutor review chat sessions.',
+                    responses: {
+                        200: { description: 'UCAT chat sessions fetched successfully.' }
+                    }
+                },
+                post: {
+                    tags: ['UCAT AI Review Chat'],
+                    summary: 'Create a new AI review chat session for a test',
+                    description: 'Initiates a new AI tutor chat session grounded in wrong answers from a test session.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/UcatChatSessionCreateRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'UCAT chat session created successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/chat/sessions/{chatSessionId}': {
+                get: {
+                    tags: ['UCAT AI Review Chat'],
+                    summary: 'Get AI chat session details',
+                    description: 'Returns session details for a specific chat session ID.',
+                    parameters: [
+                        { name: 'chatSessionId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'UCAT chat session fetched successfully.' },
+                        404: { description: 'Chat session not found.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/chat/sessions/{chatSessionId}/messages': {
+                get: {
+                    tags: ['UCAT AI Review Chat'],
+                    summary: 'Get chat conversation message history',
+                    description: 'Returns message history between user and AI tutor for a chat session.',
+                    parameters: [
+                        { name: 'chatSessionId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'UCAT chat messages fetched successfully.' }
+                    }
+                },
+                post: {
+                    tags: ['UCAT AI Review Chat'],
+                    summary: 'Send message to AI tutor for test review',
+                    description: 'Sends a user question to the AI tutor and returns the assistant response.',
+                    parameters: [
+                        { name: 'chatSessionId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/UcatChatMessageSendRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Message sent successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/insights/generate': {
+                post: {
+                    tags: ['UCAT Performance Insights'],
+                    summary: 'Generate section accuracy & weak zone insights for a test session',
+                    description: 'Evaluates completed test session scores to generate strong/weak section insights.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/UcatZoneInsightGenerateRequest' }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'UCAT zone insight generated successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/insights/test-zone-insights/{testSessionId}': {
+                get: {
+                    tags: ['UCAT Performance Insights'],
+                    summary: 'Get stored zone insights for a test session',
+                    description: 'Returns weak section recommendations and accuracy insights for a specific test session.',
+                    parameters: [
+                        { name: 'testSessionId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'UCAT zone insight fetched successfully.' },
+                        404: { description: 'Zone insight not found.' }
                     }
                 }
             }
