@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const app = express();
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger');
+const swaggerAuth = require('./middleware/swaggerAuth.middleware');
 const templateRouter = require("./routes/blog-routes/template.routes");
 const categoryRouter = require("./routes/blog-routes/category.routes");
 const tagRouter = require("./routes/blog-routes/tag.routes");
@@ -42,6 +43,8 @@ const {
     authorFollowRouter,
     blogEngagementRouter
 } = require("./routes/neet-routes");
+
+
 
 // Railway terminates HTTPS at its proxy. This also makes req.ip use forwarded data.
 app.set("trust proxy", 1);
@@ -101,11 +104,11 @@ app.get("/health", (req, res) => {
 });
 
 
-// Interactive API documentation. This does not change the authentication routes.
-app.get('/api-docs.json', (req, res) => {
+// Interactive API documentation protected with Basic Authentication.
+app.get('/api-docs.json', swaggerAuth, (req, res) => {
     res.type('application/json').send(swaggerDocument);
 });
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api-docs', swaggerAuth, swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // API routes. Keep admin before student routers because admin login is public.
 app.use("/api/v1", apiLimiter);
