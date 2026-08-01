@@ -52,35 +52,21 @@ const {
 
 
 
+const { corsMiddleware } = require("./middleware/cors.middleware");
+const { cspMiddleware } = require("./middleware/csp.middleware");
+const { permissionsPolicyMiddleware } = require("./middleware/permissionsPolicy.middleware");
+
 // Railway terminates HTTPS at its proxy. This also makes req.ip use forwarded data.
 app.set("trust proxy", 1);
 
-const allowedOrigins = (process.env.FRONTEND_URL || "")
-    .split(",")
-    .map(origin => origin.trim())
-    .filter(Boolean);
-const isProduction = process.env.NODE_ENV === "production";
-
-app.use(cors({
-    origin: (origin, callback) => {
-        // Non-browser clients such as mobile apps, server jobs, and curl do not
-        // send Origin and are not governed by browser CORS.
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        if (!isProduction && !allowedOrigins.length) return callback(null, true);
-        return callback(Object.assign(new Error("Origin is not allowed by CORS."), {
-            statusCode: 403
-        }));
-    },
-    credentials: true
-}));
+app.use(corsMiddleware);
+app.use(cspMiddleware);
+app.use(permissionsPolicyMiddleware);
 
 app.disable("x-powered-by");
 app.use(helmet({
-    // Swagger UI uses inline assets. API responses still receive Helmet's
-    // remaining protections, while CSP can be configured separately for docs.
     contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: { policy: "require-corp" }
 }));
 
 app.use(express.json({
@@ -110,8 +96,8 @@ app.get("/health", (req, res) => {
 });
 
 
-// Interactive API documentation protected with Basic Authentication.
-app.get('/api-docs.json', swaggerAuth, (req, res) => {
+// Interactive API documentation & OpenAPI specifications protected with Basic Authentication.
+app.get(['/api-docs.json', '/openapi.json', '/swagger.json'], swaggerAuth, (req, res) => {
     res.type('application/json').send(swaggerDocument);
 });
 app.use('/api-docs', swaggerAuth, swaggerUi.serve, swaggerUi.setup(swaggerDocument));
