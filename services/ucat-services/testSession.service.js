@@ -2,6 +2,7 @@
 
 const testSessionRepository = require("../../repositories/ucat-repositories/testSession.repository");
 const UcatQuestion = require("../../model/ucat-model/ucatQuestion");
+const UcatTopic = require("../../model/ucat-model/ucatTopic");
 
 const sanitizeSessionResponse = (session) => {
     if (!session) return null;
@@ -18,6 +19,78 @@ const shuffleArray = (array) => {
     return array;
 };
 
+// --- STEP 1: GET SUBJECTS ---
+const getSubjects = async () => {
+    const CANONICAL = [
+        "VERBAL_REASONING",
+        "DECISION_MAKING",
+        "QUANTITATIVE_REASONING",
+        "ABSTRACT_REASONING",
+        "SITUATIONAL_JUDGEMENT"
+    ];
+    return {
+        success: true,
+        total: CANONICAL.length,
+        data: CANONICAL
+    };
+};
+
+// --- STEP 2: GET CHAPTERS ---
+const getChapters = async (payload = {}) => {
+    const { subjects = [] } = payload;
+    if (!subjects || subjects.length === 0) {
+        const error = new Error("Please select subject.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const regexes = subjects.map(
+        (s) => new RegExp("^" + String(s).trim().toLowerCase().replace(/_/g, "[ _]?") + "$", "i")
+    );
+
+    const chapters = await UcatTopic.aggregate([
+        { $match: { subject: { $in: regexes } } },
+        { $group: { _id: "$chapter" } },
+        { $match: { _id: { $ne: null } } },
+        { $project: { _id: 0, chapter: "$_id" } },
+        { $sort: { chapter: 1 } }
+    ]);
+
+    return {
+        success: true,
+        total: chapters.length,
+        data: chapters
+    };
+};
+
+// --- STEP 3: GET TOPICS ---
+const getTopics = async (payload = {}) => {
+    const { subjects = [], chapters = [] } = payload;
+    const query = {};
+
+    if (subjects.length > 0) {
+        query.subject = {
+            $in: subjects.map(
+                (s) => new RegExp("^" + String(s).trim().toLowerCase().replace(/_/g, "[ _]?") + "$", "i")
+            )
+        };
+    }
+    if (chapters.length > 0) {
+        query.chapter = {
+            $in: chapters.map((c) => new RegExp(String(c).trim(), "i"))
+        };
+    }
+
+    const topics = await UcatTopic.find(query).sort({ name: 1 }).lean();
+
+    return {
+        success: true,
+        total: topics.length,
+        data: topics
+    };
+};
+
+// --- GET TEST OPTIONS ---
 const getTestOptions = async () => {
     return {
         test_timings: [
@@ -51,6 +124,7 @@ const getTestOptions = async () => {
     };
 };
 
+// --- STEP 4: START TEST SESSION ---
 const startTest = async (user, payload = {}) => {
     const {
         student_id,
@@ -59,12 +133,13 @@ const startTest = async (user, payload = {}) => {
         topic_ids = [],
         sections = [],
         topics = [],
+        questionCount,
         limit = 20,
         duration = 15
     } = payload;
 
     const studentId = student_id || (user && user.studentId ? user.studentId : "STU1784364902958UZ1WFH");
-    const totalLimit = Number(limit) || 20;
+    const totalLimit = Number(questionCount) || Number(limit) || 20;
 
     const targetSubjects = subjects.length > 0 ? subjects : sections;
     const targetTopics = topics.length > 0 ? topics : chapters;
@@ -149,49 +224,46 @@ const startTest = async (user, payload = {}) => {
             .lean();
     }
 
-    rawQuestions = shuffleArray(rawQuestions).slice(0, totalLimit);
+    const shuffled = shuffleArray([...rawQuestions]).slice(0, totalLimit);
+    const questionIds = shuffled.map((q) => q.id || q._id);
 
-    const questionIds = rawQuestions.map((q) => q.id || q.question_id);
-
-    const formattedQuestions = rawQuestions.map((q) => ({
-        question_id: q.id || q.question_id,
-        question: q.question || q.prompt,
-        option_a: q.option_a || (q.options && q.options[0] ? q.options[0].text : ""),
-        option_b: q.option_b || (q.options && q.options[1] ? q.options[1].text : ""),
-        option_c: q.option_c || (q.options && q.options[2] ? q.options[2].text : ""),
-        option_d: q.option_d || (q.options && q.options[3] ? q.options[3].text : ""),
-        subject: q.subject || q.section,
-        chapter: q.chapter,
-        topic_name: q.topic_name || q.topic
+    const questionsFormatted = shuffled.map((q) => ({
+        question_id: q.id || q._id,
+        question: q.question,
+        option_a: q.option_a,
+        option_b: q.option_b,
+        option_c: q.option_c,
+        option_d: q.option_d,
+        subject: q.subject,
+        topic_name: q.topic_name || q.chapter || ""
     }));
 
-    const sessionId = "UCAT_TEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
-
-    const sessionData = {
-        sessionId,
+    const sessionPayload = {
+        sessionId: "UCAT_TEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
         student_id: studentId,
+        test_type: payload.test_type || "Quick Test",
         subjects: targetSubjects,
         chapters: targetTopics,
-        topic_ids: topic_ids || [],
-        question_ids: questionIds,
-        total_questions: formattedQuestions.length,
+        topic_ids: topic_ids.map(Number),
+        total_questions: questionsFormatted.length,
         duration: Number(duration) || 15,
         score: 0,
         correct: 0,
         wrong: 0,
-        skipped: formattedQuestions.length,
+        skipped: questionsFormatted.length,
         accuracy: 0,
         status: "In Progress",
         started_at: new Date(),
-        submitted_at: null,
-        answers: [],
-        questions: formattedQuestions
+        question_ids: questionIds
     };
 
-    const createdSession = await testSessionRepository.createSession(sessionData);
-    return sanitizeSessionResponse(createdSession);
+    const sessionDoc = await testSessionRepository.createSession(sessionPayload);
+    const resultDoc = sanitizeSessionResponse(sessionDoc);
+    resultDoc.questions = questionsFormatted;
+    return resultDoc;
 };
 
+// --- STEP 5: SUBMIT TEST SESSION ---
 const submitTest = async (sessionId, answers = []) => {
     const session = await testSessionRepository.getSessionById(sessionId);
     if (!session) {
@@ -200,91 +272,104 @@ const submitTest = async (sessionId, answers = []) => {
         throw error;
     }
 
-    const questionIds = session.question_ids || (session.questions ? session.questions.map((q) => q.question_id) : []);
-    const fullQuestions = await UcatQuestion.find({
-        $or: [{ id: { $in: questionIds } }, { question_id: { $in: questionIds } }]
-    }).lean();
-
-    const questionMap = new Map();
-    for (const q of fullQuestions) {
-        const qId = q.id || q.question_id;
-        questionMap.set(qId, q);
+    if (session.status === "Completed") {
+        const error = new Error("This test session has already been submitted.");
+        error.statusCode = 409;
+        throw error;
     }
 
     let correctCount = 0;
     let wrongCount = 0;
+    let totalScore = 0;
+    const reviewItems = [];
     const processedAnswers = [];
-    const reviewSummary = [];
 
-    const ansMap = new Map();
-    for (const ans of answers) {
+    const answerMap = new Map();
+    answers.forEach((ans) => {
         const qId = ans.question_id || ans.questionId;
-        ansMap.set(qId, ans);
-    }
+        if (qId) {
+            answerMap.set(Number(qId), ans);
+        }
+    });
 
-    for (const qId of questionIds) {
-        const q = questionMap.get(qId);
-        const ans = ansMap.get(qId);
+    const questionDocs = await UcatQuestion.find({
+        id: { $in: session.question_ids.map(Number) }
+    }).lean();
 
-        const correctAnswer = q ? (q.correct_answer || "").trim().toUpperCase() : "";
-        const selectedOption = ans ? (ans.selected_option || ans.selectedOption || "").trim().toUpperCase() : "";
+    const questionMap = new Map();
+    questionDocs.forEach((q) => questionMap.set(Number(q.id), q));
 
-        const isAttempted = Boolean(selectedOption);
-        const isCorrect = isAttempted && correctAnswer === selectedOption;
+    for (const qId of session.question_ids) {
+        const numId = Number(qId);
+        const question = questionMap.get(numId);
+        const userAns = answerMap.get(numId) || {};
+        const selected = (userAns.selected_option || userAns.selected || "").trim().toUpperCase();
+        const timeSpent = Math.max(Number(userAns.time_spent || userAns.timeSpent) || 0, 0);
 
-        if (isAttempted) {
-            if (isCorrect) correctCount++;
-            else wrongCount++;
+        if (!question) continue;
+
+        const isCorrect = selected === question.correct_answer;
+        const isSkipped = !selected;
+        let marksAwarded = 0;
+
+        if (isSkipped) {
+            marksAwarded = 0;
+        } else if (isCorrect) {
+            correctCount++;
+            marksAwarded = 4;
+            totalScore += 4;
+        } else {
+            wrongCount++;
+            marksAwarded = -1;
+            totalScore -= 1;
         }
 
-        const timeSpent = ans ? (ans.time_spent || ans.timeSpentSeconds || 0) : 0;
+        reviewItems.push({
+            question_id: numId,
+            selected: selected || null,
+            correct_answer: question.correct_answer,
+            isCorrect
+        });
 
-        if (isAttempted) {
-            processedAnswers.push({
-                question_id: qId,
-                selected_option: selectedOption,
-                is_correct: isCorrect,
-                time_spent: timeSpent
-            });
-
-            reviewSummary.push({
-                question_id: qId,
-                selected: selectedOption,
-                correct_answer: correctAnswer,
-                isCorrect: isCorrect
-            });
-        }
+        processedAnswers.push({
+            question_id: numId,
+            selected_option: selected || null,
+            is_correct: isCorrect,
+            marks_awarded: marksAwarded,
+            time_spent: timeSpent,
+            is_skipped: isSkipped
+        });
     }
 
-    const totalQuestions = session.total_questions || questionIds.length;
-    const skippedCount = Math.max(totalQuestions - (correctCount + wrongCount), 0);
-    const score = correctCount * 4 - wrongCount;
-    const accuracy = totalQuestions > 0 ? Number(((correctCount / totalQuestions) * 100).toFixed(2)) : 0;
+    const totalQuestions = session.total_questions || questionDocs.length || 1;
+    const skippedCount = Math.max(totalQuestions - correctCount - wrongCount, 0);
+    const accuracyPct = Number(((correctCount / totalQuestions) * 100).toFixed(2));
 
-    const updateData = {
+    const updatePayload = {
         answers: processedAnswers,
-        score,
+        score: totalScore,
         correct: correctCount,
         wrong: wrongCount,
         skipped: skippedCount,
-        accuracy,
+        accuracy: accuracyPct,
         status: "Completed",
         submitted_at: new Date()
     };
 
-    await testSessionRepository.updateSession(sessionId, updateData);
+    await testSessionRepository.updateSession(sessionId, updatePayload);
 
     return {
         success: true,
-        score,
+        score: totalScore,
         correct: correctCount,
         wrong: wrongCount,
         skipped: skippedCount,
-        accuracy,
-        review: reviewSummary
+        accuracy: accuracyPct,
+        review: reviewItems
     };
 };
 
+// --- GET SESSION RESULT ---
 const getSessionResult = async (sessionId) => {
     const session = await testSessionRepository.getSessionById(sessionId);
     if (!session) {
@@ -293,90 +378,50 @@ const getSessionResult = async (sessionId) => {
         throw error;
     }
 
-    const questionIds = session.question_ids || (session.questions ? session.questions.map((q) => q.question_id) : []);
-    const fullQuestions = await UcatQuestion.find({
-        $or: [{ id: { $in: questionIds } }, { question_id: { $in: questionIds } }]
-    }).lean();
-
+    const questionIds = (session.question_ids || []).map(Number);
+    const questions = await UcatQuestion.find({ id: { $in: questionIds } }).lean();
     const questionMap = new Map();
-    for (const q of fullQuestions) {
-        const qId = q.id || q.question_id;
-        questionMap.set(qId, q);
-    }
+    questions.forEach((q) => questionMap.set(Number(q.id), q));
 
-    const ansMap = new Map();
-    if (session.answers) {
-        for (const ans of session.answers) {
-            ansMap.set(ans.question_id, ans);
-        }
-    }
+    const userAnsMap = new Map();
+    (session.answers || []).forEach((a) => userAnsMap.set(Number(a.question_id), a));
 
-    let totalTimeSpent = 0;
-    const detailedReview = [];
+    const populatedQuestions = questionIds.map((qId) => {
+        const q = questionMap.get(qId) || {};
+        const userAns = userAnsMap.get(qId) || {};
+        return {
+            question_id: qId,
+            question: q.question || "",
+            option_a: q.option_a || "",
+            option_b: q.option_b || "",
+            option_c: q.option_c || "",
+            option_d: q.option_d || "",
+            correct_answer: q.correct_answer || "",
+            explanation: q.explanation || "",
+            subject: q.subject || "",
+            topic_name: q.topic_name || q.chapter || "",
+            selected_option: userAns.selected_option || null,
+            is_correct: Boolean(userAns.is_correct),
+            marks_awarded: userAns.marks_awarded || 0,
+            time_spent: userAns.time_spent || 0,
+            is_skipped: userAns.is_skipped !== undefined ? userAns.is_skipped : !userAns.selected_option
+        };
+    });
 
-    for (const qId of questionIds) {
-        const q = questionMap.get(qId);
-        const ans = ansMap.get(qId);
-
-        const selectedOption = ans ? ans.selected_option || "" : "";
-        const isAttempted = Boolean(selectedOption);
-        const isCorrect = ans ? Boolean(ans.is_correct) : false;
-        const timeSpent = ans ? ans.time_spent || 0 : 0;
-        totalTimeSpent += timeSpent;
-
-        let marksAwarded = 0;
-        if (isAttempted) {
-            marksAwarded = isCorrect ? 4 : -1;
-        }
-
-        detailedReview.push({
-            id: qId,
-            question: q ? (q.question || "") : "",
-            option_a: q ? (q.option_a || "") : "",
-            option_b: q ? (q.option_b || "") : "",
-            option_c: q ? (q.option_c || "") : "",
-            option_d: q ? (q.option_d || "") : "",
-            correct_answer: q ? (q.correct_answer || "") : "",
-            explanation: q ? (q.explanation || "") : "",
-            difficulty: q ? (q.difficulty || "Medium") : "Medium",
-            question_type: q ? (q.question_type || "multiple_choice") : "multiple_choice",
-            topic_id: q ? (q.topic_id || 0) : 0,
-            selected_option: selectedOption,
-            is_correct: isCorrect,
-            marks_awarded: marksAwarded,
-            time_spent: timeSpent,
-            is_skipped: !isAttempted
-        });
-    }
-
-    return {
-        sessionId: session.sessionId || String(session._id),
-        test_type: "Quick Test",
-        previous_year_paper_id: null,
-        status: session.status || "Completed",
-        score: session.score || 0,
-        correct: session.correct || 0,
-        wrong: session.wrong || 0,
-        skipped: session.skipped !== undefined ? session.skipped : (session.total_questions || 0),
-        accuracy: session.accuracy || 0,
-        total_questions: session.total_questions || questionIds.length,
-        duration: session.duration || 15,
-        started_at: session.started_at,
-        submitted_at: session.submitted_at,
-        total_time_spent: totalTimeSpent,
-        review: detailedReview
-    };
+    const result = sanitizeSessionResponse(session);
+    result.questions = populatedQuestions;
+    return result;
 };
 
-const getUserHistory = async (studentId, query) => {
-    const res = await testSessionRepository.getUserHistory(studentId || "STU1784364902958UZ1WFH", query);
-    if (res && Array.isArray(res.sessions)) {
-        res.sessions = res.sessions.map(sanitizeSessionResponse);
-    }
-    return res;
+// --- GET USER HISTORY ---
+const getUserHistory = async (userId, query = {}) => {
+    return testSessionRepository.getUserHistory(userId, query);
 };
 
 module.exports = {
+    getSubjects,
+    getChapters,
+    getTopics,
     getTestOptions,
     startTest,
     submitTest,

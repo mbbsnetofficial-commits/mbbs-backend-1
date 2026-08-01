@@ -4909,10 +4909,79 @@ const swaggerOptions = {
                     }
                 }
             },
+            '/api/v1/ucat/test/subjects': {
+                get: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Step 1: Get available UCAT subjects / sections',
+                    description: 'Returns available canonical UCAT exam sections (VERBAL_REASONING, DECISION_MAKING, etc.).',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'UCAT subjects fetched successfully.' },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/chapters': {
+                post: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Step 2: Get chapters for selected UCAT subjects',
+                    description: 'Returns distinct chapters belonging to the selected UCAT subjects.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['subjects'],
+                                    properties: {
+                                        subjects: {
+                                            type: 'array',
+                                            items: { type: 'string' },
+                                            example: ['VERBAL_REASONING', 'DECISION_MAKING']
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'UCAT chapters fetched successfully.' },
+                        400: { description: 'Please select subject.' },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/topics': {
+                post: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Step 3: Get topics for selected chapters',
+                    description: 'Returns topic documents for selected UCAT subjects and chapters.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        subjects: { type: 'array', items: { type: 'string' }, example: ['VERBAL_REASONING'] },
+                                        chapters: { type: 'array', items: { type: 'string' }, example: ['Verbal Reasoning'] }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'UCAT topics fetched successfully.' },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
             '/api/v1/ucat/test/start': {
                 post: {
                     tags: ['UCAT Practice Tests'],
-                    summary: 'Generate and start a custom UCAT practice test session',
+                    summary: 'Step 4: Start a quick or custom practice test session',
                     description: 'Creates a custom practice test session filtered by chosen sections, topics, question limit, and time limit.',
                     requestBody: {
                         required: true,
