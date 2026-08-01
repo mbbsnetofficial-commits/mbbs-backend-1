@@ -116,15 +116,13 @@ app.get('/api-docs.json', swaggerAuth, (req, res) => {
 });
 app.use('/api-docs', swaggerAuth, swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// API routes. Keep admin before student routers because admin login is public.
+// API routes. Keep admin before student routers because admin login is public
 app.use("/api/v1", apiLimiter);
 app.use("/api/v1", mutationLimiter);
 app.use('/api/v1/auth', authRouter);
 app.use("/api/v1/blog-reviews", publicReviewRouter);
 app.use("/api/v1/blog-search", searchRouter);
 app.use("/api/v1/pages", pageRouter);
-// Mount the specific blog-template router before the general admin router so
-// each template request passes through admin authentication only once.
 app.use("/api/v1/admin/blog-templates", adminLimiter, templateRouter);
 app.use("/api/v1/admin/blog-categories", adminLimiter, categoryRouter);
 app.use("/api/v1/admin/blog-tags", adminLimiter, tagRouter);
@@ -142,9 +140,6 @@ app.use("/api/v1/ucat/streaks", ucatStreakRouter);
 app.use("/api/v1/ucat/chat", ucatChatRouter);
 app.use("/api/v1/ucat/insights", ucatZoneInsightRouter);
 app.use("/api/v1/ucat/admin", adminLimiter, ucatAdminRouter);
-
-// Do not allow an unmatched admin URL to fall through into student routers.
-// This keeps authentication errors accurate when the method or path is wrong.
 app.use("/api/v1/admin", (req, res) => {
     return res.status(404).json({
         status: "fail",
