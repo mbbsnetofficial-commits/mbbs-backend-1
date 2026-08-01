@@ -5064,8 +5064,39 @@ const swaggerOptions = {
                     tags: ['UCAT Previous Year Tests'],
                     summary: 'List available past UCAT examination papers',
                     description: 'Returns available past year examination papers sorted by year.',
+                    security: [{ bearerAuth: [] }],
                     responses: {
                         200: { description: 'Previous year UCAT papers fetched successfully.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/previous-year-tests/sessions/{sessionId}/result': {
+                get: {
+                    tags: ['UCAT Previous Year Tests'],
+                    summary: 'Get completed previous-year test result & answer review',
+                    description: 'Returns total marks, accuracy percentage, correct/incorrect counts, and detailed answer explanations for a previous-year test session.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'Previous-year UCAT test session result fetched successfully.' },
+                        404: { description: 'Test session not found.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/previous-year-tests/sessions/{sessionId}': {
+                get: {
+                    tags: ['UCAT Previous Year Tests'],
+                    summary: 'Get active previous-year test session state',
+                    description: 'Returns active session details and question payload for a previous-year test attempt.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'Previous-year UCAT test session state fetched successfully.' },
+                        404: { description: 'Test session not found.' }
                     }
                 }
             },

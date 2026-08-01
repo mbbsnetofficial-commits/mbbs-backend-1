@@ -141,7 +141,7 @@ const submitPaperTest = async (payload = {}) => {
         const ans = ansMap.get(qId);
 
         const correctAnswer = q ? (q.correct_answer || "").trim().toUpperCase() : "";
-        const selectedOption = ans ? (ans.selected_option || ans.selectedOption || "").trim().toUpperCase() : "";
+        const selectedOption = ans ? (ans.selected_option || ans.selected || "").trim().toUpperCase() : "";
 
         const isAttempted = Boolean(selectedOption);
         const isCorrect = isAttempted && correctAnswer === selectedOption;
@@ -199,9 +199,53 @@ const submitPaperTest = async (payload = {}) => {
     };
 };
 
+const getPaperTestResult = async (sessionId) => {
+    const session = await testSessionRepository.getSessionById(sessionId);
+    if (!session) {
+        const error = new Error("Previous-year test session not found.");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const questionIds = (session.question_ids || []).map(Number);
+    const questions = await UcatQuestion.find({ id: { $in: questionIds } }).lean();
+    const questionMap = new Map();
+    questions.forEach((q) => questionMap.set(Number(q.id), q));
+
+    const userAnsMap = new Map();
+    (session.answers || []).forEach((a) => userAnsMap.set(Number(a.question_id), a));
+
+    const populatedQuestions = questionIds.map((qId) => {
+        const q = questionMap.get(qId) || {};
+        const userAns = userAnsMap.get(qId) || {};
+        return {
+            question_id: qId,
+            question: q.question || "",
+            option_a: q.option_a || "",
+            option_b: q.option_b || "",
+            option_c: q.option_c || "",
+            option_d: q.option_d || "",
+            correct_answer: q.correct_answer || "",
+            explanation: q.explanation || "",
+            subject: q.subject || "",
+            topic_name: q.topic_name || q.chapter || "",
+            selected_option: userAns.selected_option || null,
+            is_correct: Boolean(userAns.is_correct),
+            marks_awarded: userAns.marks_awarded || 0,
+            time_spent: userAns.time_spent || 0,
+            is_skipped: userAns.is_skipped !== undefined ? userAns.is_skipped : !userAns.selected_option
+        };
+    });
+
+    const result = sanitizeSessionResponse(session);
+    result.questions = populatedQuestions;
+    return result;
+};
+
 module.exports = {
     listPapers,
     getPaperById,
     startPaperTest,
-    submitPaperTest
+    submitPaperTest,
+    getPaperTestResult
 };

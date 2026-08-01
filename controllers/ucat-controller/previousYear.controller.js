@@ -51,9 +51,23 @@ const submitPaperTest = async (req, res, next) => {
     }
 };
 
+const getPaperTestResult = async (req, res, next) => {
+    try {
+        const result = await previousYearService.getPaperTestResult(req.params.sessionId);
+        return res.status(200).json({
+            success: true,
+            message: "Previous-year UCAT test session result fetched successfully.",
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     listPreviousYearTests,
     getPreviousYearTest,
     startPaperTest,
-    submitPaperTest
+    submitPaperTest,
+    getPaperTestResult
 };

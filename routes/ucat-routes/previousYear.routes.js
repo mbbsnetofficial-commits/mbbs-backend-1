@@ -11,8 +11,13 @@ router.use(protect);
 // GET /api/v1/ucat/previous-year-tests - List available past UCAT papers
 router.get("/", previousYearController.listPreviousYearTests);
 
+// GET /api/v1/ucat/previous-year-tests/sessions/:sessionId/result - Get completed past paper test result & review
+router.get("/sessions/:sessionId/result", previousYearController.getPaperTestResult);
+
+// GET /api/v1/ucat/previous-year-tests/sessions/:sessionId - Get active past paper session details
+router.get("/sessions/:sessionId", previousYearController.getPaperTestResult);
+
 // POST /api/v1/ucat/previous-year-tests/submit - Submit past paper exam answers
-// Must be declared before /:paperId to avoid "submit" being matched as a paperId
 router.post("/submit", previousYearController.submitPaperTest);
 
 // GET /api/v1/ucat/previous-year-tests/:paperId - Single past paper details
