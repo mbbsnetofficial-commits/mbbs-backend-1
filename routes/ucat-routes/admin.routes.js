@@ -13,6 +13,10 @@ router.use(protectAdmin);
 router.get("/dashboard", adminController.getDashboard);
 
 // Questions Management
+router.get("/questions/filters", adminController.getQuestionFilters);
+router.get("/questions/section/:section", adminController.getQuestionsBySection);
+router.get("/questions/topic/:topic", adminController.getQuestionsByTopic);
+
 router.route("/questions")
     .get(adminController.listQuestions)
     .post(adminController.createQuestion);
@@ -23,6 +27,9 @@ router.route("/questions/:id")
     .delete(adminController.deleteQuestion);
 
 // Topics Management
+router.get("/topics/section/:section/names", adminController.getTopicNamesBySection);
+router.get("/topics/section/:section", adminController.getTopicsBySection);
+
 router.route("/topics")
     .get(adminController.listTopics)
     .post(adminController.createTopic);

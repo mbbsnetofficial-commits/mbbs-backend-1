@@ -42,6 +42,45 @@ const createQuestion = async (req, res, next) => {
     }
 };
 
+const getQuestionFilters = async (req, res, next) => {
+    try {
+        const filters = await adminService.getQuestionFilters();
+        return res.status(200).json({
+            success: true,
+            message: "UCAT question filters fetched successfully.",
+            data: filters
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getQuestionsBySection = async (req, res, next) => {
+    try {
+        const result = await adminService.getQuestionsBySection(req.params.section, req.query);
+        return res.status(200).json({
+            success: true,
+            message: "UCAT section questions fetched successfully.",
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getQuestionsByTopic = async (req, res, next) => {
+    try {
+        const result = await adminService.getQuestionsByTopic(req.params.topic, req.query);
+        return res.status(200).json({
+            success: true,
+            message: "UCAT topic questions fetched successfully.",
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const getQuestionById = async (req, res, next) => {
     try {
         const question = await adminService.getQuestionById(req.params.id);
@@ -101,6 +140,32 @@ const createTopic = async (req, res, next) => {
             success: true,
             message: "UCAT topic created successfully.",
             data: topic
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getTopicNamesBySection = async (req, res, next) => {
+    try {
+        const topics = await adminService.getTopicNamesBySection(req.params.section);
+        return res.status(200).json({
+            success: true,
+            message: "UCAT topic names fetched successfully.",
+            data: topics
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getTopicsBySection = async (req, res, next) => {
+    try {
+        const topics = await adminService.getTopicsBySection(req.params.section);
+        return res.status(200).json({
+            success: true,
+            message: "UCAT section topics fetched successfully.",
+            data: topics
         });
     } catch (error) {
         next(error);
@@ -295,11 +360,16 @@ module.exports = {
     getDashboard,
     listQuestions,
     createQuestion,
+    getQuestionFilters,
+    getQuestionsBySection,
+    getQuestionsByTopic,
     getQuestionById,
     updateQuestion,
     deleteQuestion,
     listTopics,
     createTopic,
+    getTopicNamesBySection,
+    getTopicsBySection,
     getTopicById,
     updateTopic,
     deleteTopic,

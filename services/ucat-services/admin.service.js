@@ -1,6 +1,8 @@
 "use strict";
 
 const adminRepository = require("../../repositories/ucat-repositories/admin.repository");
+const questionRepository = require("../../repositories/ucat-repositories/question.repositories");
+const topicRepository = require("../../repositories/ucat-repositories/topic.repository");
 
 const getDashboard = async () => {
     return adminRepository.getDashboardStats();
@@ -50,6 +52,28 @@ const deleteQuestion = async (id) => {
     return deleted;
 };
 
+const getQuestionFilters = async () => {
+    return questionRepository.getQuestionFilters();
+};
+
+const getQuestionsBySection = async (section, query = {}) => {
+    if (!section) {
+        const error = new Error("Section parameter is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+    return questionRepository.getQuestionsBySection(section, query);
+};
+
+const getQuestionsByTopic = async (topic, query = {}) => {
+    if (!topic) {
+        const error = new Error("Topic parameter is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+    return questionRepository.getQuestionsByTopic(topic, query);
+};
+
 // Topics
 const listTopics = async (query) => {
     return adminRepository.listTopics(query);
@@ -92,6 +116,24 @@ const deleteTopic = async (id) => {
         throw error;
     }
     return deleted;
+};
+
+const getTopicNamesBySection = async (section) => {
+    if (!section) {
+        const error = new Error("Section parameter is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+    return topicRepository.getTopicNamesBySection(section);
+};
+
+const getTopicsBySection = async (section) => {
+    if (!section) {
+        const error = new Error("Section parameter is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+    return topicRepository.getTopicsBySection(section);
 };
 
 // Test Sessions
@@ -178,11 +220,16 @@ module.exports = {
     getQuestionById,
     updateQuestion,
     deleteQuestion,
+    getQuestionFilters,
+    getQuestionsBySection,
+    getQuestionsByTopic,
     listTopics,
     createTopic,
     getTopicById,
     updateTopic,
     deleteTopic,
+    getTopicNamesBySection,
+    getTopicsBySection,
     listTestSessions,
     getTestSessionById,
     listPreviousYearPapers,

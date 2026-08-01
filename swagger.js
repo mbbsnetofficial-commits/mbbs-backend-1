@@ -4653,11 +4653,12 @@ const swaggerOptions = {
                     }
                 }
             },
-            '/api/v1/ucat/questions/filters': {
+            '/api/v1/ucat/admin/questions/filters': {
                 get: {
-                    tags: ['UCAT Questions'],
+                    tags: ['UCAT Platform Admin'],
                     summary: 'Get available UCAT filter options',
-                    description: 'Returns distinct sections, topics, and difficulties from active UCAT questions.',
+                    description: 'Returns distinct sections, topics, and difficulties from active UCAT questions for admin management.',
+                    security: [{ bearerAuth: [] }],
                     responses: {
                         200: {
                             description: 'UCAT filter metadata returned.',
@@ -4667,15 +4668,17 @@ const swaggerOptions = {
                                 }
                             }
                         },
+                        401: { description: 'Platform admin access token is required or expired.' },
                         500: { description: 'Server or database error.' }
                     }
                 }
             },
-            '/api/v1/ucat/questions/section/{section}': {
+            '/api/v1/ucat/admin/questions/section/{section}': {
                 get: {
-                    tags: ['UCAT Questions'],
+                    tags: ['UCAT Platform Admin'],
                     summary: 'Get UCAT questions by section',
-                    description: 'Returns active UCAT questions belonging to a specific section.',
+                    description: 'Returns active UCAT questions belonging to a specific section for platform admins.',
+                    security: [{ bearerAuth: [] }],
                     parameters: [
                         {
                             name: 'section',
@@ -4683,7 +4686,7 @@ const swaggerOptions = {
                             required: true,
                             schema: {
                                 type: 'string',
-                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT']
+                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'ABSTRACT_REASONING', 'SITUATIONAL_JUDGEMENT']
                             },
                             description: 'Target UCAT section'
                         },
@@ -4710,15 +4713,17 @@ const swaggerOptions = {
                             }
                         },
                         400: { description: 'Invalid UCAT section name.' },
+                        401: { description: 'Platform admin access token is required or expired.' },
                         500: { description: 'Server or database error.' }
                     }
                 }
             },
-            '/api/v1/ucat/questions/topic/{topic}': {
+            '/api/v1/ucat/admin/questions/topic/{topic}': {
                 get: {
-                    tags: ['UCAT Questions'],
+                    tags: ['UCAT Platform Admin'],
                     summary: 'Get UCAT questions by topic',
-                    description: 'Returns active UCAT questions belonging to a specific topic.',
+                    description: 'Returns active UCAT questions belonging to a specific topic for platform admins.',
+                    security: [{ bearerAuth: [] }],
                     parameters: [
                         {
                             name: 'topic',
@@ -4750,6 +4755,7 @@ const swaggerOptions = {
                             }
                         },
                         400: { description: 'Topic is required.' },
+                        401: { description: 'Platform admin access token is required or expired.' },
                         500: { description: 'Server or database error.' }
                     }
                 }
@@ -4808,11 +4814,12 @@ const swaggerOptions = {
                     }
                 }
             },
-            '/api/v1/ucat/topics/section/{section}/names': {
+            '/api/v1/ucat/admin/topics/section/{section}/names': {
                 get: {
-                    tags: ['UCAT Topics'],
+                    tags: ['UCAT Platform Admin'],
                     summary: 'Get topic names and IDs for a section',
-                    description: 'Returns simplified topic metadata (topicId, name, section, order) for a specific exam section.',
+                    description: 'Returns topic metadata (id, name, section) for a specific exam section for platform admins.',
+                    security: [{ bearerAuth: [] }],
                     parameters: [
                         {
                             name: 'section',
@@ -4820,7 +4827,7 @@ const swaggerOptions = {
                             required: true,
                             schema: {
                                 type: 'string',
-                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT']
+                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'ABSTRACT_REASONING', 'SITUATIONAL_JUDGEMENT']
                             },
                             description: 'Target UCAT section'
                         }
@@ -4835,15 +4842,17 @@ const swaggerOptions = {
                             }
                         },
                         400: { description: 'Invalid UCAT section.' },
+                        401: { description: 'Platform admin access token is required or expired.' },
                         500: { description: 'Server or database error.' }
                     }
                 }
             },
-            '/api/v1/ucat/topics/section/{section}': {
+            '/api/v1/ucat/admin/topics/section/{section}': {
                 get: {
-                    tags: ['UCAT Topics'],
+                    tags: ['UCAT Platform Admin'],
                     summary: 'Get full topic details for a section',
-                    description: 'Returns complete topic objects for a specific UCAT section sorted by display order.',
+                    description: 'Returns complete topic objects for a specific UCAT section for platform admins.',
+                    security: [{ bearerAuth: [] }],
                     parameters: [
                         {
                             name: 'section',
@@ -4851,7 +4860,7 @@ const swaggerOptions = {
                             required: true,
                             schema: {
                                 type: 'string',
-                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'SITUATIONAL_JUDGEMENT']
+                                enum: ['VERBAL_REASONING', 'DECISION_MAKING', 'QUANTITATIVE_REASONING', 'ABSTRACT_REASONING', 'SITUATIONAL_JUDGEMENT']
                             },
                             description: 'Target UCAT section'
                         }
@@ -4866,6 +4875,7 @@ const swaggerOptions = {
                             }
                         },
                         400: { description: 'Invalid UCAT section.' },
+                        401: { description: 'Platform admin access token is required or expired.' },
                         500: { description: 'Server or database error.' }
                     }
                 }
