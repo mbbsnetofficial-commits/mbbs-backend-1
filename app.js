@@ -175,8 +175,8 @@ app.use((error, req, res, next) => {
         message: malformedJson
             ? "Request body contains invalid JSON."
             : error.statusCode
-            ? error.message
-            : "An unexpected server error occurred."
+                ? error.message
+                : "An unexpected server error occurred."
     });
 });
 
