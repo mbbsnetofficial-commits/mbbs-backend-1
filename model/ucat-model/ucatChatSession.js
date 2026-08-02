@@ -12,7 +12,7 @@ const ucatChatSessionSchema = new mongoose.Schema(
             index: true
         },
         userId: {
-            type: Number,
+            type: mongoose.Schema.Types.Mixed,
             required: true,
             index: true
         },
@@ -25,6 +25,11 @@ const ucatChatSessionSchema = new mongoose.Schema(
             type: String,
             default: "UCAT Test Review Chat"
         },
+        wrongQuestionIds: [
+            {
+                type: Number
+            }
+        ],
         status: {
             type: String,
             enum: ["ACTIVE", "ARCHIVED"],

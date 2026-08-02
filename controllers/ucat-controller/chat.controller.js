@@ -2,9 +2,14 @@
 
 const chatService = require("../../services/ucat-services/chat.service");
 
+const extractUserId = (req) => {
+    if (!req.user) return 1;
+    return req.user.userId || req.user.student_id || req.user.id || 1;
+};
+
 const createSession = async (req, res, next) => {
     try {
-        const userId = req.user ? req.user.userId : 1;
+        const userId = extractUserId(req);
         const { testSessionId, title } = req.body;
         if (!testSessionId) {
             return res.status(400).json({ success: false, message: "testSessionId is required." });
@@ -35,7 +40,7 @@ const getSession = async (req, res, next) => {
 
 const listUserSessions = async (req, res, next) => {
     try {
-        const userId = req.user ? req.user.userId : 1;
+        const userId = extractUserId(req);
         const sessions = await chatService.listUserSessions(userId);
         return res.status(200).json({
             success: true,
@@ -49,9 +54,9 @@ const listUserSessions = async (req, res, next) => {
 
 const sendMessage = async (req, res, next) => {
     try {
-        const { content } = req.body;
-        if (!content) {
-            return res.status(400).json({ success: false, message: "content is required." });
+        const content = req.body.content || req.body.message;
+        if (!content || typeof content !== "string" || !content.trim()) {
+            return res.status(400).json({ success: false, message: "content or message is required." });
         }
         const result = await chatService.sendMessage(req.params.chatSessionId, content);
         return res.status(200).json({

@@ -27,10 +27,19 @@ const getSessionMessages = async (chatSessionId) => {
         .lean();
 };
 
+const updateChatSession = async (chatSessionId, updateData) => {
+    return UcatChatSession.findOneAndUpdate(
+        { chatSessionId, status: "ACTIVE" },
+        { $set: updateData },
+        { new: true }
+    ).lean();
+};
+
 module.exports = {
     createChatSession,
     getChatSessionById,
     listUserChatSessions,
     createChatMessage,
-    getSessionMessages
+    getSessionMessages,
+    updateChatSession
 };
