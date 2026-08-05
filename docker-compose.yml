@@ -43,6 +43,12 @@ services:
       - SWAGGER_PASSWORD=${SWAGGER_PASSWORD}
     networks:
       - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mbbs-backend.rule=Host(`api.mbbs.net`)"
+      - "traefik.http.routers.mbbs-backend.entrypoints=web,websecure"
+      - "traefik.http.routers.mbbs-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mbbs-backend.loadbalancer.server.port=3000"
 
 networks:
   dokploy-network:
