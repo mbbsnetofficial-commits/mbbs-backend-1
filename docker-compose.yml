@@ -41,3 +41,9 @@ services:
       - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
       - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
       - SWAGGER_PASSWORD=${SWAGGER_PASSWORD}
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
