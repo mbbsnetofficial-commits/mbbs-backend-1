@@ -7,9 +7,13 @@ if (!globalThis.crypto) {
     globalThis.crypto = require("node:crypto").webcrypto;
 }
 
-dotenv.config({
-    path: path.join(__dirname, "config", "config.env")
-});
+const fs = require("fs");
+const configFile = path.join(__dirname, "config", "config.env");
+if (fs.existsSync(configFile)) {
+    dotenv.config({ path: configFile });
+} else {
+    dotenv.config();
+}
 
 // Database connections
 const {
