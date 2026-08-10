@@ -4,7 +4,7 @@ const { protect } = require("../../utilities/auth");
 
 const notificationRouter = express.Router();
 
-notificationRouter.use(protect);
+notificationRouter.use("/notifications", protect);
 
 notificationRouter
     .route("/notifications")

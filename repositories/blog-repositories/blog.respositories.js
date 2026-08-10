@@ -50,6 +50,11 @@ const findPublishedById = id => populate(Blog.findOne({
     _id: id
 }).select("-password")).lean();
 
+const findPublishedBySlug = slug => populate(Blog.findOne({
+    ...publicFilter,
+    slug
+}).select("-password")).lean();
+
 const updateLikeCount = (id, amount) => Blog.findOneAndUpdate(
     { ...publicFilter, _id: id },
     [{
@@ -119,6 +124,7 @@ module.exports = {
     findPublished,
     countPublished,
     findPublishedById,
+    findPublishedBySlug,
     updateLikeCount,
     validateRelations,
     updateAssignmentCounts,

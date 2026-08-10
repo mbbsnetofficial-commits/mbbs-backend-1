@@ -18,7 +18,7 @@ const handler = (action, message) => async (req, res) => {
 };
 
 exports.listBlogs = handler(
-    req => service.listBlogs(req.user.id, req.query),
+    req => service.listBlogs(req.user?.id || null, req.query),
     "Blogs fetched successfully."
 );
 exports.listSavedBlogs = handler(
@@ -26,7 +26,7 @@ exports.listSavedBlogs = handler(
     "Saved blogs fetched successfully."
 );
 exports.getBlog = handler(
-    req => service.getBlog(req.user.id, req.params.blogId),
+    req => service.getBlog(req.user?.id || null, req.params.blogId),
     "Blog fetched successfully."
 );
 exports.likeBlog = handler(

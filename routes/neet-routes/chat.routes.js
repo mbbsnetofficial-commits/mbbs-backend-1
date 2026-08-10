@@ -5,7 +5,8 @@ const { aiLimiter } = require("../../middleware/rateLimit.middleware");
 
 const chatRouter = express.Router();
 
-chatRouter.use(protect);
+chatRouter.use("/chat-sessions", protect);
+chatRouter.use("/test-subject-zone-insights", protect);
 
 chatRouter
     .route("/chat-sessions")

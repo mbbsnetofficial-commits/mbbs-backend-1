@@ -4,7 +4,7 @@ const { protect } = require("../../utilities/auth");
 
 const userActivityRouter = express.Router();
 
-userActivityRouter.use(protect);
+userActivityRouter.use("/user-activity", protect);
 
 userActivityRouter.post(
     "/user-activity",

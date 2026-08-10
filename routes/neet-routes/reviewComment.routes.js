@@ -4,7 +4,7 @@ const { protect } = require("../../utilities/auth");
 
 const reviewCommentRouter = express.Router();
 
-reviewCommentRouter.use(protect);
+reviewCommentRouter.use("/review-comments", protect);
 
 reviewCommentRouter
     .route("/review-comments")

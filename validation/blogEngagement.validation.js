@@ -10,7 +10,7 @@ const listBlogsSchema = Joi.object({
 });
 
 const blogIdSchema = Joi.object({
-    blogId: Joi.string().length(24).hex().required()
+    blogId: Joi.string().trim().min(1).max(250).required()
 });
 
 module.exports = { listBlogsSchema, blogIdSchema };

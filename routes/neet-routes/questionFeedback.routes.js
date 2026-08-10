@@ -4,7 +4,7 @@ const { protect } = require("../../utilities/auth");
 
 const questionFeedbackRouter = express.Router();
 
-questionFeedbackRouter.use(protect);
+questionFeedbackRouter.use("/test/question-feedback", protect);
 
 questionFeedbackRouter
     .route("/test/question-feedback")

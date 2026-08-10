@@ -16,6 +16,12 @@ const pagination = query => {
 const blogIds = blogs => blogs.map(blog => String(blog._id));
 
 const stateForBlogs = async (userId, blogs) => {
+    if (!userId) {
+        return {
+            likedAt: new Map(),
+            savedAt: new Map()
+        };
+    }
     const states = await engagementRepository.findStates(userId, blogIds(blogs));
     return {
         likedAt: new Map(states.likes.map(item => [String(item.blog_id), item.liked_at])),
@@ -61,9 +67,12 @@ const formatBlogs = async (userId, blogs) => {
     return blogs.map(blog => formatBlogCard(blog, state));
 };
 
-const getPublishedBlog = async blogId => {
-    if (!mongoose.isValidObjectId(blogId)) throw createError("Invalid blogId.", 400);
-    const blog = await blogRepository.findPublishedById(blogId);
+const getPublishedBlog = async identifier => {
+    if (mongoose.isValidObjectId(identifier)) {
+        const blog = await blogRepository.findPublishedById(identifier);
+        if (blog) return blog;
+    }
+    const blog = await blogRepository.findPublishedBySlug(identifier);
     if (!blog) throw createError("Published blog not found.", 404);
     return blog;
 };

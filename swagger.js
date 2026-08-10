@@ -1620,8 +1620,8 @@ const swaggerOptions = {
             '/api/v1/blogs': {
                 get: {
                     tags: ['Blog Engagement'],
-                    summary: 'List published blogs with the student’s like/save state',
-                    security: [{ bearerAuth: [] }],
+                    summary: 'List published blogs (Public / Guest access with optional student like/save state)',
+                    security: [{ bearerAuth: [] }, {}],
                     parameters: [
                         { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
                         { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
@@ -1645,8 +1645,7 @@ const swaggerOptions = {
                                     }
                                 }
                             }
-                        },
-                        401: { description: 'Student token is missing, invalid, expired, or revoked.' }
+                        }
                     }
                 }
             },
@@ -1683,13 +1682,14 @@ const swaggerOptions = {
             '/api/v1/blogs/{blogId}': {
                 get: {
                     tags: ['Blog Engagement'],
-                    summary: 'Get a published blog with like/save state',
-                    security: [{ bearerAuth: [] }],
+                    summary: 'Get a published blog by ID or URL slug (Public / Guest access)',
+                    security: [{ bearerAuth: [] }, {}],
                     parameters: [{
                         name: 'blogId',
                         in: 'path',
+                        description: 'MongoDB ObjectId or URL slug string (e.g., neet-2026-preparation-guide)',
                         required: true,
-                        schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+                        schema: { type: 'string' }
                     }],
                     responses: {
                         200: {
@@ -1707,7 +1707,6 @@ const swaggerOptions = {
                                 }
                             }
                         },
-                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
                         404: { description: 'Published blog not found.' }
                     }
                 }
@@ -3694,6 +3693,9 @@ const swaggerOptions = {
             },
             '/api/v1/admin/blogs/{id}/restore': {
                 patch: { tags: ['Blogs'], summary: 'Restore a soft-deleted blog as a draft', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Blog restored.' }, 404: { description: 'Blog not found.' }, 409: { description: 'Blog is not deleted or slug conflicts.' } } }
+            },
+            '/api/v1/admin/blogs/{id}/permanent': {
+                delete: { tags: ['Blogs'], summary: 'Permanently delete a blog from database', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Blog permanently deleted.' }, 404: { description: 'Blog not found.' } } }
             },
             '/api/v1/admin/blog-authors': {
                 get: {
