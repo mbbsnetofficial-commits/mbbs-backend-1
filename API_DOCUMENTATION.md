@@ -81,7 +81,7 @@ The ecosystem uses **JSON Web Tokens (JWT)**. Backend 1 acts as the Identity Pro
 
 ---
 
-### 5. Blog & Content Management System (`Backend 1`)
+### 5. Blog & Content Management System (CMS) (`Backend 1`)
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/pages` | List published static pages (Terms, Privacy, About) | None |
@@ -91,62 +91,63 @@ The ecosystem uses **JSON Web Tokens (JWT)**. Backend 1 acts as the Identity Pro
 
 ---
 
-### 6. Admin Control Panel (`Backend 1` & `Backend 2`)
+### 6. Admin Blog Management APIs (`Backend 1`)
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/admin/login` | Platform Admin Login | None |
-| `GET` | `/api/v1/admin/blog-analytics` | Comprehensive blog traffic & reader analytics | Admin Token |
-| `POST` | `/api/v1/admin/blogs` | Create new blog post | Admin Token |
-| `PUT` | `/api/v1/admin/blogs/:id` | Edit existing blog post | Admin Token |
-| `POST` | `/api/v1/admin/blog-media` | Upload media image to Cloudinary | Admin Token |
-| `POST` | `/api/v1/cse/admin/universities` | Create/Edit university entry in CSE Engine | Admin Token |
-| `POST` | `/api/v1/cse/admin/courses` | Create/Edit course entry in CSE Engine | Admin Token |
+| `GET` | `/api/v1/admin/blogs` | List all blogs with pagination, filter, search | Admin Token |
+| `POST` | `/api/v1/admin/blogs` | Create a new blog post in DRAFT status | Admin Token |
+| `GET` | `/api/v1/admin/blogs/:id` | Get single blog details by MongoDB ObjectId | Admin Token |
+| `PATCH` | `/api/v1/admin/blogs/:id` | Update fields of an existing blog post | Admin Token |
+| `POST` | `/api/v1/admin/blogs/:id/publish` | Publish a draft or scheduled blog post | Admin Token |
+| `POST` | `/api/v1/admin/blogs/:id/unpublish` | Revert published blog post to DRAFT status | Admin Token |
+| `POST` | `/api/v1/admin/blogs/:id/schedule` | Schedule blog publication for a future date/time | Admin Token |
+| `POST` | `/api/v1/admin/blogs/:id/duplicate` | Duplicate an existing blog as a new draft | Admin Token |
+| `POST` | `/api/v1/admin/blogs/:id/featured-image` | Upload and attach featured banner image | Admin Token |
+| `DELETE` | `/api/v1/admin/blogs/:id` | **Soft Delete Blog**: Marks `isDeleted=true`, status `ARCHIVED` | Admin Token |
+| `DELETE` | `/api/v1/admin/blogs/:id/permanent` | **Permanent Delete Blog**: Permanently purges from DB | Admin Token |
+| `PATCH` | `/api/v1/admin/blogs/:id/restore` | Restore soft-deleted blog back to DRAFT status | Admin Token |
 
 ---
 
-## 📝 Request & Response Payload Examples
+## 📋 Comprehensive Blog Model Fields
 
-### 1. CSE Recommendation Request (`POST /api/v1/cse/recommendations`)
-```json
-{
-  "country_id": "66b0a1b2c3d4e5f6789a0b1c",
-  "answers": {
-    "pcb_percentage": 65,
-    "neet_score": 240,
-    "budget_usd": 25000,
-    "preferred_language": "English"
-  },
-  "student_info": {
-    "name": "Rahul Sharma",
-    "email": "rahul@example.com",
-    "phone": "+919876543210"
-  }
-}
-```
+Below is the complete list of all database schema fields for a Blog entry:
 
-### 2. CSE Recommendation Response
-```json
-{
-  "status": "success",
-  "data": {
-    "session_id": "REC-1723000000-ABCDEF",
-    "country": "Russia",
-    "total_universities_evaluated": 12,
-    "universities_that_fit": [
-      {
-        "rank": 1,
-        "match_percentage": 95,
-        "university": {
-          "id": "66b0a1b2c3d4e5f6789a0b1d",
-          "name": "Kazan Federal University",
-          "slug": "kazan-federal-university",
-          "city": "Kazan",
-          "world_rank": 396,
-          "annual_tuition_fee_usd": 5500,
-          "logo": "https://example.com/logo.png"
-        }
-      }
-    ]
-  }
-}
-```
+| Field Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | ObjectId | Auto | Unique MongoDB Identifier |
+| `title` | String | **Yes** | Article Title (max 250 chars) |
+| `blogCode` | String | Auto | Unique Immutable Code (e.g. `BLG-NEET-2026-X12`) |
+| `slug` | String | **Yes** | URL Slug (Unique, Lowercase) |
+| `shortDescription` | String | No | Brief summary (max 500 chars) |
+| `excerpt` | String | Auto/Optional | Auto-generated or manual text snippet (180 chars) |
+| `content` | Object/String | **Yes** | Full article content (Rich Text / HTML / JSON Blocks) |
+| `blogType` | Enum | No | `BLOG`, `NEWS`, `ARTICLE`, `GUIDE`, `FAQ`, `CASE_STUDY` |
+| `template` | ObjectId | **Yes** | Reference to `BlogTemplate` |
+| `category` | ObjectId | **Yes** | Reference to `BlogCategory` |
+| `tags` | Array[ObjectId] | No | References to `BlogTag` |
+| `author` | ObjectId | **Yes** | Reference to `BlogAuthor` |
+| `featuredImage` | Object | No | `{ url: String, alt: String, caption: String }` |
+| `gallery` | Array[Object] | No | Array of `{ url: String, alt: String }` |
+| `videos` | Array[Object] | No | Array of `{ title: String, url: String }` |
+| `status` | Enum | No | `DRAFT`, `REVIEW`, `SCHEDULED`, `PUBLISHED`, `ARCHIVED` |
+| `visibility` | Enum | No | `PUBLIC`, `PRIVATE`, `PASSWORD` |
+| `password` | String | Conditional | Required if `visibility === "PASSWORD"` |
+| `publishedAt` | Date | Auto | Timestamp when published |
+| `scheduledAt` | Date | Conditional | Future publication timestamp |
+| `isFeatured` | Boolean | Default false | Highlight in featured carousel |
+| `isTrending` | Boolean | Default false | Highlight in trending section |
+| `isPinned` | Boolean | Default false | Pin to top of category listing |
+| `readingTime` | Number | Auto | Calculated reading time in minutes |
+| `totalViews` | Number | Default 0 | Total reader view count |
+| `totalLikes` | Number | Default 0 | Total user like count |
+| `totalShares` | Number | Default 0 | Total share count |
+| `totalComments` | Number | Default 0 | Total comment count |
+| `seo` | Object | No | `{ metaTitle, metaDescription, keywords: [], canonicalUrl, robots }` |
+| `faqs` | Array[Object] | No | Array of `{ question: String, answer: String }` |
+| `relatedBlogs` | Array[ObjectId] | No | References to other `Blog` documents |
+| `metadata` | Object | Default `{}` | Custom key-value metadata |
+| `createdBy` | ObjectId | Auto | Admin user who created the blog |
+| `updatedBy` | ObjectId | Auto | Admin user who last updated the blog |
+| `isDeleted` | Boolean | Default false | Soft deletion flag |
+| `deletedAt` | Date | Default null | Soft deletion timestamp |

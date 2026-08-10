@@ -26,6 +26,7 @@ exports.unpublishBlog = handler(req => service.unpublishBlog(req.params.id, req.
 exports.scheduleBlog = handler(req => service.scheduleBlog(req.params.id, req.body.scheduledAt, req.admin), MESSAGES.SCHEDULE_SUCCESS);
 exports.duplicateBlog = handler(req => service.duplicateBlog(req.params.id, req.admin), MESSAGES.DUPLICATE_SUCCESS, 201);
 exports.deleteBlog = handler(req => service.deleteBlog(req.params.id, req.admin), MESSAGES.DELETE_SUCCESS);
+exports.permanentDeleteBlog = handler(req => service.permanentDeleteBlog(req.params.id, req.admin), "Blog deleted permanently from database.");
 exports.restoreBlog = handler(req => service.restoreBlog(req.params.id, req.admin), MESSAGES.RESTORE_SUCCESS);
 exports.getStatistics = handler(() => service.getStatistics(), MESSAGES.STATISTICS_SUCCESS);
 exports.uploadFeaturedImage = handler(

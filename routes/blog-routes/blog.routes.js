@@ -36,6 +36,7 @@ router.post(
 );
 router.post("/:id/duplicate", validate(blogIdSchema, "params"), controller.duplicateBlog);
 router.patch("/:id/restore", validate(blogIdSchema, "params"), controller.restoreBlog);
+router.delete("/:id/permanent", validate(blogIdSchema, "params"), controller.permanentDeleteBlog);
 router.post(
     "/:id/featured-image",
     validate(blogIdSchema, "params"),

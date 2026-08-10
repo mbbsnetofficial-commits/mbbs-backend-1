@@ -103,6 +103,8 @@ const statistics = () => Blog.aggregate([
     { $project: { _id: 0 } }
 ]);
 
+const hardDelete = id => Blog.deleteOne({ _id: id });
+
 module.exports = {
     create,
     findById,
@@ -113,6 +115,7 @@ module.exports = {
     findAll,
     count,
     save,
+    hardDelete,
     findPublished,
     countPublished,
     findPublishedById,

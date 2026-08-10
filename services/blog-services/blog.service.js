@@ -168,6 +168,13 @@ exports.deleteBlog = async (id, actor) => {
     await repository.save(blog);
 };
 
+exports.permanentDeleteBlog = async (id, actor) => {
+    const blog = await repository.findDocumentById(id);
+    if (!blog) throw error(MESSAGES.NOT_FOUND, 404);
+    if (blog.status === BLOG_STATUS.PUBLISHED) await repository.updateAssignmentCounts(blog, -1);
+    await repository.hardDelete(id);
+};
+
 exports.restoreBlog = async (id, actor) => {
     const blog = await repository.findDocumentById(id);
     if (!blog) throw error(MESSAGES.NOT_FOUND, 404);
