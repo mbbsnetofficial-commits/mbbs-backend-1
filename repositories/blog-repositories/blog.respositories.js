@@ -55,17 +55,15 @@ const findPublishedBySlug = slug => populate(Blog.findOne({
     slug
 }).select("-password")).lean();
 
-const updateLikeCount = (id, amount) => Blog.findOneAndUpdate(
-    { ...publicFilter, _id: id },
-    [{
-        $set: {
-            totalLikes: {
-                $max: [0, { $add: [{ $ifNull: ["$totalLikes", 0] }, amount] }]
-            }
-        }
-    }],
-    { new: true }
-).select("totalLikes").lean();
+const updateLikeCount = async (id, amount) => {
+    const filter = { _id: id };
+    if (amount < 0) {
+        filter.totalLikes = { $gt: 0 };
+    }
+    await Blog.updateOne(filter, { $inc: { totalLikes: amount } });
+    const updated = await Blog.findOne({ _id: id }).select("totalLikes").lean();
+    return updated || { totalLikes: 0 };
+};
 
 const validateRelations = async ({ template, category, author, tags = [], relatedBlogs = [] }) => {
     const [templateExists, categoryExists, authorExists, tagCount, relatedCount] = await Promise.all([
@@ -110,6 +108,8 @@ const statistics = () => Blog.aggregate([
 
 const hardDelete = id => Blog.deleteOne({ _id: id });
 
+const setLikeCount = (id, count) => Blog.updateOne({ _id: id }, { totalLikes: count });
+
 module.exports = {
     create,
     findById,
@@ -126,6 +126,7 @@ module.exports = {
     findPublishedById,
     findPublishedBySlug,
     updateLikeCount,
+    setLikeCount,
     validateRelations,
     updateAssignmentCounts,
     statistics

@@ -134,31 +134,30 @@ exports.getBlog = async (userId, blogId) => {
 };
 
 exports.likeBlog = async ({ userId, studentId, blogId }) => {
-    await getPublishedBlog(blogId);
-    const result = await engagementRepository.like({ userId, studentId, blogId });
-    const blog = result.created
-        ? await blogRepository.updateLikeCount(blogId, 1)
-        : await blogRepository.findPublishedById(blogId);
-    return { blogId, isLiked: true, totalLikes: blog.totalLikes };
+    const blog = await getPublishedBlog(blogId);
+    await engagementRepository.like({ userId, studentId, blogId: blog._id });
+    const count = await engagementRepository.countLikes(blog._id);
+    const finalLikes = Math.max(1, count || ((blog.totalLikes || 0) + 1));
+    await blogRepository.setLikeCount(blog._id, finalLikes);
+    return { blogId: String(blog._id), isLiked: true, totalLikes: finalLikes };
 };
 
 exports.unlikeBlog = async ({ userId, blogId }) => {
-    await getPublishedBlog(blogId);
-    const result = await engagementRepository.unlike({ userId, blogId });
-    const blog = result.deletedCount
-        ? await blogRepository.updateLikeCount(blogId, -1)
-        : await blogRepository.findPublishedById(blogId);
-    return { blogId, isLiked: false, totalLikes: blog.totalLikes };
+    const blog = await getPublishedBlog(blogId);
+    await engagementRepository.unlike({ userId, blogId: blog._id });
+    const count = await engagementRepository.countLikes(blog._id);
+    await blogRepository.setLikeCount(blog._id, count);
+    return { blogId: String(blog._id), isLiked: false, totalLikes: count };
 };
 
 exports.saveBlog = async ({ userId, studentId, blogId }) => {
-    await getPublishedBlog(blogId);
-    await engagementRepository.save({ userId, studentId, blogId });
-    return { blogId, isSaved: true };
+    const blog = await getPublishedBlog(blogId);
+    await engagementRepository.save({ userId, studentId, blogId: blog._id });
+    return { blogId: String(blog._id), isSaved: true };
 };
 
 exports.unsaveBlog = async ({ userId, blogId }) => {
-    await getPublishedBlog(blogId);
-    await engagementRepository.unsave({ userId, blogId });
-    return { blogId, isSaved: false };
+    const blog = await getPublishedBlog(blogId);
+    await engagementRepository.unsave({ userId, blogId: blog._id });
+    return { blogId: String(blog._id), isSaved: false };
 };

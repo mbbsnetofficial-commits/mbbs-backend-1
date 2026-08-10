@@ -60,11 +60,14 @@ const findSavedForUser = userId => BlogSave
     .sort({ saved_at: -1 })
     .lean();
 
+const countLikes = blogId => BlogLike.countDocuments({ blog_id: blogId });
+
 module.exports = {
     like,
     unlike,
     save,
     unsave,
+    countLikes,
     findStates,
     findSavedForUser
 };
