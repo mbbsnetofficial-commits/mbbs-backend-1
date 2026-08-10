@@ -150,6 +150,10 @@ const swaggerOptions = {
             {
                 name: 'UCAT Performance Insights',
                 description: 'APIs for generating and retrieving section accuracy and weak/strong zone analytics'
+            },
+            {
+                name: 'Student Dashboard',
+                description: 'Personalized real-time student dashboard, KPI stats cards, performance metrics, and activity history'
             }
         ],
         components: {
@@ -5483,6 +5487,153 @@ const swaggerOptions = {
                     responses: {
                         200: { description: 'UCAT zone insight fetched successfully.' },
                         404: { description: 'Zone insight not found.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/summary': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get aggregated student dashboard summary',
+                    description: 'Returns real-time personalized dashboard snapshot including student profile, QOD streak stats, overall test performance, subject breakdown, AI focus zones, unread notifications, and recent test sessions.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: 'Student dashboard summary fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'Student dashboard summary fetched successfully.' },
+                                            data: {
+                                                type: 'object',
+                                                properties: {
+                                                    profile: { type: 'object' },
+                                                    streak: { type: 'object' },
+                                                    performance_summary: { type: 'object' },
+                                                    subject_breakdown: { type: 'array', items: { type: 'object' } },
+                                                    insights: { type: 'object' },
+                                                    recent_tests: { type: 'array', items: { type: 'object' } },
+                                                    notifications: { type: 'object' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Please login to access this resource.' },
+                        500: { description: 'An unexpected server error occurred.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/stats': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get top-level KPI stats cards',
+                    description: 'Returns compact KPI card stats (streak, tests completed, total questions solved, overall accuracy, practice time in minutes).',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: 'Student dashboard KPI stats fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'Student dashboard KPI stats fetched successfully.' },
+                                            data: {
+                                                type: 'object',
+                                                properties: {
+                                                    current_streak: { type: 'number', example: 5 },
+                                                    longest_streak: { type: 'number', example: 12 },
+                                                    answered_today: { type: 'boolean', example: true },
+                                                    tests_completed: { type: 'number', example: 14 },
+                                                    total_questions_solved: { type: 'number', example: 280 },
+                                                    overall_accuracy: { type: 'number', example: 82.5 },
+                                                    practice_time_minutes: { type: 'number', example: 120 }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/performance': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get detailed student performance metrics',
+                    description: 'Provides analytical breakdowns including subject-wise accuracy, test type comparison (Quick Test vs PYQ), and recent test score trends.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: 'Student performance analytics fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'Student performance analytics fetched successfully.' },
+                                            data: {
+                                                type: 'object',
+                                                properties: {
+                                                    subject_performance: { type: 'array', items: { type: 'object' } },
+                                                    test_type_performance: { type: 'array', items: { type: 'object' } },
+                                                    recent_test_trend: { type: 'array', items: { type: 'object' } }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/recent-activity': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get paginated student recent activity timeline',
+                    description: 'Returns student activity timeline (completed tests, QOD attempts, profile updates) with page & limit pagination parameters.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', required: false, schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', required: false, schema: { type: 'integer', default: 10 } }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Student activity history fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'Student activity history fetched successfully.' },
+                                            data: { type: 'array', items: { type: 'object' } },
+                                            pagination: {
+                                                type: 'object',
+                                                properties: {
+                                                    total: { type: 'number', example: 15 },
+                                                    page: { type: 'number', example: 1 },
+                                                    limit: { type: 'number', example: 10 },
+                                                    pages: { type: 'number', example: 2 }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Please login to access this resource.' }
                     }
                 }
             }

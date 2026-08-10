@@ -109,6 +109,16 @@ The ecosystem uses **JSON Web Tokens (JWT)**. Backend 1 acts as the Identity Pro
 
 ---
 
+### 7. Student Dashboard APIs (`Backend 1`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/student/dashboard/summary` | Real-time aggregated student dashboard snapshot | Bearer Token |
+| `GET` | `/api/v1/student/dashboard/stats` | Compact KPI cards (streak, questions, accuracy, practice time) | Bearer Token |
+| `GET` | `/api/v1/student/dashboard/performance` | In-depth subject accuracy breakdown & score trends | Bearer Token |
+| `GET` | `/api/v1/student/dashboard/recent-activity` | Paginated timeline of student activity history | Bearer Token |
+
+---
+
 ## 📋 Comprehensive Blog Model Fields
 
 Below is the complete list of all database schema fields for a Blog entry:
