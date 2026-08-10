@@ -7,6 +7,9 @@ const QodStreak = require("../model/neet-models/qodStreak");
 const QodSubmission = require("../model/neet-models/qodsubmission");
 const TestSubjectZoneInsight = require("../model/neet-models/testSubjectZoneInsight");
 const Notification = require("../model/neet-models/notification");
+const SavedUniversity = require("../model/neet-models/savedUniversity");
+const CseRecommendationSession = require("../model/neet-models/cseRecommendationSession");
+const blogEngagementService = require("./blogEngagement.service");
 
 const getTodayDateKey = () => {
     const now = new Date();
@@ -28,9 +31,20 @@ const formatName = (firstName, lastName) => {
 /**
  * Main dashboard summary aggregator for authenticated student
  */
-exports.getStudentDashboardSummary = async (studentId) => {
-    // 1. Fetch Auth & Profile details
-    const [authDoc, profileDoc, streakDoc, latestInsightDoc, unreadNotificationsCount, recentNotifications, recentTestSessions] = await Promise.all([
+exports.getStudentDashboardSummary = async (studentId, userId = null) => {
+    // 1. Fetch Auth & Profile details & Dashboard extras
+    const [
+        authDoc,
+        profileDoc,
+        streakDoc,
+        latestInsightDoc,
+        unreadNotificationsCount,
+        recentNotifications,
+        recentTestSessions,
+        savedUniversitiesCount,
+        recentSavedUniversities,
+        latestCseRecommendation
+    ] = await Promise.all([
         Auth.findOne({ student_id: studentId }).lean(),
         StudentProfile.findOne({ student_id: studentId }).lean(),
         QodStreak.findOne({ student_id: studentId }).lean(),
@@ -45,8 +59,32 @@ exports.getStudentDashboardSummary = async (studentId) => {
             .sort({ started_at: -1 })
             .limit(5)
             .select("subjects test_type total_questions duration score correct wrong skipped accuracy status started_at submitted_at")
+            .lean(),
+        SavedUniversity.countDocuments({ student_id: studentId }),
+        SavedUniversity.find({ student_id: studentId })
+            .sort({ saved_at: -1 })
+            .limit(3)
+            .lean(),
+        CseRecommendationSession.findOne({ student_id: studentId })
+            .sort({ created_at: -1 })
             .lean()
     ]);
+
+    const resolvedUserId = userId || authDoc?._id;
+
+    // Fetch saved blogs for dashboard preview
+    let savedBlogsData = { blogs: [], total: 0 };
+    if (resolvedUserId) {
+        try {
+            const result = await blogEngagementService.listSavedBlogs(resolvedUserId, { page: 1, limit: 3 });
+            savedBlogsData = {
+                blogs: result.blogs || [],
+                total: result.pagination?.total || 0
+            };
+        } catch (_) {
+            savedBlogsData = { blogs: [], total: 0 };
+        }
+    }
 
     const todayDateKey = getTodayDateKey();
     const answeredToday = await QodSubmission.exists({
@@ -197,6 +235,12 @@ exports.getStudentDashboardSummary = async (studentId) => {
         },
         subject_breakdown: subjectBreakdown,
         insights: insightsData,
+        saved_blogs: savedBlogsData,
+        university_finder: {
+            saved_count: savedUniversitiesCount,
+            recent_saved: recentSavedUniversities,
+            latest_recommendation: latestCseRecommendation || null
+        },
         recent_tests: recentTestSessions,
         notifications: {
             unread_count: unreadNotificationsCount,
@@ -211,7 +255,7 @@ exports.getStudentDashboardSummary = async (studentId) => {
 exports.getStudentDashboardStats = async (studentId) => {
     const todayDateKey = getTodayDateKey();
 
-    const [streakDoc, answeredToday, testAgg] = await Promise.all([
+    const [streakDoc, answeredToday, testAgg, savedUniCount] = await Promise.all([
         QodStreak.findOne({ student_id: studentId }).lean(),
         QodSubmission.exists({ student_id: studentId, qod_date_key: todayDateKey }),
         TestSession.aggregate([
@@ -225,7 +269,8 @@ exports.getStudentDashboardStats = async (studentId) => {
                     total_duration: { $sum: "$duration" }
                 }
             }
-        ])
+        ]),
+        SavedUniversity.countDocuments({ student_id: studentId })
     ]);
 
     const stats = testAgg[0] || { total_completed: 0, correct: 0, wrong: 0, total_duration: 0 };
@@ -241,7 +286,8 @@ exports.getStudentDashboardStats = async (studentId) => {
         tests_completed: stats.total_completed,
         total_questions_solved: totalAttempted,
         overall_accuracy: accuracy,
-        practice_time_minutes: Math.round(stats.total_duration / 60)
+        practice_time_minutes: Math.round(stats.total_duration / 60),
+        saved_universities_count: savedUniCount
     };
 };
 
@@ -358,4 +404,79 @@ exports.getStudentRecentActivity = async (studentId, page = 1, limit = 10) => {
             pages: Math.ceil(totalTestSessions / limit) || 1
         }
     };
+};
+
+/**
+ * List saved blogs for dashboard view
+ */
+exports.getStudentSavedBlogs = async (userId, query) => {
+    return blogEngagementService.listSavedBlogs(userId, query);
+};
+
+/**
+ * Save target university for student dashboard
+ */
+exports.saveUniversity = async (userId, studentId, universityData) => {
+    const filter = { student_id: studentId, university_id: String(universityData.university_id) };
+    const update = {
+        $set: {
+            user_id: userId,
+            student_id: studentId,
+            university_id: String(universityData.university_id),
+            university_name: universityData.university_name,
+            slug: universityData.slug || null,
+            country: universityData.country || null,
+            logo_url: universityData.logo_url || null,
+            tuition_fee_approx: universityData.tuition_fee_approx || null,
+            saved_at: new Date()
+        }
+    };
+    const options = { new: true, upsert: true, runValidators: true };
+    return SavedUniversity.findOneAndUpdate(filter, update, options);
+};
+
+/**
+ * Unsave / remove target university
+ */
+exports.unsaveUniversity = async (studentId, universityId) => {
+    return SavedUniversity.findOneAndDelete({
+        student_id: studentId,
+        university_id: String(universityId)
+    });
+};
+
+/**
+ * List saved target universities for student
+ */
+exports.getSavedUniversities = async (studentId) => {
+    return SavedUniversity.find({ student_id: studentId })
+        .sort({ saved_at: -1 })
+        .lean();
+};
+
+/**
+ * Save CSE University Finder recommendation search session
+ */
+exports.saveCseRecommendation = async (studentId, data) => {
+    const sessionId = data.session_id || `CSE-REC-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    return CseRecommendationSession.create({
+        student_id: studentId,
+        session_id: sessionId,
+        country_id: data.country_id || null,
+        country_name: data.country_name || null,
+        budget_range: data.budget_range || null,
+        pcb_score: data.pcb_score || null,
+        neet_score: data.neet_score || null,
+        matched_universities: data.matched_universities || [],
+        created_at: new Date()
+    });
+};
+
+/**
+ * Get student's saved CSE recommendations
+ */
+exports.getCseRecommendations = async (studentId) => {
+    return CseRecommendationSession.find({ student_id: studentId })
+        .sort({ created_at: -1 })
+        .lean();
 };

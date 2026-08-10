@@ -5636,6 +5636,164 @@ const swaggerOptions = {
                         401: { description: 'Please login to access this resource.' }
                     }
                 }
+            },
+            '/api/v1/student/dashboard/saved-blogs': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get authenticated student saved blogs for dashboard',
+                    description: 'Returns list of student bookmarked blogs formatted with full metadata (title, slug, excerpt, featured image, author, category, reading time).',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', required: false, schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', required: false, schema: { type: 'integer', default: 20 } }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Saved blogs fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'Saved blogs fetched successfully.' },
+                                            data: { type: 'array', items: { type: 'object' } },
+                                            pagination: { type: 'object' }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/university-finder/saved-universities': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get saved target MBBS universities',
+                    description: 'Returns all universities bookmarked by the student for quick access on their dashboard.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: 'Saved target universities fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'Saved target universities fetched successfully.' },
+                                            data: { type: 'array', items: { type: 'object' } }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/university-finder/save-university': {
+                post: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Bookmark / save target MBBS university',
+                    description: 'Saves a university to the student\'s dashboard target list.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['university_id', 'university_name'],
+                                    properties: {
+                                        university_id: { type: 'string', example: 'UNI-RUS-001' },
+                                        university_name: { type: 'string', example: 'Kazan Federal University' },
+                                        slug: { type: 'string', example: 'kazan-federal-university' },
+                                        country: { type: 'string', example: 'Russia' },
+                                        logo_url: { type: 'string', example: 'https://api.mbbs.net/logos/kazan.png' },
+                                        tuition_fee_approx: { type: 'string', example: '$4,500 / year' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'University saved to student dashboard successfully.' },
+                        400: { description: 'university_id and university_name are required.' },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/university-finder/save-university/{universityId}': {
+                delete: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Remove saved university from dashboard',
+                    description: 'Removes a university from the student\'s bookmarked target list.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'universityId', in: 'path', required: true, schema: { type: 'string' } }
+                    ],
+                    responses: {
+                        200: { description: 'University removed from saved list successfully.' },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/university-finder/recommendations': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get saved University Finder recommendation sessions',
+                    description: 'Returns previous eligibility search submissions and ranked matching university recommendations.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: 'University Finder recommendation sessions fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'University Finder recommendation sessions fetched successfully.' },
+                                            data: { type: 'array', items: { type: 'object' } }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                },
+                post: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Save University Finder quiz recommendation results',
+                    description: 'Stores a student\'s CSE questionnaire answers and matching university recommendations for dashboard review.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        country_id: { type: 'string', example: 'russia' },
+                                        country_name: { type: 'string', example: 'Russia' },
+                                        budget_range: { type: 'string', example: '$4000-$6000' },
+                                        pcb_score: { type: 'number', example: 75 },
+                                        neet_score: { type: 'number', example: 350 },
+                                        matched_universities: { type: 'array', items: { type: 'object' } }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'University Finder recommendation session saved successfully.' },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                }
             }
         }
     },

@@ -10,6 +10,7 @@ const studentDashboardService = require("../../services/studentDashboard.service
 exports.getDashboardSummary = async (req, res) => {
     try {
         const studentId = req.user?.student_id;
+        const userId = req.user?.id;
 
         if (!studentId) {
             return res.status(400).json({
@@ -18,7 +19,7 @@ exports.getDashboardSummary = async (req, res) => {
             });
         }
 
-        const summary = await studentDashboardService.getStudentDashboardSummary(studentId);
+        const summary = await studentDashboardService.getStudentDashboardSummary(studentId, userId);
 
         return res.status(200).json({
             status: "success",
@@ -126,6 +127,202 @@ exports.getDashboardRecentActivity = async (req, res) => {
         return res.status(500).json({
             status: "fail",
             message: error.message || "Failed to fetch student recent activity."
+        });
+    }
+};
+
+/**
+ * @desc Get student's saved blogs for dashboard
+ * @route GET /api/v1/student/dashboard/saved-blogs
+ * @access Private (Student Auth Token Required)
+ */
+exports.getSavedBlogs = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(400).json({
+                status: "fail",
+                message: "user id is missing from authentication token."
+            });
+        }
+
+        const result = await studentDashboardService.getStudentSavedBlogs(userId, req.query);
+
+        return res.status(200).json({
+            status: "success",
+            message: "Saved blogs fetched successfully.",
+            data: result.blogs,
+            pagination: result.pagination
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            message: error.message || "Failed to fetch saved blogs."
+        });
+    }
+};
+
+/**
+ * @desc Bookmark / Save target university for student dashboard
+ * @route POST /api/v1/student/dashboard/university-finder/save-university
+ * @access Private (Student Auth Token Required)
+ */
+exports.saveUniversity = async (req, res) => {
+    try {
+        const studentId = req.user?.student_id;
+        const userId = req.user?.id;
+
+        if (!studentId) {
+            return res.status(400).json({
+                status: "fail",
+                message: "student_id is missing from authentication token."
+            });
+        }
+
+        const { university_id, university_name } = req.body;
+        if (!university_id || !university_name) {
+            return res.status(400).json({
+                status: "fail",
+                message: "university_id and university_name are required."
+            });
+        }
+
+        const savedUni = await studentDashboardService.saveUniversity(userId, studentId, req.body);
+
+        return res.status(201).json({
+            status: "success",
+            message: "University saved to student dashboard successfully.",
+            data: savedUni
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            message: error.message || "Failed to save university."
+        });
+    }
+};
+
+/**
+ * @desc Remove saved university from student dashboard
+ * @route DELETE /api/v1/student/dashboard/university-finder/save-university/:universityId
+ * @access Private (Student Auth Token Required)
+ */
+exports.unsaveUniversity = async (req, res) => {
+    try {
+        const studentId = req.user?.student_id;
+        const { universityId } = req.params;
+
+        if (!studentId) {
+            return res.status(400).json({
+                status: "fail",
+                message: "student_id is missing from authentication token."
+            });
+        }
+
+        await studentDashboardService.unsaveUniversity(studentId, universityId);
+
+        return res.status(200).json({
+            status: "success",
+            message: "University removed from saved list successfully."
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            message: error.message || "Failed to unsave university."
+        });
+    }
+};
+
+/**
+ * @desc List saved target universities for student dashboard
+ * @route GET /api/v1/student/dashboard/university-finder/saved-universities
+ * @access Private (Student Auth Token Required)
+ */
+exports.getSavedUniversities = async (req, res) => {
+    try {
+        const studentId = req.user?.student_id;
+
+        if (!studentId) {
+            return res.status(400).json({
+                status: "fail",
+                message: "student_id is missing from authentication token."
+            });
+        }
+
+        const universities = await studentDashboardService.getSavedUniversities(studentId);
+
+        return res.status(200).json({
+            status: "success",
+            message: "Saved target universities fetched successfully.",
+            data: universities
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            message: error.message || "Failed to fetch saved universities."
+        });
+    }
+};
+
+/**
+ * @desc Save CSE University Finder quiz recommendation results
+ * @route POST /api/v1/student/dashboard/university-finder/recommendations
+ * @access Private (Student Auth Token Required)
+ */
+exports.saveRecommendation = async (req, res) => {
+    try {
+        const studentId = req.user?.student_id;
+
+        if (!studentId) {
+            return res.status(400).json({
+                status: "fail",
+                message: "student_id is missing from authentication token."
+            });
+        }
+
+        const recommendation = await studentDashboardService.saveCseRecommendation(studentId, req.body);
+
+        return res.status(201).json({
+            status: "success",
+            message: "University Finder recommendation session saved successfully.",
+            data: recommendation
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            message: error.message || "Failed to save recommendation session."
+        });
+    }
+};
+
+/**
+ * @desc List saved University Finder recommendation sessions
+ * @route GET /api/v1/student/dashboard/university-finder/recommendations
+ * @access Private (Student Auth Token Required)
+ */
+exports.getRecommendations = async (req, res) => {
+    try {
+        const studentId = req.user?.student_id;
+
+        if (!studentId) {
+            return res.status(400).json({
+                status: "fail",
+                message: "student_id is missing from authentication token."
+            });
+        }
+
+        const recommendations = await studentDashboardService.getCseRecommendations(studentId);
+
+        return res.status(200).json({
+            status: "success",
+            message: "University Finder recommendation sessions fetched successfully.",
+            data: recommendations
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            message: error.message || "Failed to fetch recommendation sessions."
         });
     }
 };

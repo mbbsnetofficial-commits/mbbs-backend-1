@@ -29,4 +29,34 @@ studentDashboardRouter.get(
     studentDashboardController.getDashboardRecentActivity
 );
 
+studentDashboardRouter.get(
+    "/student/dashboard/saved-blogs",
+    studentDashboardController.getSavedBlogs
+);
+
+studentDashboardRouter.get(
+    "/student/dashboard/university-finder/saved-universities",
+    studentDashboardController.getSavedUniversities
+);
+
+studentDashboardRouter.post(
+    "/student/dashboard/university-finder/save-university",
+    studentDashboardController.saveUniversity
+);
+
+studentDashboardRouter.delete(
+    "/student/dashboard/university-finder/save-university/:universityId",
+    studentDashboardController.unsaveUniversity
+);
+
+studentDashboardRouter.get(
+    "/student/dashboard/university-finder/recommendations",
+    studentDashboardController.getRecommendations
+);
+
+studentDashboardRouter.post(
+    "/student/dashboard/university-finder/recommendations",
+    studentDashboardController.saveRecommendation
+);
+
 module.exports = studentDashboardRouter;

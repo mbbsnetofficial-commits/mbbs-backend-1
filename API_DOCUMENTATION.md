@@ -112,10 +112,16 @@ The ecosystem uses **JSON Web Tokens (JWT)**. Backend 1 acts as the Identity Pro
 ### 7. Student Dashboard APIs (`Backend 1`)
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/student/dashboard/summary` | Real-time aggregated student dashboard snapshot | Bearer Token |
-| `GET` | `/api/v1/student/dashboard/stats` | Compact KPI cards (streak, questions, accuracy, practice time) | Bearer Token |
+| `GET` | `/api/v1/student/dashboard/summary` | Real-time aggregated student dashboard snapshot (profile, streak, stats, saved blogs preview, saved universities) | Bearer Token |
+| `GET` | `/api/v1/student/dashboard/stats` | Compact KPI cards (streak, questions, accuracy, practice time, saved universities count) | Bearer Token |
 | `GET` | `/api/v1/student/dashboard/performance` | In-depth subject accuracy breakdown & score trends | Bearer Token |
 | `GET` | `/api/v1/student/dashboard/recent-activity` | Paginated timeline of student activity history | Bearer Token |
+| `GET` | `/api/v1/student/dashboard/saved-blogs` | List student's bookmarked blogs formatted with full metadata | Bearer Token |
+| `GET` | `/api/v1/student/dashboard/university-finder/saved-universities` | List student's saved target MBBS universities | Bearer Token |
+| `POST` | `/api/v1/student/dashboard/university-finder/save-university` | Bookmark target university for dashboard | Bearer Token |
+| `DELETE` | `/api/v1/student/dashboard/university-finder/save-university/:universityId` | Remove saved university from dashboard | Bearer Token |
+| `GET` | `/api/v1/student/dashboard/university-finder/recommendations` | List saved University Finder recommendation sessions | Bearer Token |
+| `POST` | `/api/v1/student/dashboard/university-finder/recommendations` | Save University Finder quiz search recommendation results | Bearer Token |
 
 ---
 
