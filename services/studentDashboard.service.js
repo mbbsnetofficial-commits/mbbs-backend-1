@@ -497,6 +497,29 @@ exports.getCustomTestTableHistory = async (studentId, options = {}) => {
         query.status = "Completed";
     }
 
+    if (options.type) {
+        const types = Array.isArray(options.type)
+            ? options.type
+            : String(options.type).split(",").map(t => t.trim());
+
+        const typeConditions = [];
+        for (const t of types) {
+            const lowerT = t.toLowerCase();
+            if (lowerT === "previous year test" || lowerT === "previous year") {
+                typeConditions.push({ test_type: "Previous Year" });
+            } else if (lowerT === "custom") {
+                typeConditions.push({ test_type: "Custom Test" });
+            } else if (lowerT === "practise test" || lowerT === "practice test") {
+                typeConditions.push({ test_type: "Quick Test" });
+            } else if (["physics", "chemistry", "botany", "zoology"].includes(lowerT)) {
+                typeConditions.push({ subjects: { $in: [new RegExp(`^${t}$`, "i")] } });
+            }
+        }
+        if (typeConditions.length > 0) {
+            query.$or = typeConditions;
+        }
+    }
+
     const sortField = options.sortBy || "date";
     const sortOrder = options.sortOrder === "asc" ? 1 : -1;
 
@@ -504,6 +527,7 @@ exports.getCustomTestTableHistory = async (studentId, options = {}) => {
     if (sortField === "score") sortOption = { score: sortOrder };
     else if (sortField === "progress") sortOption = { accuracy: sortOrder };
     else if (sortField === "date") sortOption = { started_at: sortOrder };
+    else if (sortField === "title") sortOption = { title: sortOrder };
 
     const [sessions, total] = await Promise.all([
         TestSession.find(query)

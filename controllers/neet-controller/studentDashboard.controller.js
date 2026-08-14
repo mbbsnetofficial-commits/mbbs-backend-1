@@ -347,6 +347,7 @@ exports.getCustomTests = async (req, res) => {
             page: req.query.page,
             limit: req.query.limit,
             status: req.query.status,
+            type: req.query.type,
             sortBy: req.query.sortBy,
             sortOrder: req.query.sortOrder
         };
@@ -366,4 +367,7 @@ exports.getCustomTests = async (req, res) => {
         });
     }
 };
+
+exports.getNeetDashboard = exports.getCustomTests;
+
 

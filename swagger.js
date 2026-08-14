@@ -5855,6 +5855,8 @@ const swaggerOptions = {
                     security: [{ bearerAuth: [] }],
                     parameters: [
                         { name: 'status', in: 'query', schema: { type: 'string', enum: ['all', 'in_progress', 'completed'] }, description: 'Filter by session status' },
+                        { name: 'type', in: 'query', schema: { type: 'string' }, description: 'Filter by category checkboxes: Previous Year Test, Practise Test, Custom, Physics, Chemistry, Botany, Zoology (supports comma-separated)' },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['date', 'score', 'progress', 'title'] } },
                         { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } }
                     ],
@@ -5914,6 +5916,24 @@ const swaggerOptions = {
                             }
                         },
                         401: { description: 'Please login to access this resource.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/neet-dashboard': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'NEET Dashboard API (Image 1 & Image 2 Dashboard Table & Filter Dropdown)',
+                    description: 'Returns student test history for the dashboard table with top tabs (All, In Progress, Completed), category filter checkboxes (Physics, Chemistry, Botany, Zoology, Custom, Practise Test, Previous Year Test), and sorting.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['all', 'in_progress', 'completed'] } },
+                        { name: 'type', in: 'query', schema: { type: 'string' }, description: 'Filter checkboxes: Previous Year Test, Practise Test, Custom, Physics, Chemistry, Botany, Zoology' },
+                        { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['date', 'score', 'progress', 'title'] } },
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'NEET dashboard test history fetched successfully.' }
                     }
                 }
             }

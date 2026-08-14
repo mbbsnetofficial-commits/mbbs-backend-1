@@ -55,6 +55,11 @@ studentDashboardRouter.get(
 );
 
 studentDashboardRouter.get(
+    "/student/dashboard/neet-dashboard",
+    studentDashboardController.getNeetDashboard
+);
+
+studentDashboardRouter.get(
     "/student/dashboard/university-finder/recommendations",
     studentDashboardController.getRecommendations
 );
