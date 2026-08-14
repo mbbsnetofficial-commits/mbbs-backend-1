@@ -158,134 +158,127 @@ exports.getTopics = async (req, res) => {
 };
 
 exports.startQuickTest = async (req, res) => {
-
     try {
-
         const {
-
-            subjects,
-
-            chapters,
-
-            questionCount,
-
-            duration
-
+            subjects = [],
+            chapters = [],
+            questionCount = 180,
+            duration = 180,
+            title: customTitle,
+            level: customLevel
         } = req.body;
 
-        const topics = await Topic.find({
+        const topicQuery = { is_active: { $ne: false } };
+        if (Array.isArray(subjects) && subjects.length > 0) {
+            topicQuery.subject = { $in: subjects };
+        }
+        if (Array.isArray(chapters) && chapters.length > 0) {
+            topicQuery.chapter = { $in: chapters };
+        }
 
-            is_active: { $ne: false },
-
-            subject: {
-
-                $in: subjects
-
-            },
-
-            chapter: {
-
-                $in: chapters
-
-            }
-
-        });
-
+        const topics = await Topic.find(topicQuery).lean();
         const topicIds = topics.map(topic => topic.id);
 
-        const questions = await Question.aggregate([
+        const targetTotal = Number(questionCount) || 180;
+        let selectedQuestions = [];
 
-            {
+        if (Array.isArray(subjects) && subjects.length > 0) {
+            const perSubjectQuota = Math.max(1, Math.floor(targetTotal / subjects.length));
+            for (const subjectName of subjects) {
+                const subjectTopicIds = topics.filter(t => t.subject === subjectName).map(t => t.id);
+                if (subjectTopicIds.length === 0) continue;
 
-                $match: {
+                const subjectQuestions = await Question.aggregate([
+                    {
+                        $match: {
+                            is_active: { $ne: false },
+                            topic_id: { $in: subjectTopicIds }
+                        }
+                    },
+                    { $sample: { size: perSubjectQuota } }
+                ]);
+                selectedQuestions.push(...subjectQuestions);
+            }
+        }
 
-                    is_active: { $ne: false },
-
-                    topic_id: {
-
-                        $in: topicIds
-
-                    }
-
-                }
-
-            },
-
-            {
-
-                $sample: {
-
-                    size: Number(questionCount)
-
-                }
-
-            },
-
-            {
-
-                $project: {
-
-                    _id: 0,
-
-                    correct_answer: 0,
-
-                    explanation: 0
-
-                }
-
+        if (selectedQuestions.length < targetTotal) {
+            const existingIds = new Set(selectedQuestions.map(q => q.id));
+            const needed = targetTotal - selectedQuestions.length;
+            const extraMatch = { is_active: { $ne: false } };
+            if (topicIds.length > 0) {
+                extraMatch.topic_id = { $in: topicIds };
+            }
+            if (existingIds.size > 0) {
+                extraMatch.id = { $nin: Array.from(existingIds) };
             }
 
-        ]);
+            const extraQuestions = await Question.aggregate([
+                { $match: extraMatch },
+                { $sample: { size: needed } }
+            ]);
+            selectedQuestions.push(...extraQuestions);
+        }
+
+        const totalQuestions = selectedQuestions.length;
+        const totalMarks = totalQuestions * 4;
+
+        const firstChapter = chapters && chapters.length > 0 ? chapters[0] : (subjects && subjects.length > 0 ? subjects[0] : "General Practice");
+        const extraCount = chapters && chapters.length > 1 ? chapters.length - 1 : 0;
+        const testCode = Math.floor(100 + Math.random() * 900);
+        const title = customTitle || (extraCount > 0 ? `${firstChapter} & ${extraCount} more #${testCode}` : `${firstChapter} #${testCode}`);
+        const subtitle = subjects && subjects.length > 1 ? `${subjects.join(" & ")} Practice` : (subjects && subjects[0] ? `${subjects[0]} Chapter Practice` : "Full Mock Practice");
+
+        const validLevels = ["Beginner", "Intermediate", "Advanced"];
+        let level = customLevel && validLevels.includes(customLevel) ? customLevel : "Intermediate";
+        if (!customLevel) {
+            if (chapters.length <= 2 || totalQuestions <= 30) level = "Beginner";
+            else if (chapters.length >= 6 || totalQuestions >= 120) level = "Advanced";
+        }
+
+        const formattedQuestions = selectedQuestions.map(question => {
+            const { _id, correct_answer, explanation, ...rest } = question;
+            return rest;
+        });
 
         const session = await TestSession.create({
-
             student_id: req.user.student_id,
-
-            subjects,
-
-            chapters,
-
+            subjects: subjects || [],
+            chapters: chapters || [],
             topic_ids: topicIds,
-
-            duration,
-
-            total_questions: questions.length,
-
-            question_ids: questions.map(question => question.id),
-
+            duration: Number(duration) || 180,
+            total_questions: totalQuestions,
+            total_marks: totalMarks,
+            question_ids: selectedQuestions.map(question => question.id),
+            test_type: "Custom Test",
+            title,
+            subtitle,
+            level,
+            status: "Started",
             started_at: new Date()
-
         });
 
         return res.status(200).json({
-
             success: true,
-
             sessionId: session._id,
-
-            duration,
-
-            totalQuestions: questions.length,
-
-            data: questions
-
+            duration: session.duration,
+            totalQuestions,
+            totalMarks,
+            title,
+            subtitle,
+            level,
+            data: formattedQuestions
         });
 
-    }
-
-    catch (error) {
-
+    } catch (error) {
         return res.status(500).json({
-
             success: false,
-
             message: error.message
-
         });
-
     }
-
 };
+
+exports.startCustomTest = exports.startQuickTest;
+
 
 exports.submitTest = async (req, res) => {
 

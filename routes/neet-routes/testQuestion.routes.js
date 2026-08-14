@@ -29,7 +29,13 @@ testQuestionRouter.post(
     testQuestionController.getTopics
 );
 
-// Step 4: Generate questions and start a quick-test session.
+// Step 4: Generate questions and start a custom test session (with 180 questions auto distribution).
+testQuestionRouter.post(
+    "/test/custom/start",
+    protect,
+    testQuestionController.startCustomTest
+);
+
 testQuestionRouter.post(
     "/test/start",
     protect,

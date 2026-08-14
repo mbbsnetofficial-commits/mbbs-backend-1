@@ -50,6 +50,11 @@ studentDashboardRouter.delete(
 );
 
 studentDashboardRouter.get(
+    "/student/dashboard/custom-tests",
+    studentDashboardController.getCustomTests
+);
+
+studentDashboardRouter.get(
     "/student/dashboard/university-finder/recommendations",
     studentDashboardController.getRecommendations
 );

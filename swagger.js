@@ -2553,6 +2553,58 @@ const swaggerOptions = {
                     }
                 }
             },
+            '/api/v1/test/custom/start': {
+                post: {
+                    tags: ['Quick Test'],
+                    summary: 'Step 4: Generate 180-Question Custom Test',
+                    description: 'Auto-distributes 180 questions (or preset count) proportionally across 1, 2, 3, or 4 selected subjects and chapters. Calculates total marks (720 max) and auto-assigns difficulty level.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        subjects: { type: 'array', items: { type: 'string' }, example: ['Physics', 'Chemistry'] },
+                                        chapters: { type: 'array', items: { type: 'string' }, example: ['Alternating Current', 'Atoms'] },
+                                        questionCount: { type: 'integer', example: 180 },
+                                        duration: { type: 'integer', example: 180 }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: {
+                            description: 'Custom test session created and 180 questions returned.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            sessionId: { type: 'string', example: '6879c11b92eaed84fcf156c1' },
+                                            duration: { type: 'integer', example: 180 },
+                                            totalQuestions: { type: 'integer', example: 180 },
+                                            totalMarks: { type: 'integer', example: 720 },
+                                            title: { type: 'string', example: 'Alternating Current & 2 more #124' },
+                                            subtitle: { type: 'string', example: 'Physics & Chemistry Practice' },
+                                            level: { type: 'string', example: 'Intermediate' },
+                                            data: {
+                                                type: 'array',
+                                                items: { $ref: '#/components/schemas/TestQuestion' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'Subject or chapter selection invalid.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
             '/api/v1/test/submit': {
                 post: {
                     tags: ['Quick Test'],
@@ -5791,6 +5843,76 @@ const swaggerOptions = {
                     },
                     responses: {
                         201: { description: 'University Finder recommendation session saved successfully.' },
+                        401: { description: 'Please login to access this resource.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/custom-tests': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get custom test history formatted for Image 3 Dashboard Table',
+                    description: 'Returns all student custom test sessions with date_modified, course_name, type, level, status, progress %, time_spent, and formatted score out of total marks.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['all', 'in_progress', 'completed'] }, description: 'Filter by session status' },
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } }
+                    ],
+                    responses: {
+                        200: {
+                            description: 'Custom test history table list fetched successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            status: { type: 'string', example: 'success' },
+                                            message: { type: 'string', example: 'Student custom test history fetched successfully.' },
+                                            data: {
+                                                type: 'array',
+                                                items: {
+                                                    type: 'object',
+                                                    properties: {
+                                                        id: { type: 'string', example: '66bc90e4f5311236168a99b2' },
+                                                        date_modified: { type: 'string', example: '25 Jul 2026' },
+                                                        course_name: {
+                                                            type: 'object',
+                                                            properties: {
+                                                                title: { type: 'string', example: 'Aldehydes, Ketones & Carboxylic Acids #124' },
+                                                                subtitle: { type: 'string', example: 'Organic & Inorganic Chemistry' }
+                                                            }
+                                                        },
+                                                        type: { type: 'string', example: 'Chemistry' },
+                                                        level: { type: 'string', example: 'Beginner' },
+                                                        status: { type: 'string', example: 'In Progress' },
+                                                        progress: { type: 'integer', example: 78 },
+                                                        time_spent: { type: 'string', example: '13h 7m' },
+                                                        time_spent_seconds: { type: 'integer', example: 47220 },
+                                                        score: {
+                                                            type: 'object',
+                                                            properties: {
+                                                                earned: { type: 'integer', example: 662 },
+                                                                total_marks: { type: 'integer', example: 720 },
+                                                                formatted: { type: 'string', example: '662 / 720' }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            pagination: {
+                                                type: 'object',
+                                                properties: {
+                                                    page: { type: 'integer', example: 1 },
+                                                    limit: { type: 'integer', example: 10 },
+                                                    total: { type: 'integer', example: 2 },
+                                                    totalPages: { type: 'integer', example: 1 }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
                         401: { description: 'Please login to access this resource.' }
                     }
                 }

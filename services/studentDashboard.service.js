@@ -480,3 +480,106 @@ exports.getCseRecommendations = async (studentId) => {
         .sort({ created_at: -1 })
         .lean();
 };
+
+/**
+ * Format custom test sessions for the Student Dashboard Table (Image 3)
+ */
+exports.getCustomTestTableHistory = async (studentId, options = {}) => {
+    const page = Math.max(parseInt(options.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(options.limit, 10) || 10, 1), 100);
+    const skip = (page - 1) * limit;
+    const statusFilter = options.status ? options.status.toLowerCase() : "all";
+
+    const query = { student_id: studentId };
+    if (statusFilter === "in_progress" || statusFilter === "in progress") {
+        query.status = "Started";
+    } else if (statusFilter === "completed") {
+        query.status = "Completed";
+    }
+
+    const sortField = options.sortBy || "date";
+    const sortOrder = options.sortOrder === "asc" ? 1 : -1;
+
+    let sortOption = { started_at: -1 };
+    if (sortField === "score") sortOption = { score: sortOrder };
+    else if (sortField === "progress") sortOption = { accuracy: sortOrder };
+    else if (sortField === "date") sortOption = { started_at: sortOrder };
+
+    const [sessions, total] = await Promise.all([
+        TestSession.find(query)
+            .sort(sortOption)
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        TestSession.countDocuments(query)
+    ]);
+
+    const formattedTests = sessions.map(session => {
+        const dateModified = session.submitted_at || session.started_at || session.createdAt;
+        const formattedDate = dateModified ? new Date(dateModified).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }) : "N/A";
+
+        const firstChapter = session.chapters && session.chapters.length > 0 ? session.chapters[0] : (session.subjects && session.subjects[0] ? session.subjects[0] : "General Practice");
+        const extraCount = session.chapters && session.chapters.length > 1 ? session.chapters.length - 1 : 0;
+        const code = String(session._id).slice(-3);
+        const title = session.title || (extraCount > 0 ? `${firstChapter} & ${extraCount} more #${code}` : `${firstChapter} #${code}`);
+        const subtitle = session.subtitle || (session.subjects && session.subjects.length > 0 ? `${session.subjects.join(" & ")} Practice` : "Full Mock Practice");
+
+        const type = session.subjects && session.subjects.length > 0 ? session.subjects[0] : "Practise Test";
+        const level = session.level || "Intermediate";
+        const status = session.status === "Completed" ? "Completed" : "In Progress";
+
+        const answeredCount = Array.isArray(session.answers) ? session.answers.length : 0;
+        const totalQuestions = session.total_questions || 180;
+        const progressPercent = session.status === "Completed" ? 100 : Math.min(Math.round((answeredCount / totalQuestions) * 100), 99);
+
+        let totalSeconds = session.time_spent_seconds || 0;
+        if (!totalSeconds && Array.isArray(session.answers)) {
+            totalSeconds = session.answers.reduce((acc, ans) => acc + (ans.time_spent || 0), 0);
+        }
+        if (!totalSeconds && session.submitted_at && session.started_at) {
+            totalSeconds = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+        }
+
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const formattedTimeSpent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+        const totalMarks = session.total_marks || (totalQuestions * 4);
+        const score = session.status === "Completed" ? session.score : Math.max(0, session.score || 0);
+
+        return {
+            id: session._id,
+            date_modified: formattedDate,
+            course_name: {
+                title,
+                subtitle
+            },
+            type,
+            level,
+            status,
+            progress: progressPercent,
+            time_spent: formattedTimeSpent,
+            time_spent_seconds: totalSeconds,
+            score: {
+                earned: score,
+                total_marks: totalMarks,
+                formatted: `${score} / ${totalMarks}`
+            }
+        };
+    });
+
+    return {
+        tests: formattedTests,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+        }
+    };
+};
+

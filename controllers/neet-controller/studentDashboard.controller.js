@@ -326,3 +326,44 @@ exports.getRecommendations = async (req, res) => {
         });
     }
 };
+
+/**
+ * @desc Get custom test history formatted for student dashboard table (Image 3)
+ * @route GET /api/v1/student/dashboard/custom-tests
+ * @access Private (Student Auth Token Required)
+ */
+exports.getCustomTests = async (req, res) => {
+    try {
+        const studentId = req.user?.student_id;
+
+        if (!studentId) {
+            return res.status(400).json({
+                status: "fail",
+                message: "student_id is missing from authentication token."
+            });
+        }
+
+        const options = {
+            page: req.query.page,
+            limit: req.query.limit,
+            status: req.query.status,
+            sortBy: req.query.sortBy,
+            sortOrder: req.query.sortOrder
+        };
+
+        const result = await studentDashboardService.getCustomTestTableHistory(studentId, options);
+
+        return res.status(200).json({
+            status: "success",
+            message: "Student custom test history fetched successfully.",
+            data: result.tests,
+            pagination: result.pagination
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            message: error.message || "Failed to fetch student custom test history."
+        });
+    }
+};
+

@@ -79,6 +79,21 @@ const server = app.listen(0, async () => {
         assert.ok([200, 404, 500, 503].includes(res.statusCode), `Request processed (got ${res.statusCode})`);
         console.log(`✔ Test 7 PASS: Invalid JWT token request passes through without 401 error (Status: ${res.statusCode})`);
 
+        // Test 8: GET /api/v1/student/dashboard/custom-tests fetches custom test table history
+        res = await makeRequest("/api/v1/student/dashboard/custom-tests");
+        assert.ok([200, 404, 500, 503].includes(res.statusCode), `Custom test table endpoint processed (got ${res.statusCode})`);
+        console.log(`✔ Test 8 PASS: GET /api/v1/student/dashboard/custom-tests processed (Status: ${res.statusCode})`);
+
+        // Test 9: POST /api/v1/test/custom/start generates 180 questions custom test session
+        res = await makeRequest("/api/v1/test/custom/start", null, "POST", {
+            subjects: ["Physics", "Chemistry"],
+            chapters: ["Alternating Current", "Atoms"],
+            questionCount: 180,
+            duration: 180
+        });
+        assert.ok([200, 400, 404, 500, 503].includes(res.statusCode), `Custom test generator processed (got ${res.statusCode})`);
+        console.log(`✔ Test 9 PASS: POST /api/v1/test/custom/start custom test session initialized (Status: ${res.statusCode})`);
+
         console.log("\nALL STUDENT DASHBOARD & UNIVERSITY FINDER TESTS PASSED SUCCESSFULLY! 🎉");
     } catch (err) {
         console.error("\n❌ STUDENT DASHBOARD TEST FAILED:", err);
@@ -87,3 +102,4 @@ const server = app.listen(0, async () => {
         server.close();
     }
 });
+

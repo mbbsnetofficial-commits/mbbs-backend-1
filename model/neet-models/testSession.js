@@ -72,8 +72,34 @@ const testSessionSchema = new mongoose.Schema({
 
     test_type: {
         type: String,
-        enum: ["Quick Test", "Previous Year"],
-        default: "Quick Test"
+        enum: ["Quick Test", "Previous Year", "Custom Test"],
+        default: "Custom Test"
+    },
+
+    title: {
+        type: String,
+        default: "NEET Custom Practice Test"
+    },
+
+    subtitle: {
+        type: String,
+        default: "Custom Practice"
+    },
+
+    level: {
+        type: String,
+        enum: ["Beginner", "Intermediate", "Advanced"],
+        default: "Intermediate"
+    },
+
+    total_marks: {
+        type: Number,
+        default: 0
+    },
+
+    time_spent_seconds: {
+        type: Number,
+        default: 0
     },
 
     previous_year_paper_id: {
