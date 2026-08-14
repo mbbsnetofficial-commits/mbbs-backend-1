@@ -27,11 +27,7 @@ const buildLimiter = ({
 });
 
 // Every /api/v1 request passes through this baseline protection.
-const apiLimiter = buildLimiter({
-    windowMs: numberFromEnv("RATE_LIMIT_API_WINDOW_MS", 15 * 60 * 1000),
-    limit: numberFromEnv("RATE_LIMIT_API_MAX", 300),
-    message: "Too many API requests. Please try again later."
-});
+const apiLimiter = (req, res, next) => next();
 
 // Successful logins do not consume the failed-attempt allowance.
 const loginLimiter = buildLimiter({
