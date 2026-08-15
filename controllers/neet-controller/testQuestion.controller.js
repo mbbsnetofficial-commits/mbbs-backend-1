@@ -277,8 +277,6 @@ exports.startQuickTest = async (req, res) => {
     }
 };
 
-exports.startCustomTest = exports.startQuickTest;
-
 
 exports.submitTest = async (req, res) => {
 

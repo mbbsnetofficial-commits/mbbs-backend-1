@@ -47,8 +47,7 @@ const {
     notificationRouter,
     testLeaderboardRouter,
     authorFollowRouter,
-    blogEngagementRouter,
-    studentDashboardRouter
+    blogEngagementRouter
 } = require("./routes/neet-routes");
 
 
@@ -147,7 +146,6 @@ app.use("/api/v1", reviewCommentRouter);
 app.use("/api/v1", notificationRouter);
 app.use("/api/v1", authorFollowRouter);
 app.use("/api/v1", blogEngagementRouter);
-app.use("/api/v1", studentDashboardRouter);
 
 app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
