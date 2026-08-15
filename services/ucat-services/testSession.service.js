@@ -107,11 +107,14 @@ const getTestOptions = async () => {
             { value: 20, label: "20 Questions" },
             { value: 25, label: "25 Questions" },
             { value: 30, label: "30 Questions" },
-            { value: 50, label: "50 Questions" }
+            { value: 50, label: "50 Questions" },
+            { value: 180, label: "180 Questions" },
+            { value: 233, label: "233 Questions (Full Exam - 932 Marks)" }
         ],
         test_types: [
             { code: "QUICK_TEST", name: "Quick Test" },
             { code: "CUSTOM_PRACTICE", name: "Custom Practice Test" },
+            { code: "FULL_EXAM", name: "Full Exam (233 Questions, 120 Mins, 932 Marks)" },
             { code: "PREVIOUS_YEAR", name: "Previous Year Paper" }
         ],
         sections: [
@@ -120,7 +123,19 @@ const getTestOptions = async () => {
             { code: "QUANTITATIVE_REASONING", name: "Quantitative Reasoning", db_subject: "quantitative_reasoning" },
             { code: "ABSTRACT_REASONING", name: "Abstract Reasoning", db_subject: "abstract_reasoning" },
             { code: "SITUATIONAL_JUDGEMENT", name: "Situational Judgement", db_subject: "situational_judgement" }
-        ]
+        ],
+        exam_config: {
+            full_exam: {
+                total_questions: 233,
+                duration_minutes: 120,
+                max_marks: 932,
+                marking_scheme: {
+                    correct: 4,
+                    wrong: -1,
+                    unattempted: 0
+                }
+            }
+        }
     };
 };
 
@@ -139,7 +154,9 @@ const startTest = async (user, payload = {}) => {
     } = payload;
 
     const studentId = student_id || (user && user.studentId ? user.studentId : "STU1784364902958UZ1WFH");
-    const totalLimit = Number(questionCount) || Number(limit) || 20;
+    const isFullExam = payload.test_type === "FULL_EXAM" || payload.test_type === "Full Exam" || Number(questionCount) === 233 || Number(duration) === 120;
+    const totalLimit = isFullExam ? 233 : (Number(questionCount) || Number(limit) || 20);
+    const testDuration = isFullExam ? 120 : (Number(duration) || 15);
 
     const targetSubjects = subjects.length > 0 ? subjects : sections;
     const targetTopics = topics.length > 0 ? topics : chapters;
@@ -238,15 +255,19 @@ const startTest = async (user, payload = {}) => {
         topic_name: q.topic_name || q.chapter || ""
     }));
 
+    const maxMarks = questionsFormatted.length * 4; // 233 questions = 932 marks
+
     const sessionPayload = {
         sessionId: "UCAT_TEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
         student_id: studentId,
-        test_type: payload.test_type || "Quick Test",
+        test_type: payload.test_type || (isFullExam ? "Full Exam" : "Quick Test"),
         subjects: targetSubjects,
         chapters: targetTopics,
         topic_ids: topic_ids.map(Number),
         total_questions: questionsFormatted.length,
-        duration: Number(duration) || 15,
+        duration: testDuration,
+        max_marks: maxMarks,
+        total_marks: maxMarks,
         score: 0,
         correct: 0,
         wrong: 0,
@@ -260,6 +281,9 @@ const startTest = async (user, payload = {}) => {
     const sessionDoc = await testSessionRepository.createSession(sessionPayload);
     const resultDoc = sanitizeSessionResponse(sessionDoc);
     resultDoc.questions = questionsFormatted;
+    resultDoc.totalQuestions = questionsFormatted.length;
+    resultDoc.totalMarks = maxMarks;
+    resultDoc.max_marks = maxMarks;
     return resultDoc;
 };
 
@@ -342,12 +366,15 @@ const submitTest = async (sessionId, answers = []) => {
     }
 
     const totalQuestions = session.total_questions || questionDocs.length || 1;
+    const maxMarks = session.max_marks || session.total_marks || (totalQuestions * 4);
     const skippedCount = Math.max(totalQuestions - correctCount - wrongCount, 0);
     const accuracyPct = Number(((correctCount / totalQuestions) * 100).toFixed(2));
 
     const updatePayload = {
         answers: processedAnswers,
         score: totalScore,
+        max_marks: maxMarks,
+        total_marks: maxMarks,
         correct: correctCount,
         wrong: wrongCount,
         skipped: skippedCount,
@@ -361,6 +388,9 @@ const submitTest = async (sessionId, answers = []) => {
     return {
         success: true,
         score: totalScore,
+        max_marks: maxMarks,
+        total_marks: maxMarks,
+        total_questions: totalQuestions,
         correct: correctCount,
         wrong: wrongCount,
         skipped: skippedCount,
@@ -410,6 +440,9 @@ const getSessionResult = async (sessionId) => {
 
     const result = sanitizeSessionResponse(session);
     result.questions = populatedQuestions;
+    result.max_marks = session.max_marks || session.total_marks || ((session.total_questions || populatedQuestions.length) * 4);
+    result.total_marks = result.max_marks;
+    result.totalQuestions = session.total_questions || populatedQuestions.length;
     return result;
 };
 
