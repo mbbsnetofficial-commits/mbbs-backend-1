@@ -13,5 +13,6 @@ module.exports = {
     notificationRouter: require("./notification.routes"),
     testLeaderboardRouter: require("./testLeaderboard.routes"),
     authorFollowRouter: require("./authorFollow.routes"),
-    blogEngagementRouter: require("./blogEngagement.routes")
+    blogEngagementRouter: require("./blogEngagement.routes"),
+    learningReportRouter: require("./learningReport.routes")
 };

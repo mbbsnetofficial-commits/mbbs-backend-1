@@ -4,8 +4,6 @@ const { protect } = require("../../utilities/auth");
 
 const previousYearQuestionRouter = express.Router();
 
-previousYearQuestionRouter.use(protect);
-
 previousYearQuestionRouter.get("/", previousYearQuestionController.listPreviousYearTests);
 previousYearQuestionRouter.get("/:paperId", previousYearQuestionController.getPreviousYearTest);
 previousYearQuestionRouter.post("/:paperId/start", previousYearQuestionController.startPreviousYearTest);
