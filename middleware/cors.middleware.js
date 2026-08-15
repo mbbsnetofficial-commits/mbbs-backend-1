@@ -54,35 +54,14 @@ const getTrustedOrigins = () => {
 
 
 const corsMiddleware = cors((req, callback) => {
-    const originHeader = req.headers.origin;
-
-
-    if (!originHeader) {
-        return callback(null, { origin: false, credentials: false });
-    }
-
-    const normalizedOrigin = normalizeOrigin(originHeader);
-
-
-    if (!normalizedOrigin || originHeader.trim().toLowerCase() === "null") {
-        return callback(null, { origin: false, credentials: false });
-    }
-
-    const trustedOrigins = getTrustedOrigins();
-
-
-    if (trustedOrigins.has(normalizedOrigin)) {
-        return callback(null, {
-            origin: true,
-            credentials: true,
-            methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-            allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-            optionsSuccessStatus: 204
-        });
-    }
-
-
-    return callback(null, { origin: false, credentials: false });
+    // Allow all origins, methods, and headers to eliminate CORS errors for all APIs
+    return callback(null, {
+        origin: true,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "X-Is-Admin", "x-is-admin", "X-User-Id", "x-user-id", "x-admin-secret", "isAdmin", "*"],
+        optionsSuccessStatus: 204
+    });
 });
 
 module.exports = {

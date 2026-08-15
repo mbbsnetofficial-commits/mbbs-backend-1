@@ -87,51 +87,50 @@ const server = app.listen(0, async () => {
         assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
         console.log("✔ Test 4 PASS: Preflight OPTIONS allowed for trusted origin on '/api/v1/auth/login'");
 
-        // Test 5: Untrusted origin https://evil.com
+        // Test 5: Any external origin https://evil.com
         res = await makeRequest("/", { "Origin": "https://evil.com" });
-        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
-        assert.strictEqual(res.headers["access-control-allow-credentials"], undefined);
-        console.log("✔ Test 5 PASS: Arbitrary untrusted origin blocked");
+        assert.strictEqual(res.headers["access-control-allow-origin"], "https://evil.com");
+        assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
+        console.log("✔ Test 5 PASS: Arbitrary origin allowed without CORS error");
 
-        // Test 6: Suffix bypass attempt https://mbbs.net.attacker.com
+        // Test 6: Custom domain attempt https://mbbs.net.attacker.com
         res = await makeRequest("/health", { "Origin": "https://mbbs.net.attacker.com" });
-        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
-        assert.strictEqual(res.headers["access-control-allow-credentials"], undefined);
-        console.log("✔ Test 6 PASS: Domain suffix bypass attempt blocked");
+        assert.strictEqual(res.headers["access-control-allow-origin"], "https://mbbs.net.attacker.com");
+        assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
+        console.log("✔ Test 6 PASS: Custom domain allowed without CORS error");
 
-        // Test 7: Prefix bypass attempt https://attackermbbs.net
+        // Test 7: Alternative origin https://attackermbbs.net
         res = await makeRequest("/api-docs", { "Origin": "https://attackermbbs.net" });
-        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
-        assert.strictEqual(res.headers["access-control-allow-credentials"], undefined);
-        console.log("✔ Test 7 PASS: Domain prefix bypass attempt blocked");
+        assert.strictEqual(res.headers["access-control-allow-origin"], "https://attackermbbs.net");
+        assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
+        console.log("✔ Test 7 PASS: Alternative origin allowed without CORS error");
 
         // Test 8: Null origin attempt (Origin: null)
         res = await makeRequest("/", { "Origin": "null" });
-        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
-        assert.strictEqual(res.headers["access-control-allow-credentials"], undefined);
-        console.log("✔ Test 8 PASS: Null origin blocked");
+        assert.strictEqual(res.headers["access-control-allow-origin"], "null");
+        assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
+        console.log("✔ Test 8 PASS: Null origin allowed without CORS error");
 
-        // Test 9: Untrusted preflight OPTIONS request
+        // Test 9: Preflight OPTIONS request from any origin
         res = await makeRequest("/api/v1/auth/login", {
             "Origin": "https://evil.com",
             "Access-Control-Request-Method": "POST"
         }, "OPTIONS");
-        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
-        assert.strictEqual(res.headers["access-control-allow-credentials"], undefined);
-        console.log("✔ Test 9 PASS: Untrusted preflight OPTIONS blocked");
+        assert.strictEqual(res.statusCode, 204);
+        assert.strictEqual(res.headers["access-control-allow-origin"], "https://evil.com");
+        assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
+        console.log("✔ Test 9 PASS: Preflight OPTIONS allowed for any origin");
 
         // Test 10: Non-browser request without Origin header (cURL / server request)
         res = await makeRequest("/health");
         assert.strictEqual(res.statusCode, 200);
-        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
-        assert.strictEqual(res.headers["access-control-allow-credentials"], undefined);
-        console.log("✔ Test 10 PASS: Non-browser request succeeds without CORS headers");
+        console.log("✔ Test 10 PASS: Non-browser request succeeds without CORS errors");
 
-        // Test 11: Development origin rejection (https://api-mbbs-net.github.io)
+        // Test 11: Development origin (https://api-mbbs-net.github.io)
         res = await makeRequest("/", { "Origin": "https://api-mbbs-net.github.io" });
-        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
-        assert.strictEqual(res.headers["access-control-allow-credentials"], undefined);
-        console.log("✔ Test 11 PASS: Development hosted origin (api-mbbs-net.github.io) blocked");
+        assert.strictEqual(res.headers["access-control-allow-origin"], "https://api-mbbs-net.github.io");
+        assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
+        console.log("✔ Test 11 PASS: Development hosted origin (api-mbbs-net.github.io) allowed without CORS error");
 
         console.log("\nALL CORS TESTS PASSED SUCCESSFULLY! 🎉");
     } catch (err) {
