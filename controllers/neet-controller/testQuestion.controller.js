@@ -2,6 +2,7 @@ const Topic = require("../../model/neet-models/topic");
 const Question = require("../../model/neet-models/questions");
 const TestSession = require("../../model/neet-models/testSession");
 const PlatformTest = require("../../model/neet-models/platformTest");
+const PreviousYearQuestion = require("../../model/neet-models/previousYearQuestion");
 const learningReportService = require("../../services/learningReport.service");
 const { SUBJECT_ENUM } = require("../../constants/enum");
 const mongoose = require("mongoose");
@@ -166,6 +167,8 @@ exports.startQuickTest = async (req, res) => {
             test_id,
             test_code,
             platform_test_id,
+            previous_year_paper_id,
+            paperId,
             subjects = [],
             chapters = [],
             questionCount = 180,
@@ -175,6 +178,78 @@ exports.startQuickTest = async (req, res) => {
         } = req.body;
 
         const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.body?.student_id || "STU123456";
+
+        // Check if this is a Previous Year Paper request
+        const pyId = previous_year_paper_id || paperId;
+        if (pyId) {
+            const paper = await PreviousYearQuestion.findOne({ id: Number(pyId), is_active: true }).lean();
+            if (paper) {
+                const existingSession = await TestSession.findOne({
+                    student_id: studentId,
+                    previous_year_paper_id: paper.id,
+                    status: "Started"
+                }).lean();
+
+                if (existingSession) {
+                    const questions = await Question.find({ id: { $in: existingSession.question_ids } })
+                        .select("-_id -correct_answer -explanation -createdAt -updatedAt -__v")
+                        .lean();
+                    const questionById = new Map(questions.map(q => [q.id, q]));
+                    const orderedQuestions = existingSession.question_ids.map(id => questionById.get(id)).filter(Boolean);
+
+                    return res.status(200).json({
+                        success: true,
+                        reused: true,
+                        sessionId: existingSession._id,
+                        duration: existingSession.duration,
+                        totalQuestions: existingSession.total_questions,
+                        totalMarks: existingSession.total_marks || (existingSession.total_questions * 4),
+                        title: existingSession.title,
+                        subtitle: existingSession.subtitle,
+                        level: existingSession.level,
+                        data: orderedQuestions
+                    });
+                }
+
+                const questionIds = Array.isArray(paper.question_ids) ? [...new Set(paper.question_ids)] : [];
+                const questions = await Question.find({ id: { $in: questionIds }, is_active: { $ne: false } })
+                    .select("-_id -correct_answer -explanation -createdAt -updatedAt -__v")
+                    .lean();
+                const questionById = new Map(questions.map(q => [q.id, q]));
+                const orderedQuestions = questionIds.map(id => questionById.get(id)).filter(Boolean);
+
+                const session = await TestSession.create({
+                    student_id: studentId,
+                    previous_year_paper_id: paper.id,
+                    source: "previous_year",
+                    test_type: "Previous Year",
+                    title: paper.name,
+                    subtitle: "Previous Year Paper",
+                    level: "Advanced",
+                    subjects: [],
+                    chapters: [],
+                    topic_ids: [],
+                    question_ids: questionIds,
+                    total_questions: orderedQuestions.length || paper.question_count || 180,
+                    total_marks: (orderedQuestions.length || paper.question_count || 180) * 4,
+                    duration: Number(duration) || 180,
+                    status: "Started",
+                    started_at: new Date()
+                });
+
+                return res.status(200).json({
+                    success: true,
+                    sessionId: session._id,
+                    duration: session.duration,
+                    totalQuestions: session.total_questions,
+                    totalMarks: session.total_marks,
+                    title: session.title,
+                    subtitle: session.subtitle,
+                    level: session.level,
+                    data: orderedQuestions
+                });
+            }
+        }
 
         // Check if this is a Built-in Test request
         const builtinId = builtin_test_id || test_id || platform_test_id;
