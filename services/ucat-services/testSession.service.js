@@ -446,9 +446,98 @@ const getSessionResult = async (sessionId) => {
     return result;
 };
 
-// --- GET USER HISTORY ---
+// Helper to format UCAT subject types for Dashboard UI
+const formatUcatType = (subjects = []) => {
+    if (!subjects || subjects.length === 0) return "Practise Test";
+    const raw = String(subjects[0]).trim().toUpperCase();
+    if (raw.includes("VERBAL")) return "Verbal Reasoning";
+    if (raw.includes("DECISION")) return "Decision Making";
+    if (raw.includes("QUANTITATIVE")) return "Quantitative Reasoning";
+    if (raw.includes("ABSTRACT")) return "Abstract Reasoning";
+    if (raw.includes("SITUATIONAL")) return "Situational Judgement";
+    return subjects[0];
+};
+
+// --- GET USER HISTORY (Formatted for Dashboard UI Table) ---
 const getUserHistory = async (userId, query = {}) => {
-    return testSessionRepository.getUserHistory(userId, query);
+    const rawResult = await testSessionRepository.getUserHistory(userId, query);
+    const sessions = rawResult.sessions || [];
+
+    const formattedData = sessions.map(session => {
+        const dateModified = session.submitted_at || session.started_at || session.createdAt;
+        const formattedDate = dateModified ? new Date(dateModified).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }) : "N/A";
+
+        const firstChapter = session.chapters && session.chapters.length > 0
+            ? session.chapters[0]
+            : (session.subjects && session.subjects[0] ? session.subjects[0].replace(/_/g, " ") : "UCAT Practice");
+        const extraCount = session.chapters && session.chapters.length > 1 ? session.chapters.length - 1 : 0;
+        const code = String(session.sessionId || session._id).slice(-3);
+        const title = session.title || (extraCount > 0 ? `${firstChapter} & ${extraCount} more #${code}` : `${firstChapter} #${code}`);
+
+        const formatSubjectName = (s) => String(s).toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        const subtitle = session.subtitle || (session.subjects && session.subjects.length > 0
+            ? `${session.subjects.map(formatSubjectName).join(" & ")} Practice`
+            : "UCAT Full Mock Practice");
+
+        const type = formatUcatType(session.subjects);
+        const level = session.level || "Intermediate";
+        const status = session.status === "Completed" ? "Completed" : "In Progress";
+
+        const answeredCount = Array.isArray(session.answers) ? session.answers.length : 0;
+        const totalQuestions = session.total_questions || 233;
+        const progressPercent = session.status === "Completed" ? 100 : Math.min(Math.round((answeredCount / totalQuestions) * 100), 99);
+
+        let totalSeconds = session.time_spent_seconds || 0;
+        if (!totalSeconds && Array.isArray(session.answers)) {
+            totalSeconds = session.answers.reduce((acc, ans) => acc + (ans.time_spent || 0), 0);
+        }
+        if (!totalSeconds && session.submitted_at && session.started_at) {
+            totalSeconds = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+        }
+
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const formattedTimeSpent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+        const totalMarks = session.max_marks || session.total_marks || (totalQuestions * 4);
+        const score = session.status === "Completed" ? session.score : Math.max(0, session.score || 0);
+
+        return {
+            id: session.sessionId || session._id,
+            date_modified: formattedDate,
+            course_name: {
+                title,
+                subtitle
+            },
+            type,
+            level,
+            status,
+            progress: progressPercent,
+            time_spent: formattedTimeSpent,
+            time_spent_seconds: totalSeconds,
+            score: {
+                earned: score,
+                total_marks: totalMarks,
+                formatted: `${score} / ${totalMarks}`
+            }
+        };
+    });
+
+    return {
+        status: "success",
+        message: "UCAT test history fetched successfully.",
+        data: formattedData,
+        pagination: {
+            page: rawResult.page,
+            limit: rawResult.limit,
+            total: rawResult.total,
+            totalPages: rawResult.totalPages
+        }
+    };
 };
 
 module.exports = {
