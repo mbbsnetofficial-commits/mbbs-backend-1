@@ -84,8 +84,8 @@ const server = app.listen(0, async () => {
         assert.ok([200, 500].includes(res.statusCode), `Request handled (got ${res.statusCode})`);
         if (res.statusCode === 200) {
             assert.strictEqual(res.body.success, true);
-            assert.strictEqual(res.body.data.length, 5);
-            console.log("✔ Test 2 PASS: GET /api/v1/neet/tests/builtin returns 5 built-in tests from DB");
+            assert.ok(res.body.data.length >= 5, "Must return at least 5 built-in tests and previous year tests");
+            console.log(`✔ Test 2 PASS: GET /api/v1/neet/tests/builtin returns ${res.body.data.length} built-in & previous year tests from DB`);
         } else {
             console.log(`✔ Test 2 PASS: GET /api/v1/neet/tests/builtin processed with HTTP ${res.statusCode}`);
         }

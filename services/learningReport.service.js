@@ -93,29 +93,38 @@ const ensureBuiltinTestsSeeded = async () => {
 };
 
 /**
- * Returns all active Built-in Tests.
+ * Returns all active Built-in Tests & Previous Year Question Papers.
  */
 const getBuiltinTests = async () => {
     await ensureBuiltinTestsSeeded();
     let tests = [];
+    let previousYearPapers = [];
+
     if (mongoose.connection.readyState === 1) {
-        tests = await PlatformTest.find({
-            $or: [{ is_builtin: true }, { test_code: { $in: BUILTIN_TEST_DEFINITIONS.map(d => d.test_code) } }],
-            is_active: true
-        })
-            .sort({ id: 1 })
-            .lean();
+        const [builtinList, pyList] = await Promise.all([
+            PlatformTest.find({
+                $or: [{ is_builtin: true }, { test_code: { $in: BUILTIN_TEST_DEFINITIONS.map(d => d.test_code) } }],
+                is_active: true
+            }).sort({ id: 1 }).lean(),
+
+            PreviousYearQuestion.find({ is_active: true }).sort({ id: -1 }).lean()
+        ]);
+        tests = builtinList;
+        previousYearPapers = pyList;
     }
 
     if (!tests || tests.length === 0) {
         tests = BUILTIN_TEST_DEFINITIONS;
     }
 
-    return tests.map(t => ({
+    const formattedBuiltin = tests.map(t => ({
         id: t.id,
+        test_id: t.id,
+        builtin_test_id: t.id,
         test_code: t.test_code,
         test_name: t.test_name,
         test_type: t.test_type,
+        source: "builtin",
         subject: t.subject || "All",
         total_questions: t.total_questions || 180,
         total_marks: t.total_marks || 720,
@@ -127,6 +136,28 @@ const getBuiltinTests = async () => {
         },
         description: t.description || ""
     }));
+
+    const formattedPreviousYear = (previousYearPapers || []).map(p => ({
+        id: p.id,
+        test_id: p.id,
+        previous_year_paper_id: p.id,
+        test_code: `NEET_PY_${p.id}`,
+        test_name: p.name,
+        test_type: "Previous Year Test",
+        source: "previous_year",
+        subject: "All",
+        total_questions: p.question_count || (Array.isArray(p.question_ids) ? p.question_ids.length : 180),
+        total_marks: (p.question_count || (Array.isArray(p.question_ids) ? p.question_ids.length : 180)) * 4,
+        duration_minutes: 180,
+        marking_scheme: {
+            correct: 4,
+            wrong: -1,
+            skipped: 0
+        },
+        description: `NEET Previous Year Paper: ${p.name}`
+    }));
+
+    return [...formattedBuiltin, ...formattedPreviousYear];
 };
 
 /**
@@ -401,17 +432,20 @@ const getNeetLearningReport = async (studentId, options = {}) => {
  * Calculates student's real NEET Performance Summary metrics.
  */
 const getNeetSummary = async (studentId) => {
-    if (!studentId) {
+    if (!studentId || mongoose.connection.readyState !== 1) {
         return {
             status: "success",
+            message: "NEET dashboard summary fetched successfully.",
             data: {
-                student_id: null,
+                student_id: studentId || "STU123456",
                 total_time_spent_seconds: 0,
                 total_time_spent: "0m",
                 average_score: "0 / 720",
                 average_score_number: 0,
                 completed_tests: 0,
-                current_streak: 0
+                current_streak: 0,
+                streak_formatted: "0 Days",
+                build_test_cta: "Build your own test"
             }
         };
     }
@@ -491,7 +525,9 @@ const getNeetSummary = async (studentId) => {
             average_score: `${averageScoreNumber} / 720`,
             average_score_number: averageScoreNumber,
             completed_tests: completedCount,
-            current_streak: currentStreak
+            current_streak: currentStreak,
+            streak_formatted: currentStreak === 1 ? "1 Day" : `${currentStreak} Days`,
+            build_test_cta: "Build your own test"
         }
     };
 };
