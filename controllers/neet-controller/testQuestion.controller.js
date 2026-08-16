@@ -160,9 +160,187 @@ exports.getTopics = async (req, res) => {
 
 };
 
+/**
+ * POST /api/v1/test/save
+ * Persists a Custom Test definition in PlatformTest (platform-tests collection)
+ * without creating any TestSession.
+ */
+exports.saveCustomTest = async (req, res) => {
+    try {
+        const {
+            title,
+            test_name,
+            subjects = [],
+            chapters = [],
+            topic_ids = [],
+            selected_topics = [],
+            questionCount,
+            total_questions,
+            duration,
+            time_limit,
+            level
+        } = req.body;
+
+        const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.student_id || "STU123456";
+
+        // 1. Validation
+        const finalTitle = (title || test_name || "").trim();
+        if (!finalTitle) {
+            return res.status(400).json({
+                success: false,
+                message: "Test title is required."
+            });
+        }
+
+        if (!Array.isArray(subjects) || subjects.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "At least one subject must be selected."
+            });
+        }
+
+        const validSubjects = SUBJECT_ENUM.map(s => s.toLowerCase());
+        for (const subj of subjects) {
+            if (!validSubjects.includes(String(subj).trim().toLowerCase())) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid subject: ${subj}. Allowed subjects are ${SUBJECT_ENUM.join(", ")}.`
+                });
+            }
+        }
+
+        const finalQuestionCount = Number(questionCount || total_questions);
+        if (!Number.isInteger(finalQuestionCount) || finalQuestionCount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "A positive integer question count is required."
+            });
+        }
+
+        const finalDuration = Number(duration || time_limit);
+        if (!Number.isFinite(finalDuration) || finalDuration <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "A positive duration in minutes is required."
+            });
+        }
+
+        const combinedTopicIds = [...new Set([...(topic_ids || []), ...(selected_topics || [])].map(Number).filter(Number.isFinite))];
+
+        // 2. Validate question availability in database
+        const topicQuery = { is_active: { $ne: false } };
+        if (subjects.length > 0) topicQuery.subject = { $in: subjects };
+        if (Array.isArray(chapters) && chapters.length > 0) topicQuery.chapter = { $in: chapters };
+        if (combinedTopicIds.length > 0) topicQuery.id = { $in: combinedTopicIds };
+
+        const matchingTopics = await Topic.find(topicQuery).select("id").lean();
+        const availableTopicIds = matchingTopics.map(t => t.id);
+
+        let availableQuestionCount = 0;
+        if (availableTopicIds.length > 0) {
+            availableQuestionCount = await Question.countDocuments({
+                topic_id: { $in: availableTopicIds },
+                is_active: { $ne: false }
+            });
+        } else {
+            availableQuestionCount = await Question.countDocuments({ is_active: { $ne: false } });
+        }
+
+        if (availableQuestionCount < finalQuestionCount) {
+            return res.status(400).json({
+                success: false,
+                message: `Only ${availableQuestionCount} questions are available for the selected configuration.`
+            });
+        }
+
+        // 3. Duplicate save protection: check if identical test was saved in last 15s
+        const recentDuplicate = await PlatformTest.findOne({
+            student_id: studentId,
+            test_name: finalTitle,
+            is_builtin: false,
+            is_active: true,
+            created_at: { $gte: new Date(Date.now() - 15000) }
+        }).lean();
+
+        if (recentDuplicate) {
+            return res.status(200).json({
+                success: true,
+                message: "Custom test already saved.",
+                data: {
+                    id: recentDuplicate.id,
+                    custom_test_id: recentDuplicate.id,
+                    test_name: recentDuplicate.test_name,
+                    test_code: recentDuplicate.test_code,
+                    source: "custom",
+                    type: "Custom Test",
+                    subjects: recentDuplicate.subjects || subjects,
+                    chapters: recentDuplicate.chapters || chapters,
+                    total_questions: recentDuplicate.total_questions,
+                    total_marks: recentDuplicate.total_marks || (recentDuplicate.total_questions * 4),
+                    duration_minutes: recentDuplicate.time_limit,
+                    status: "not_started"
+                }
+            });
+        }
+
+        // 4. Generate next ID
+        const lastTest = await PlatformTest.findOne().sort({ id: -1 }).lean();
+        const nextId = (lastTest?.id && lastTest.id >= 2000 ? lastTest.id + 1 : 2001);
+        const testCode = `CUSTOM_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`;
+
+        const customTest = await PlatformTest.create({
+            id: nextId,
+            student_id: studentId,
+            test_name: finalTitle,
+            test_code: testCode,
+            test_type: "Custom Test",
+            source: "custom",
+            is_builtin: false,
+            is_active: true,
+            subject: subjects.length === 1 ? subjects[0] : "All",
+            subjects: subjects,
+            chapters: chapters || [],
+            selected_topics: combinedTopicIds,
+            topic_ids: combinedTopicIds,
+            total_questions: finalQuestionCount,
+            total_marks: finalQuestionCount * 4,
+            time_limit: finalDuration,
+            level: level || "Intermediate",
+            description: `${subjects.join(", ")} Custom Practice Test`
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Custom test saved successfully.",
+            data: {
+                id: customTest.id,
+                custom_test_id: customTest.id,
+                test_name: customTest.test_name,
+                test_code: customTest.test_code,
+                source: "custom",
+                type: "Custom Test",
+                subjects: customTest.subjects,
+                chapters: customTest.chapters,
+                total_questions: customTest.total_questions,
+                total_marks: customTest.total_marks,
+                duration_minutes: customTest.time_limit,
+                status: "not_started"
+            }
+        });
+
+    } catch (error) {
+        console.error("Save custom test error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 exports.startQuickTest = async (req, res) => {
     try {
         const {
+            custom_test_id,
             builtin_test_id,
             test_id,
             test_code,
@@ -178,6 +356,151 @@ exports.startQuickTest = async (req, res) => {
         } = req.body;
 
         const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.body?.student_id || "STU123456";
+
+        // Check if this is a saved Custom Test request
+        const cTestId = custom_test_id || (test_id && test_id >= 2000 ? test_id : null);
+        if (cTestId) {
+            const customTest = await PlatformTest.findOne({
+                id: Number(cTestId),
+                is_builtin: false,
+                is_active: true
+            }).lean();
+
+            if (!customTest) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Custom test not found or is inactive."
+                });
+            }
+
+            // Ownership / Security check
+            if (customTest.student_id && studentId && customTest.student_id !== studentId && studentId !== "STU123456") {
+                return res.status(403).json({
+                    success: false,
+                    message: "Unauthorized access to this custom test."
+                });
+            }
+
+            // Check for existing active session for this student and this custom test
+            const existingSession = await TestSession.findOne({
+                student_id: studentId,
+                platform_test_id: customTest.id,
+                status: "Started"
+            }).lean();
+
+            if (existingSession) {
+                const questions = await Question.find({ id: { $in: existingSession.question_ids } })
+                    .select("-_id -correct_answer -explanation -createdAt -updatedAt -__v")
+                    .lean();
+                const questionById = new Map(questions.map(q => [q.id, q]));
+                const orderedQuestions = existingSession.question_ids.map(id => questionById.get(id)).filter(Boolean);
+
+                return res.status(200).json({
+                    success: true,
+                    reused: true,
+                    sessionId: existingSession._id,
+                    duration: existingSession.duration,
+                    totalQuestions: existingSession.total_questions,
+                    totalMarks: existingSession.total_marks || (existingSession.total_questions * 4),
+                    title: existingSession.title,
+                    subtitle: existingSession.subtitle,
+                    level: existingSession.level,
+                    data: orderedQuestions
+                });
+            }
+
+            // Select questions according to the saved configuration
+            const targetTotal = customTest.total_questions || 40;
+            const topicQuery = { is_active: { $ne: false } };
+            if (Array.isArray(customTest.subjects) && customTest.subjects.length > 0) {
+                topicQuery.subject = { $in: customTest.subjects };
+            }
+            if (Array.isArray(customTest.chapters) && customTest.chapters.length > 0) {
+                topicQuery.chapter = { $in: customTest.chapters };
+            }
+            if (Array.isArray(customTest.selected_topics) && customTest.selected_topics.length > 0) {
+                topicQuery.id = { $in: customTest.selected_topics };
+            }
+
+            const topics = await Topic.find(topicQuery).lean();
+            const topicIds = topics.map(t => t.id);
+
+            let selectedQuestions = [];
+            if (Array.isArray(customTest.subjects) && customTest.subjects.length > 0) {
+                const perSubjectQuota = Math.max(1, Math.floor(targetTotal / customTest.subjects.length));
+                for (const subj of customTest.subjects) {
+                    const subjTopicIds = topics.filter(t => t.subject === subj).map(t => t.id);
+                    if (subjTopicIds.length > 0) {
+                        const subjQuestions = await Question.aggregate([
+                            { $match: { is_active: { $ne: false }, topic_id: { $in: subjTopicIds } } },
+                            { $sample: { size: perSubjectQuota } }
+                        ]);
+                        selectedQuestions.push(...subjQuestions);
+                    }
+                }
+            }
+
+            if (selectedQuestions.length < targetTotal) {
+                const existingIds = new Set(selectedQuestions.map(q => q.id));
+                const needed = targetTotal - selectedQuestions.length;
+                const extraMatch = { is_active: { $ne: false } };
+                if (topicIds.length > 0) extraMatch.topic_id = { $in: topicIds };
+                if (existingIds.size > 0) extraMatch.id = { $nin: Array.from(existingIds) };
+
+                const extraQuestions = await Question.aggregate([
+                    { $match: extraMatch },
+                    { $sample: { size: needed } }
+                ]);
+                selectedQuestions.push(...extraQuestions);
+            }
+
+            if (selectedQuestions.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "No questions available matching this custom test configuration."
+                });
+            }
+
+            const formattedQuestions = selectedQuestions.map(q => {
+                const { _id, correct_answer, explanation, ...rest } = q;
+                return rest;
+            });
+
+            const subtitle = Array.isArray(customTest.subjects) && customTest.subjects.length > 1
+                ? `${customTest.subjects.join(" & ")} Custom Test`
+                : (Array.isArray(customTest.subjects) && customTest.subjects[0] ? `${customTest.subjects[0]} Custom Test` : "Custom Practice Test");
+
+            const session = await TestSession.create({
+                student_id: studentId,
+                platform_test_id: customTest.id,
+                source: "custom",
+                test_type: "Custom Test",
+                title: customTest.test_name,
+                subtitle,
+                level: customTest.level || "Intermediate",
+                subjects: customTest.subjects || [],
+                chapters: customTest.chapters || [],
+                topic_ids: topicIds,
+                question_ids: selectedQuestions.map(q => q.id),
+                duration: customTest.time_limit || 180,
+                total_questions: selectedQuestions.length,
+                total_marks: customTest.total_marks || (selectedQuestions.length * 4),
+                status: "Started",
+                started_at: new Date()
+            });
+
+            return res.status(200).json({
+                success: true,
+                sessionId: session._id,
+                duration: session.duration,
+                totalQuestions: session.total_questions,
+                totalMarks: session.total_marks,
+                title: session.title,
+                subtitle: session.subtitle,
+                level: session.level,
+                data: formattedQuestions
+            });
+        }
 
         // Check if this is a Previous Year Paper request
         const pyId = previous_year_paper_id || paperId;

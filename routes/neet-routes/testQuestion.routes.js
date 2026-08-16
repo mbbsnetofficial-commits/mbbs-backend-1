@@ -27,6 +27,17 @@ testQuestionRouter.post(
     testQuestionController.getTopics
 );
 
+// Step 4: Save Custom Test Definition (without starting a session).
+testQuestionRouter.post(
+    "/test/save",
+    testQuestionController.saveCustomTest
+);
+
+testQuestionRouter.post(
+    "/test/custom/save",
+    testQuestionController.saveCustomTest
+);
+
 testQuestionRouter.post(
     "/test/start",
     testQuestionController.startQuickTest

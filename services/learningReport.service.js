@@ -218,7 +218,17 @@ const getNeetLearningReport = async (studentId, options = {}) => {
             .lean();
     }
 
-    // 3. Fetch all test sessions for this student
+    // 3. Fetch Custom Tests saved by this student
+    let customTests = [];
+    if ((sourceFilter === "all" || sourceFilter === "custom") && studentId && mongoose.connection.readyState === 1) {
+        customTests = await PlatformTest.find({
+            student_id: studentId,
+            is_builtin: false,
+            is_active: true
+        }).sort({ created_at: -1, id: -1 }).lean();
+    }
+
+    // 4. Fetch all test sessions for this student
     const studentSessions = (studentId && mongoose.connection.readyState === 1)
         ? await TestSession.find({ student_id: studentId }).sort({ started_at: -1, createdAt: -1 }).lean()
         : [];
@@ -364,6 +374,84 @@ const getNeetLearningReport = async (studentId, options = {}) => {
             type: "Previous Year Test",
             level: "Advanced",
             duration_minutes: 180,
+            total_questions: totalQuestions,
+            total_marks: totalMarks,
+            totalMarks: totalMarks,
+            status,
+            progress,
+            time_spent: formatDuration(timeSpentSeconds),
+            timeSpentSeconds,
+            score: score !== null ? {
+                earned: score,
+                total_marks: totalMarks,
+                formatted: `${score} / ${totalMarks}`
+            } : null,
+            activeSessionId,
+            lastModifiedAt,
+            date_modified: formattedDate
+        });
+    }
+
+    // Map Custom Tests
+    for (const test of customTests) {
+        const session = builtinSessionMap.get(test.id);
+        const totalQuestions = test.total_questions || 40;
+        const totalMarks = test.total_marks || (totalQuestions * 4);
+
+        let status = "not_started";
+        let progress = 0;
+        let timeSpentSeconds = 0;
+        let score = null;
+        let activeSessionId = null;
+        let lastModifiedAt = test.created_at || test.updated_at || null;
+
+        if (session) {
+            const answeredCount = Array.isArray(session.answers) ? session.answers.length : 0;
+            timeSpentSeconds = session.time_spent_seconds || 0;
+            if (!timeSpentSeconds && Array.isArray(session.answers)) {
+                timeSpentSeconds = session.answers.reduce((acc, a) => acc + (a.time_spent || 0), 0);
+            }
+            if (!timeSpentSeconds && session.submitted_at && session.started_at) {
+                timeSpentSeconds = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+            }
+
+            if (session.status === "Completed") {
+                status = "completed";
+                progress = 100;
+                score = session.score;
+                lastModifiedAt = session.submitted_at || session.updatedAt || session.started_at;
+            } else if (session.status === "Started") {
+                status = "in_progress";
+                progress = Math.min(Math.round((answeredCount / totalQuestions) * 100), 99);
+                score = Math.max(0, session.score || 0);
+                activeSessionId = session._id;
+                lastModifiedAt = session.updatedAt || session.started_at;
+            }
+        }
+
+        const formattedDate = lastModifiedAt
+            ? new Date(lastModifiedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+            : "Not Attempted";
+
+        const subtitle = Array.isArray(test.subjects) && test.subjects.length > 1
+            ? `${test.subjects.join(" & ")} Custom Test`
+            : (Array.isArray(test.subjects) && test.subjects[0] ? `${test.subjects[0]} Custom Test` : "Custom Practice Test");
+
+        unifiedList.push({
+            id: test.id,
+            test_id: test.id,
+            custom_test_id: test.id,
+            platform_test_id: test.id,
+            test_code: test.test_code,
+            test_name: test.test_name,
+            course_name: {
+                title: test.test_name,
+                subtitle
+            },
+            source: "custom",
+            type: "Custom",
+            level: test.level || "Intermediate",
+            duration_minutes: test.time_limit || 180,
             total_questions: totalQuestions,
             total_marks: totalMarks,
             totalMarks: totalMarks,
