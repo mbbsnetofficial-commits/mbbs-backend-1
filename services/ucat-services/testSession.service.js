@@ -1173,6 +1173,38 @@ const getUcatSummary = async (studentId) => {
     };
 };
 
+// --- GET UCAT LEARNING REPORT FILTERS ---
+const getLearningReportFilters = () => {
+    return {
+        types: [
+            { id: "all", name: "All", value: "all" },
+            { id: "full_mock", name: "Full Mock", value: "full_mock" },
+            { id: "verbal_reasoning", name: "Verbal Reasoning", value: "verbal_reasoning" },
+            { id: "decision_making", name: "Decision Making", value: "decision_making" },
+            { id: "quantitative_reasoning", name: "Quantitative Reasoning", value: "quantitative_reasoning" },
+            { id: "abstract_reasoning", name: "Abstract Reasoning", value: "abstract_reasoning" },
+            { id: "situational_judgement", name: "Situational Judgement", value: "situational_judgement" },
+            { id: "official_paper", name: "Official Paper", value: "official_paper" }
+        ],
+        type_options: [
+            "All",
+            "Full Mock",
+            "Verbal Reasoning",
+            "Decision Making",
+            "Quantitative Reasoning",
+            "Abstract Reasoning",
+            "Situational Judgement",
+            "Official Paper"
+        ],
+        statuses: [
+            { id: "all", name: "All", value: "all" },
+            { id: "completed", name: "Completed", value: "completed" },
+            { id: "in_progress", name: "In Progress", value: "in_progress" },
+            { id: "not_started", name: "Not Started", value: "not_started" }
+        ]
+    };
+};
+
 module.exports = {
     getSubjects,
     getChapters,
@@ -1184,5 +1216,6 @@ module.exports = {
     submitTest,
     getSessionResult,
     getUserHistory,
-    getUcatSummary
+    getUcatSummary,
+    getLearningReportFilters
 };

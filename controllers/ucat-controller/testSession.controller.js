@@ -166,6 +166,20 @@ const getTestHistory = async (req, res, next) => {
     }
 };
 
+// GET /api/v1/student/dashboard/ucat-learning-report/filters - Get UCAT learning report filters
+const getLearningReportFilters = async (req, res, next) => {
+    try {
+        const filters = testSessionService.getLearningReportFilters();
+        return res.status(200).json({
+            status: "success",
+            message: "Filter options fetched successfully.",
+            data: filters
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getSubjects,
     getChapters,
@@ -179,5 +193,6 @@ module.exports = {
     getTestResult,
     getTestHistory,
     getUcatSummary,
-    getUcatLearningReport
+    getUcatLearningReport,
+    getLearningReportFilters
 };

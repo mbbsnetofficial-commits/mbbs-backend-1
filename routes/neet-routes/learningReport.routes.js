@@ -44,6 +44,12 @@ learningReportRouter.get(
     ucatTestSessionController.getUcatLearningReport
 );
 
+// UCAT: Get student UCAT Learning Report Filters
+learningReportRouter.get(
+    "/student/dashboard/ucat-learning-report/filters",
+    ucatTestSessionController.getLearningReportFilters
+);
+
 // UCAT: Get real UCAT Student Performance Summary
 learningReportRouter.get(
     "/student/dashboard/ucat-summary",

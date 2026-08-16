@@ -15,6 +15,7 @@ router.get("/tests", testSessionController.getBuiltinTests);
 // GET /api/v1/ucat/test/history - List the logged-in student test history
 router.get("/history", testSessionController.getTestHistory);
 router.get("/learning-report", testSessionController.getUcatLearningReport);
+router.get("/learning-report/filters", testSessionController.getLearningReportFilters);
 router.get("/summary", testSessionController.getUcatSummary);
 
 // GET /api/v1/ucat/test/sessions/:sessionId/result - Get a completed test result and answer review
