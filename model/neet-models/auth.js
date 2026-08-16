@@ -9,60 +9,53 @@ const authSchema = new mongoose.Schema(
             unique: true
         },
 
+        fullName: {
+            type: String,
+            trim: true
+        },
+
         firstName: {
             type: String,
-            required: [true, "First name is required"],
             trim: true,
-            lowercase: true,
-            validate: [validator.isAlpha, "Only alphabets are allowed"]
+            default: ""
         },
 
         lastName: {
             type: String,
-            required: [true, "Last name is required"],
             trim: true,
-            lowercase: true,
-            validate: [validator.isAlpha, "Only alphabets are allowed"]
+            default: ""
         },
 
         email: {
             type: String,
-            required: [true, "Email is required"],
             trim: true,
             lowercase: true,
-            unique: true,
-            validate: [validator.isEmail, "Please enter a valid email"]
+            sparse: true,
+            validate: {
+                validator: function (value) {
+                    return !value || validator.isEmail(value);
+                },
+                message: "Please enter a valid email"
+            }
         },
 
         password: {
             type: String,
-            required: function () {
-                return !this.firebase_uid;
-            },
             trim: true,
-            minlength: [8, "Password must be at least 8 characters long"]
+            minlength: [8, "Password must be at least 8 characters long"],
+            required: false
         },
 
         confirmPassword: {
             type: String,
-            required: function () {
-                return !this.firebase_uid && this.isNew;
-            },
             trim: true,
-            minlength: [8, "Confirm password must be at least 8 characters long"],
-            validate: {
-                validator: function (value) {
-                    return value === this.password;
-                },
-                message: "Passwords do not match"
-            }
+            required: false
         },
 
         phoneNumber: {
             type: String,
-            required: function () {
-                return !this.firebase_uid;
-            },
+            required: [true, "Phone number is required"],
+            index: true,
             validate: {
                 validator: value => /^\+[1-9]\d{7,14}$/.test(value),
                 message: "Phone number must use international format"
@@ -79,9 +72,9 @@ const authSchema = new mongoose.Schema(
         auth_providers: {
             type: [{
                 type: String,
-                enum: ["password", "google"]
+                enum: ["whatsapp", "password", "google"]
             }],
-            default: ["password"]
+            default: ["whatsapp"]
         },
 
         profile_picture: {

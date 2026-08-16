@@ -1,4 +1,8 @@
+"use strict";
+
+const crypto = require("crypto");
 const Auth = require('../../model/neet-models/auth');
+const SignupOtp = require('../../model/neet-models/signupOtp');
 const { getFirebaseAuth } = require("../../config/firebaseAdmin");
 const {
     createAuthSession,
@@ -9,275 +13,306 @@ const {
 const {
     recordSuccessfulLogin
 } = require("../../services/userLoginActivity.service");
+const { normalizePhone, sendWhatsappOtp } = require("../../services/twilioWhatsapp.service");
 
-exports.register = async (req, res) => {
-    try {
-        const newUser = await Auth.create(req.body);
+const OTP_VALID_MINUTES = 5;
+const RESEND_SECONDS = 60;
+const MAX_ATTEMPTS = 5;
 
-        // const authtoken = jwt.sign(
-        //     { id: newUser._id },
-        //     process.env.SECRET_KEY,
-        //     {
-        //         expiresIn: process.env.LOGIN_EXPIRES
-        //     }
-        // );
+const hashOtp = (otp) => crypto
+    .createHmac("sha256", process.env.SIGNUP_OTP_SECRET || process.env.RESET_OTP_SECRET || process.env.SECRET_KEY || "MBBS_OTP_SECRET_KEY")
+    .update(String(otp))
+    .digest("hex");
 
-        // const refreshtoken = jwt.sign(
-        //     { id: newUser._id },
-        //     process.env.REFRESH_SECRET_KEY,
-        //     {
-        //         expiresIn: process.env.REFRESH_TOKEN_EXPIRES
-        //     }
-        // )
+const phoneVariants = (phone) => {
+    if (!phone) return [];
+    const last10 = phone.slice(-10);
+    return [...new Set([phone, last10, `+91${last10}`, `91${last10}`])];
+};
 
-        res.status(200).json({
-            status: 'status',
-            message: 'user created successfully',
-            data: {
-                newUser,
-            }
-        })
-    } catch (err) {
-        res.status(500).json({
-            status: 'Fail',
-            message: err.message,
-        })
-    }
-}
-
+/**
+ * Step 1: POST /api/v1/auth/login
+ * Handles WhatsApp OTP sign-in request (Image 1) or legacy email/password.
+ */
 exports.login = async (req, res) => {
     try {
-        const email = typeof req.body.email === "string"
-            ? req.body.email.trim().toLowerCase()
-            : "";
-        const password = req.body.password;
-        if (!email) {
-            return res.status(400).json({
-                status: 'fail',
-                message: "please enter the valid email"
-            })
-        }
-        if (!password || password === '') {
-            return res.status(400).json({
-                status: 'fail',
-                message: "please enter the valid password"
-            })
+        const body = req.body || {};
+        const rawPhone = body.phoneNumber || body.phone || body.whatsappNumber || body.whatsapp_number;
+        const phoneNumber = normalizePhone(rawPhone);
+        const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+        const password = body.password;
+
+        // WhatsApp OTP Login Flow (Primary)
+        if (phoneNumber) {
+            const user = await Auth.findOne({
+                phoneNumber: { $in: phoneVariants(phoneNumber) }
+            });
+
+            if (!user) {
+                return res.status(404).json({
+                    status: "fail",
+                    message: "No account found with this WhatsApp number. Please create an account."
+                });
+            }
+
+            if (user.is_active === false) {
+                return res.status(403).json({
+                    status: "fail",
+                    message: "This account has been deactivated. Please contact support."
+                });
+            }
+
+            // Check resend cooldown
+            const existingOtp = await SignupOtp.findOne({ phone_number: phoneNumber, purpose: "login" }).lean();
+            if (existingOtp?.resend_available_at > new Date()) {
+                const seconds = Math.ceil((existingOtp.resend_available_at.getTime() - Date.now()) / 1000);
+                return res.status(429).json({
+                    status: "fail",
+                    message: `Please wait ${seconds} seconds before requesting another code.`,
+                    retry_after_seconds: seconds
+                });
+            }
+
+            const otp = crypto.randomInt(100000, 1000000).toString();
+            const now = Date.now();
+
+            await SignupOtp.findOneAndUpdate(
+                { phone_number: phoneNumber },
+                {
+                    $set: {
+                        otp_hash: hashOtp(otp),
+                        otp_expires_at: new Date(now + OTP_VALID_MINUTES * 60000),
+                        resend_available_at: new Date(now + RESEND_SECONDS * 1000),
+                        attempts: 0,
+                        verified: false,
+                        used_at: null,
+                        purpose: "login",
+                        twilio_message_sid: null,
+                        twilio_message_status: null
+                    },
+                    $setOnInsert: { phone_number: phoneNumber }
+                },
+                { upsert: true, new: true }
+            );
+
+            // Dispatch OTP via Twilio WhatsApp
+            try {
+                const delivery = await sendWhatsappOtp(phoneNumber, otp, "sign-in");
+                await SignupOtp.updateOne(
+                    { phone_number: phoneNumber },
+                    {
+                        $set: {
+                            twilio_message_sid: delivery.sid,
+                            twilio_message_status: delivery.status
+                        }
+                    }
+                );
+            } catch (twilioErr) {
+                console.error("[Twilio WhatsApp Login Error]:", twilioErr.message);
+                if (process.env.NODE_ENV === "development") {
+                    console.log(`[DEV OTP Fallback] Login verification code for ${phoneNumber} is: ${otp}`);
+                } else {
+                    return res.status(502).json({
+                        status: "fail",
+                        message: `Unable to deliver WhatsApp message: ${twilioErr.message}`
+                    });
+                }
+            }
+
+            return res.status(200).json({
+                status: "success",
+                message: "We've sent a verification code to your WhatsApp.",
+                data: {
+                    phoneNumber,
+                    expiresInMinutes: OTP_VALID_MINUTES
+                }
+            });
         }
 
-        // Authentication eligibility is decided only from the registered
-        // neet-auth account. The frontend never decides whether an email exists.
-        const user = await Auth.findOne({ email });
+        // Fallback Email & Password Login Flow
+        if (email) {
+            if (!password) {
+                return res.status(400).json({
+                    status: "fail",
+                    message: "Please enter your password."
+                });
+            }
+
+            const user = await Auth.findOne({ email });
+            if (!user) {
+                return res.status(401).json({
+                    status: "fail",
+                    message: "Invalid email or password."
+                });
+            }
+            if (user.is_active === false) {
+                return res.status(403).json({
+                    status: "fail",
+                    message: "This account has been deactivated."
+                });
+            }
+
+            if (!user.password) {
+                return res.status(401).json({
+                    status: "fail",
+                    message: "Invalid email or password."
+                });
+            }
+
+            const match = await user.comparePassword(password, user.password);
+            if (!match) {
+                return res.status(401).json({
+                    status: "fail",
+                    message: "Invalid email or password."
+                });
+            }
+
+            const { accessToken, refreshToken, sessionId } = await createAuthSession(user, req);
+            try {
+                await recordSuccessfulLogin({ user, sessionId, req });
+            } catch (e) {
+                // Ignore activity error
+            }
+
+            return res.status(200).json({
+                status: "success",
+                message: "Login successful.",
+                data: {
+                    student_id: user.student_id,
+                    user: {
+                        id: user._id,
+                        student_id: user.student_id,
+                        fullName: user.fullName,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        email: user.email,
+                        phoneNumber: user.phoneNumber
+                    },
+                    accessToken,
+                    authtoken: accessToken,
+                    refreshToken
+                }
+            });
+        }
+
+        return res.status(400).json({
+            status: "fail",
+            message: "Please provide a valid WhatsApp number to log in."
+        });
+
+    } catch (err) {
+        console.error("Error in login:", err);
+        return res.status(500).json({
+            status: "fail",
+            message: err.message
+        });
+    }
+};
+
+/**
+ * Step 2: POST /api/v1/auth/login/verify-otp (or /verify-otp)
+ * Verifies the OTP sent to student's WhatsApp and issues JWT access and refresh tokens.
+ */
+exports.verifyLoginOtp = async (req, res) => {
+    try {
+        const body = req.body || {};
+        const rawPhone = body.phoneNumber || body.phone || body.whatsappNumber || body.whatsapp_number;
+        const phoneNumber = normalizePhone(rawPhone);
+        const otp = typeof body.otp === "string" ? body.otp.trim() : String(body.otp || "").trim();
+
+        if (!phoneNumber || !/^\d{6}$/.test(otp)) {
+            return res.status(400).json({
+                status: "fail",
+                message: "A valid WhatsApp number and 6-digit verification code are required."
+            });
+        }
+
+        const record = await SignupOtp.findOne({ phone_number: phoneNumber, used_at: null })
+            .select("+otp_hash");
+
+        if (!record || record.otp_expires_at <= new Date()) {
+            return res.status(400).json({
+                status: "fail",
+                message: "Verification code is invalid or expired. Please request a new code."
+            });
+        }
+
+        if (record.attempts >= MAX_ATTEMPTS) {
+            return res.status(429).json({
+                status: "fail",
+                message: "Maximum verification attempts exceeded. Please request a new code."
+            });
+        }
+
+        const suppliedHash = hashOtp(otp);
+        const isMatch = crypto.timingSafeEqual(Buffer.from(record.otp_hash, "hex"), Buffer.from(suppliedHash, "hex"));
+
+        if (!isMatch) {
+            record.attempts += 1;
+            await record.save();
+            return res.status(400).json({
+                status: "fail",
+                message: "Incorrect verification code. Please try again."
+            });
+        }
+
+        // Fetch user from neet-auth
+        let user = await Auth.findOne({
+            phoneNumber: { $in: phoneVariants(phoneNumber) }
+        });
 
         if (!user) {
-            return res.status(401).json({
+            return res.status(404).json({
                 status: "fail",
-                message: "Invalid email or password."
-            })
+                message: "Account not found for this WhatsApp number. Please sign up."
+            });
         }
+
         if (user.is_active === false) {
             return res.status(403).json({
                 status: "fail",
                 message: "This account has been deactivated."
             });
         }
-        // compare passsord
 
-        if (!user.password) {
-            return res.status(401).json({
-                status: "fail",
-                message: "Invalid email or password."
-            });
-        }
+        record.verified = true;
+        record.used_at = new Date();
+        await record.save();
 
-        const match = await user.comparePassword(password, user.password);
+        const { accessToken, refreshToken, sessionId } = await createAuthSession(user, req);
 
-        if (!match) {
-            return res.status(401).json({
-                status: 'fail',
-                message: 'Invalid email or password.'
-            })
-        }
-
-        const {
-            accessToken,
-            refreshToken,
-            sessionId
-        } = await createAuthSession(user, req);
         try {
             await recordSuccessfulLogin({ user, sessionId, req });
         } catch (activityError) {
-            // Audit storage should not invalidate an already-created login
-            // session. Log server-side without exposing database details.
             console.error("Unable to store user login activity:", activityError.message);
         }
-        res.status(200).json({
-            status: 'success',
+
+        return res.status(200).json({
+            status: "success",
+            message: "Login successful.",
             data: {
                 student_id: user.student_id,
+                user: {
+                    id: user._id,
+                    student_id: user.student_id,
+                    fullName: user.fullName,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    phoneNumber: user.phoneNumber,
+                    email: user.email || null
+                },
                 accessToken,
+                authtoken: accessToken,
                 refreshToken
             }
-        })
-    } catch (err) {
-        res.status(500).json({
-            status: 'Fail',
-            message: err.message
-        })
-    }
-}
-
-const safeName = (value, fallback) => {
-    const lettersOnly = String(value || "").replace(/[^a-zA-Z]/g, "");
-    return lettersOnly || fallback;
-};
-
-const firebaseConfigurationErrors = new Set([
-    "app/invalid-credential",
-    "app/invalid-options",
-    "auth/invalid-credential"
-]);
-
-const linkGoogleIdentity = async (user, decoded) => {
-    if (user.firebase_uid && user.firebase_uid !== decoded.uid) {
-        throw Object.assign(
-            new Error("This email is already linked to another Google account."),
-            { statusCode: 409 }
-        );
-    }
-
-    user.firebase_uid = decoded.uid;
-    user.auth_providers = [...new Set([
-        ...(user.auth_providers || (user.password ? ["password"] : [])),
-        "google"
-    ])];
-    if (decoded.picture) user.profile_picture = decoded.picture;
-    await user.save();
-    return user;
-};
-
-const sendGoogleLoginResponse = async ({ user, isNewUser, req, res }) => {
-    const { accessToken, refreshToken } = await createAuthSession(user, req);
-    return res.status(isNewUser ? 201 : 200).json({
-        status: "success",
-        message: isNewUser ? "Google account created and logged in." : "Google login successful.",
-        data: {
-            user: {
-                id: user._id,
-                student_id: user.student_id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                phoneNumber: user.phoneNumber || null,
-                profilePicture: user.profile_picture || null,
-                authProviders: user.auth_providers,
-                hasPassword: Boolean(user.password),
-                canSetPassword: Boolean(
-                    !user.password && user.auth_providers?.includes("google")
-                )
-            },
-            accessToken,
-            refreshToken,
-            isNewUser
-        }
-    });
-};
-
-exports.googleLogin = async (req, res) => {
-    let decoded;
-    let email;
-
-    try {
-        const idToken = typeof req.body.idToken === "string" ? req.body.idToken.trim() : "";
-        if (!idToken) {
-            return res.status(400).json({ status: "fail", message: "idToken is required." });
-        }
-
-        decoded = await getFirebaseAuth().verifyIdToken(idToken, true);
-        if (decoded.firebase?.sign_in_provider !== "google.com") {
-            return res.status(401).json({ status: "fail", message: "This endpoint accepts Google sign-in tokens only." });
-        }
-        if (!decoded.email || decoded.email_verified !== true) {
-            return res.status(401).json({ status: "fail", message: "Google must provide a verified email address." });
-        }
-
-        email = decoded.email.trim().toLowerCase();
-        let user = await Auth.findOne({
-            $or: [{ firebase_uid: decoded.uid }, { email }]
         });
 
-        if (user && user.is_active === false) {
-            return res.status(403).json({ status: "fail", message: "This account has been deactivated." });
-        }
-
-        const displayParts = String(decoded.name || "").trim().split(/\s+/).filter(Boolean);
-        const firstName = safeName(displayParts.shift(), "google");
-        const lastName = safeName(displayParts.join(" "), "user");
-        let isNewUser = false;
-
-        if (!user) {
-            user = await Auth.create({
-                firstName,
-                lastName,
-                email,
-                firebase_uid: decoded.uid,
-                auth_providers: ["google"],
-                profile_picture: decoded.picture
-            });
-            isNewUser = true;
-        } else {
-            await linkGoogleIdentity(user, decoded);
-        }
-
-        return sendGoogleLoginResponse({ user, isNewUser, req, res });
-    } catch (error) {
-        if (error.code === 11000 && decoded?.uid && email) {
-            try {
-                const existingUser = await Auth.findOne({
-                    $or: [{ firebase_uid: decoded.uid }, { email }]
-                });
-                if (!existingUser) throw error;
-                if (existingUser.is_active === false) {
-                    return res.status(403).json({ status: "fail", message: "This account has been deactivated." });
-                }
-                await linkGoogleIdentity(existingUser, decoded);
-                return sendGoogleLoginResponse({
-                    user: existingUser,
-                    isNewUser: false,
-                    req,
-                    res
-                });
-            } catch (recoveryError) {
-                error = recoveryError;
-            }
-        }
-        const phoneIndexConflict = error.keyPattern?.phoneNumber ||
-            Object.prototype.hasOwnProperty.call(error.keyValue || {}, "phoneNumber") ||
-            String(error.message || "").includes("index: phoneNumber_1");
-        if (error.code === 11000 && phoneIndexConflict) {
-            console.error("Google sign-in blocked by the neet-auth phoneNumber index:", error.message);
-            return res.status(503).json({
-                status: "fail",
-                message: "Google sign-in is temporarily unavailable while the account index is being updated."
-            });
-        }
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                status: "fail",
-                message: error.message
-            });
-        }
-        if (firebaseConfigurationErrors.has(error.code)) {
-            console.error("Firebase Admin configuration error:", error.message);
-            return res.status(503).json({
-                status: "fail",
-                message: "Google sign-in is temporarily unavailable because the server Firebase configuration is invalid."
-            });
-        }
-        if (String(error.code || "").startsWith("auth/")) {
-            return res.status(401).json({ status: "fail", message: "Invalid or expired Google sign-in token." });
-        }
-        console.error("Google sign-in failed:", error);
-        return res.status(500).json({ status: "fail", message: error.message });
+    } catch (err) {
+        console.error("Error in verifyLoginOtp:", err);
+        return res.status(500).json({
+            status: "fail",
+            message: err.message
+        });
     }
 };
 

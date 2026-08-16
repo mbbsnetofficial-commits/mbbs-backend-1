@@ -24,7 +24,11 @@ authRouter.post('/sign-up', signupLimiter, otpLimiter, signupController.startSig
 authRouter.post('/sign-up/verify-otp', otpVerificationLimiter, signupController.verifySignupOtp);
 
 authRouter.route('/login')
-    .post(loginLimiter, authController.login)
+    .post(loginLimiter, authController.login);
+
+authRouter.post('/login/verify-otp', otpVerificationLimiter, authController.verifyLoginOtp);
+authRouter.post('/verify-otp', otpVerificationLimiter, authController.verifyLoginOtp);
+authRouter.post('/resend-otp', otpLimiter, signupController.resendOtp);
 
 // Google login and its password-setup routes are temporarily disabled.
 // The controller/service code and existing database fields are intentionally

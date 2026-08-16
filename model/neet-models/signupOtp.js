@@ -1,17 +1,19 @@
 const mongoose = require("mongoose");
 
 const signupOtpSchema = new mongoose.Schema({
-    first_name: { type: String, required: true, trim: true },
-    last_name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, trim: true, lowercase: true, index: true },
+    full_name: { type: String, trim: true, default: "" },
+    first_name: { type: String, trim: true, default: "" },
+    last_name: { type: String, trim: true, default: "" },
+    email: { type: String, trim: true, lowercase: true, default: "" },
     phone_number: { type: String, required: true, unique: true, index: true },
-    password_hash: { type: String, required: true, select: false },
+    password_hash: { type: String, select: false, default: null },
     otp_hash: { type: String, required: true, select: false },
     otp_expires_at: { type: Date, required: true },
     resend_available_at: { type: Date, required: true },
     attempts: { type: Number, default: 0, min: 0 },
     verified: { type: Boolean, default: false },
     used_at: { type: Date, default: null },
+    purpose: { type: String, enum: ["signup", "login", "reset"], default: "signup" },
     twilio_message_sid: { type: String, default: null },
     twilio_message_status: { type: String, default: null },
     twilio_error_code: { type: Number, default: null },

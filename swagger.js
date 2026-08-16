@@ -2033,106 +2033,170 @@ const swaggerOptions = {
                     }
                 }
             },
-            '/api/v1/auth/sign-up': {
+            '/api/v1/auth/register': {
                 post: {
                     tags: ['Authentication'],
-                    summary: 'Step 1: Start sign-up and send mobile OTP',
-                    description: 'Validates and temporarily stores the registration details with a bcrypt password hash, rejects an email or mobile number already in neet-auth, and sends a five-minute OTP through Twilio. The account is not created until Step 2.',
+                    summary: 'Step 1: Start registration and send WhatsApp OTP',
+                    description: 'Validates full name and WhatsApp phone number, checks uniqueness in neet-auth, generates a 6-digit OTP on the backend, and delivers it via Twilio WhatsApp.',
                     requestBody: {
                         required: true,
                         content: {
                             'application/json': {
-                                schema: { $ref: '#/components/schemas/SignupRequest' }
+                                schema: {
+                                    type: 'object',
+                                    required: ['fullName', 'phoneNumber'],
+                                    properties: {
+                                        fullName: { type: 'string', example: 'Sanjay Kumar' },
+                                        phoneNumber: { type: 'string', example: '+919444308959' },
+                                        email: { type: 'string', format: 'email', example: 'sanjay@example.com' }
+                                    }
+                                }
                             }
                         }
                     },
                     responses: {
-                        200: { description: 'OTP generated and accepted by Twilio for delivery.' },
-                        400: { description: 'Registration payload is invalid.' },
-                        409: { description: 'Email or mobile number is already registered.' },
-                        429: { description: 'OTP resend cooldown is active.' },
-                        502: { description: 'Twilio could not send the OTP.' },
-                        500: {
-                            description: 'Validation or server error',
-                            content: {
-                                'application/json': {
-                                    schema: { $ref: '#/components/schemas/ErrorResponse' }
+                        200: { description: 'OTP generated and sent to WhatsApp.' },
+                        400: { description: 'Full name or phone number is invalid.' },
+                        409: { description: 'Phone number is already registered in neet-auth.' },
+                        429: { description: 'Resend cooldown active.' }
+                    }
+                }
+            },
+            '/api/v1/auth/register/verify-otp': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 2: Verify WhatsApp OTP and create account in neet-auth',
+                    description: 'Verifies the WhatsApp OTP on backend, creates new student record in neet-auth collection, and returns access and refresh JWT tokens.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['phoneNumber', 'otp'],
+                                    properties: {
+                                        phoneNumber: { type: 'string', example: '+919444308959' },
+                                        otp: { type: 'string', example: '842354' }
+                                    }
                                 }
                             }
                         }
+                    },
+                    responses: {
+                        201: { description: 'WhatsApp verified, account created in neet-auth, and JWT tokens returned.' },
+                        400: { description: 'Invalid or expired OTP.' },
+                        409: { description: 'Phone number already registered.' }
                     }
                 }
             },
             '/api/v1/auth/login': {
                 post: {
                     tags: ['Authentication'],
-                    summary: 'Log in with email and password',
+                    summary: 'Step 1: Request WhatsApp login verification code',
+                    description: 'Finds user in neet-auth collection by WhatsApp number, generates 6-digit OTP, and dispatches via Twilio WhatsApp.',
                     requestBody: {
                         required: true,
                         content: {
                             'application/json': {
-                                schema: { $ref: '#/components/schemas/LoginRequest' }
+                                schema: {
+                                    type: 'object',
+                                    required: ['phoneNumber'],
+                                    properties: {
+                                        phoneNumber: { type: 'string', example: '+919444308959' }
+                                    }
+                                }
                             }
                         }
                     },
                     responses: {
-                        200: {
-                            description: 'Login successful',
-                            content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            status: { type: 'string', example: 'success' },
-                                            data: {
-                                                type: 'object',
-                                                properties: {
-                                                    student_id: {
-                                                        type: 'string',
-                                                        description: 'Unique student identifier.',
-                                                        example: 'STU1784270552819BG1KRS'
-                                                    },
-                                                    accessToken: {
-                                                        type: 'string',
-                                                        description: 'JWT access token. Send it as Authorization: Bearer <accessToken> for protected APIs.'
-                                                    },
-                                                    refreshToken: { type: 'string', description: 'JWT refresh token' }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        400: {
-                            description: 'Email or password is missing',
-                            content: {
-                                'application/json': {
-                                    schema: { $ref: '#/components/schemas/ErrorResponse' }
-                                }
-                            }
-                        },
-                        403: {
-                            description: 'Invalid credentials',
-                            content: {
-                                'application/json': {
-                                    schema: { $ref: '#/components/schemas/ErrorResponse' }
-                                }
-                            }
-                        },
-                        500: {
-                            description: 'Server error',
-                            content: {
-                                'application/json': {
-                                    schema: { $ref: '#/components/schemas/ErrorResponse' }
-                                }
-                            }
-                        }
+                        200: { description: 'OTP generated and sent to WhatsApp.' },
+                        404: { description: 'No account found with this WhatsApp number.' },
+                        429: { description: 'Resend cooldown active.' }
                     }
                 }
             },
-            // Google authentication is temporarily disabled in auth.routes.js.
-            // Keep its Swagger definition commented for straightforward restore.
+            '/api/v1/auth/login/verify-otp': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 2: Verify WhatsApp login OTP and issue tokens',
+                    description: 'Verifies the OTP against backend database, generates auth session, and returns access and refresh tokens.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['phoneNumber', 'otp'],
+                                    properties: {
+                                        phoneNumber: { type: 'string', example: '+919444308959' },
+                                        otp: { type: 'string', example: '280406' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Login successful, JWT tokens returned.' },
+                        400: { description: 'Invalid or expired OTP.' },
+                        404: { description: 'User account not found.' }
+                    }
+                }
+            },
+            '/api/v1/auth/resend-otp': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Resend OTP to WhatsApp number',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['phoneNumber'],
+                                    properties: {
+                                        phoneNumber: { type: 'string', example: '+919444308959' },
+                                        purpose: { type: 'string', enum: ['signup', 'login'], example: 'login' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Fresh OTP sent to WhatsApp.' },
+                        429: { description: 'Cooldown active.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/tests/builtin': {
+                get: {
+                    tags: ['UCAT Practice Tests'],
+                    summary: 'Get 6 Built-in UCAT Tests and Previous Year Papers',
+                    description: 'Returns the 6 official UCAT tests (Full Test, Verbal Reasoning, Decision Making, Quantitative Reasoning, Abstract Reasoning, Situational Judgement) and past papers.',
+                    responses: {
+                        200: { description: 'List of built-in and previous year tests.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/ucat-learning-report': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get UCAT Learning Report table with attempt history',
+                    description: 'Returns student test attempt history table for UCAT.',
+                    responses: {
+                        200: { description: 'UCAT Learning Report data.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/ucat-summary': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get UCAT KPI Summary performance cards',
+                    description: 'Returns real aggregated metrics (practice time, average score, completed tests, streak).',
+                    responses: {
+                        200: { description: 'UCAT student summary.' }
+                    }
+                }
+            },
             // '/api/v1/auth/google': {
             //     post: {
             //         tags: ['Authentication'],
