@@ -55,3 +55,23 @@ exports.getNeetSummary = async (req, res) => {
         });
     }
 };
+
+/**
+ * GET /api/v1/student/dashboard/neet-learning-report/filters
+ * Returns available filter options (types, statuses) for dropdown binding.
+ */
+exports.getLearningReportFilters = async (req, res) => {
+    try {
+        const filters = learningReportService.getLearningReportFilters();
+        return res.status(200).json({
+            status: "success",
+            message: "Filter options fetched successfully.",
+            data: filters
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};

@@ -78,6 +78,16 @@ const BUILTIN_TEST_DEFINITIONS = [
     }
 ];
 
+const LEARNING_REPORT_TYPE_FILTERS = [
+    { id: "previous_year_test", name: "Previous Year Test", value: "Previous Year Test" },
+    { id: "practise_test", name: "Practise Test", value: "Practise Test" },
+    { id: "custom", name: "Custom", value: "Custom" },
+    { id: "physics", name: "Physics", value: "Physics" },
+    { id: "chemistry", name: "Chemistry", value: "Chemistry" },
+    { id: "botany", name: "Botany", value: "Botany" },
+    { id: "zoology", name: "Zoology", value: "Zoology" }
+];
+
 /**
  * Ensures the 5 Built-in NEET tests exist in the database (platform-tests collection).
  */
@@ -387,7 +397,11 @@ const getNeetLearningReport = async (studentId, options = {}) => {
         const types = typeFilter.split(",").map(t => t.trim().toLowerCase());
         filteredList = filteredList.filter(item => {
             const itemType = (item.type || "").toLowerCase();
-            return types.includes(itemType);
+            return types.some(t => {
+                if (t === itemType) return true;
+                if ((t === "practise test" || t === "practice test") && (itemType.includes("full test") || itemType.includes("neet"))) return true;
+                return false;
+            });
         });
     }
 
@@ -418,6 +432,10 @@ const getNeetLearningReport = async (studentId, options = {}) => {
     return {
         status: "success",
         message: "NEET learning report fetched successfully.",
+        filters: {
+            types: LEARNING_REPORT_TYPE_FILTERS,
+            type_options: LEARNING_REPORT_TYPE_FILTERS.map(f => f.name)
+        },
         data: paginatedItems,
         pagination: {
             page,
@@ -534,8 +552,19 @@ const getNeetSummary = async (studentId) => {
 
 module.exports = {
     BUILTIN_TEST_DEFINITIONS,
+    LEARNING_REPORT_TYPE_FILTERS,
     ensureBuiltinTestsSeeded,
     getBuiltinTests,
     getNeetLearningReport,
-    getNeetSummary
+    getNeetSummary,
+    getLearningReportFilters: () => ({
+        types: LEARNING_REPORT_TYPE_FILTERS,
+        type_options: LEARNING_REPORT_TYPE_FILTERS.map(f => f.name),
+        statuses: [
+            { id: "all", name: "All", value: "all" },
+            { id: "completed", name: "Completed", value: "completed" },
+            { id: "in_progress", name: "In Progress", value: "in_progress" },
+            { id: "not_started", name: "Not Started", value: "not_started" }
+        ]
+    })
 };

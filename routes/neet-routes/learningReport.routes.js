@@ -24,4 +24,15 @@ learningReportRouter.get(
     learningReportController.getNeetSummary
 );
 
+// 4. Get available filter options for dropdown binding
+learningReportRouter.get(
+    "/student/dashboard/neet-learning-report/filters",
+    learningReportController.getLearningReportFilters
+);
+
+learningReportRouter.get(
+    "/neet/tests/filters",
+    learningReportController.getLearningReportFilters
+);
+
 module.exports = learningReportRouter;
