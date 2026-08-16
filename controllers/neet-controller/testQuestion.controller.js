@@ -543,181 +543,169 @@ exports.startQuickTest = async (req, res) => {
 
 
 exports.submitTest = async (req, res) => {
-
     try {
+        const { sessionId, answers = [] } = req.body;
 
-        const { sessionId, answers } = req.body;
-
-        if (!sessionId || !Array.isArray(answers) || answers.length === 0) {
-
+        if (!sessionId || !mongoose.isValidObjectId(sessionId)) {
             return res.status(400).json({
-
                 success: false,
-
-                message: "sessionId and at least one answer are required."
-
+                message: "A valid sessionId is required."
             });
-
         }
 
-        const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || "STU123456";
         const session = await TestSession.findById(sessionId);
-
         if (!session) {
-
             return res.status(404).json({
-
                 success: false,
-
                 message: "Test session not found."
-
             });
-
         }
 
         if (session.status === "Completed") {
-
             return res.status(409).json({
-
                 success: false,
-
                 message: "This test session has already been submitted."
-
             });
-
         }
 
-        const sessionQuestionIds = new Set(session.question_ids);
-        const submittedQuestionIds = new Set();
+        const sessionQuestionIds = session.question_ids || [];
+        const sessionQuestionIdSet = new Set(sessionQuestionIds);
 
-        for (const item of answers) {
-            const questionId = Number(item.question_id);
-            const selectedOption = item.selected_option || "";
-
-            if (!Number.isInteger(questionId) || !sessionQuestionIds.has(questionId)) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Question ${item.question_id} does not belong to this test session.`
-                });
+        // 1. Reconcile answers: Start with answers already autosaved in session.answers (API #6)
+        const answerMap = new Map();
+        if (Array.isArray(session.answers)) {
+            for (const ans of session.answers) {
+                if (ans && ans.question_id !== undefined) {
+                    answerMap.set(Number(ans.question_id), {
+                        question_id: Number(ans.question_id),
+                        selected_option: (ans.selected_option || "").trim().toUpperCase(),
+                        time_spent: Math.max(0, Number(ans.time_spent) || 0)
+                    });
+                }
             }
-            if (submittedQuestionIds.has(questionId)) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Question ${questionId} was submitted more than once.`
-                });
-            }
-            if (!["", "A", "B", "C", "D"].includes(selectedOption)) {
-                return res.status(400).json({
-                    success: false,
-                    message: `selected_option for question ${questionId} must be A, B, C, D, or empty.`
-                });
-            }
-            submittedQuestionIds.add(questionId);
         }
 
-        let score = 0;
+        // 2. Overlay any answers submitted in req.body.answers
+        if (Array.isArray(answers)) {
+            for (const item of answers) {
+                if (item && item.question_id !== undefined) {
+                    const qId = Number(item.question_id);
+                    if (sessionQuestionIdSet.size > 0 && !sessionQuestionIdSet.has(qId)) {
+                        return res.status(400).json({
+                            success: false,
+                            message: `Question ${item.question_id} does not belong to this test session.`
+                        });
+                    }
+                    const opt = (item.selected_option || "").trim().toUpperCase();
+                    if (!["", "A", "B", "C", "D"].includes(opt)) {
+                        return res.status(400).json({
+                            success: false,
+                            message: `selected_option for question ${qId} must be A, B, C, D, or empty.`
+                        });
+                    }
+                    answerMap.set(qId, {
+                        question_id: qId,
+                        selected_option: opt,
+                        time_spent: Math.max(0, Number(item.time_spent) || 0)
+                    });
+                }
+            }
+        }
+
+        // 3. Fetch authoritative question details from database
+        const allTargetQuestionIds = sessionQuestionIds.length > 0
+            ? sessionQuestionIds
+            : Array.from(answerMap.keys());
+
+        const questionsInDb = await Question.find({
+            id: { $in: allTargetQuestionIds }
+        }).select("id question correct_answer option_a option_b option_c option_d explanation difficulty topic_id").lean();
+
+        const dbQuestionMap = new Map(questionsInDb.map(q => [q.id, q]));
 
         let correct = 0;
-
         let wrong = 0;
-
         let skipped = 0;
-
+        let score = 0;
         const review = [];
+        const finalSubmittedAnswers = [];
 
-        const submittedAnswers = [];
-
-        for (const item of answers) {
-
-            const question = await Question.findOne({
-
-                id: item.question_id
-
-            });
+        // 4. Evaluate each question
+        for (const qId of allTargetQuestionIds) {
+            const question = dbQuestionMap.get(qId);
+            const studentAnswer = answerMap.get(qId);
+            const selectedOption = studentAnswer ? (studentAnswer.selected_option || "") : "";
+            const timeSpent = studentAnswer ? (studentAnswer.time_spent || 0) : 0;
 
             if (!question) {
-
-                return res.status(404).json({
-
-                    success: false,
-
-                    message: `Question with id ${item.question_id} was not found.`
-
-                });
-
+                continue;
             }
 
-            const selectedOption = item.selected_option || "";
+            const correctAnswer = (question.correct_answer || "").trim().toUpperCase();
+            let isCorrect = false;
+            let marksAwarded = 0;
 
-            const isCorrect = selectedOption === question.correct_answer;
-
-            const marksAwarded = !selectedOption ? 0 : (isCorrect ? 4 : -1);
-
-            if (!selectedOption) {
-
+            if (!selectedOption || selectedOption === "") {
                 skipped++;
-
-            } else if (isCorrect) {
-
-                score += 4;
-
+                marksAwarded = 0;
+            } else if (selectedOption === correctAnswer) {
                 correct++;
-
+                score += 4;
+                isCorrect = true;
+                marksAwarded = 4;
             } else {
-
-                score -= 1;
-
                 wrong++;
-
+                score -= 1;
+                isCorrect = false;
+                marksAwarded = -1;
             }
 
             review.push({
-
                 question_id: question.id,
-
+                question: question.question,
                 selected: selectedOption,
-
-                correct_answer: question.correct_answer,
-
-                isCorrect
-
-            });
-
-            submittedAnswers.push({
-
-                question_id: question.id,
-
                 selected_option: selectedOption,
-
+                correct_answer: question.correct_answer,
+                isCorrect,
                 is_correct: isCorrect,
-
                 marks_awarded: marksAwarded,
-
-                time_spent: Math.max(Number(item.time_spent) || 0, 0)
-
+                time_spent: timeSpent,
+                explanation: question.explanation || ""
             });
 
+            finalSubmittedAnswers.push({
+                question_id: question.id,
+                selected_option: selectedOption,
+                is_correct: isCorrect,
+                marks_awarded: marksAwarded,
+                time_spent: timeSpent
+            });
         }
 
-        // Questions omitted from the payload are also treated as skipped.
-        const totalQ = session.total_questions || session.question_ids?.length || 180;
-        skipped = Math.max(totalQ - correct - wrong, skipped);
+        const totalQuestions = session.total_questions || allTargetQuestionIds.length || 180;
+        const totalMarks = session.total_marks || (totalQuestions * 4);
 
-        const totalAttempted = correct + wrong;
-        const accuracy = totalAttempted > 0
-            ? Number(((correct / totalAttempted) * 100).toFixed(2))
-            : (totalQ > 0 ? Number(((correct / totalQ) * 100).toFixed(2)) : 0);
-
-        let timeSpentSeconds = 0;
-        for (const ans of submittedAnswers) {
-            timeSpentSeconds += ans.time_spent || 0;
+        // Account for any remaining unattempted questions if target questions exceeded evaluated
+        const evaluatedTotal = correct + wrong + skipped;
+        if (evaluatedTotal < totalQuestions) {
+            skipped += (totalQuestions - evaluatedTotal);
         }
+
+        // 5. Calculate Accuracy
+        const attemptedCount = correct + wrong;
+        const accuracy = attemptedCount > 0
+            ? Math.round((correct / attemptedCount) * 100)
+            : 0;
+
+        // 6. Calculate total time spent
+        let timeSpentSeconds = finalSubmittedAnswers.reduce((sum, a) => sum + (a.time_spent || 0), 0);
         if (!timeSpentSeconds && session.started_at) {
             timeSpentSeconds = Math.max(0, Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000));
         }
 
+        // 7. Update Session in Database
         await TestSession.findByIdAndUpdate(sessionId, {
-            answers: submittedAnswers,
+            answers: finalSubmittedAnswers,
             score,
             correct,
             wrong,
@@ -730,9 +718,12 @@ exports.submitTest = async (req, res) => {
 
         return res.status(200).json({
             success: true,
+            message: "Test submitted successfully",
             score,
-            total_marks: session.total_marks || (session.total_questions * 4),
-            totalQuestions: session.total_questions,
+            totalMarks,
+            total_marks: totalMarks,
+            totalQuestions,
+            total_questions: totalQuestions,
             correct,
             wrong,
             skipped,
@@ -741,20 +732,13 @@ exports.submitTest = async (req, res) => {
             review
         });
 
-    }
-
-    catch (error) {
-
+    } catch (error) {
+        console.error("Submit test error:", error);
         return res.status(500).json({
-
             success: false,
-
             message: error.message
-
         });
-
     }
-
 };
 
 exports.getTestHistory = async (req, res) => {
