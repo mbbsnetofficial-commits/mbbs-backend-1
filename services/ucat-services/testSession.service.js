@@ -139,10 +139,230 @@ const getTestOptions = async () => {
     };
 };
 
+// --- 6 CANONICAL BUILT-IN TESTS SPECIFICATION ---
+const UCAT_BUILTIN_TESTS_CONFIG = [
+    {
+        testId: "UCAT_FULL",
+        test_id: "UCAT_FULL",
+        testName: "UCAT Full Test",
+        test_name: "UCAT Full Test",
+        exam: "UCAT",
+        source: "builtin",
+        testType: "full_test",
+        test_type: "Full Test",
+        type: "Full Mock",
+        level: "Advanced",
+        totalQuestions: 233,
+        total_questions: 233,
+        durationMinutes: 120,
+        duration_minutes: 120,
+        maxMarks: 932,
+        total_marks: 932,
+        sections: [
+            "verbal_reasoning",
+            "decision_making",
+            "quantitative_reasoning",
+            "abstract_reasoning",
+            "situational_judgement"
+        ],
+        isActive: true,
+        is_active: true
+    },
+    {
+        testId: "UCAT_VERBAL_REASONING",
+        test_id: "UCAT_VERBAL_REASONING",
+        testName: "Verbal Reasoning Test",
+        test_name: "Verbal Reasoning Test",
+        exam: "UCAT",
+        source: "builtin",
+        testType: "section_test",
+        test_type: "Section Test",
+        section: "verbal_reasoning",
+        type: "Verbal Reasoning",
+        level: "Intermediate",
+        totalQuestions: 44,
+        total_questions: 44,
+        durationMinutes: 21,
+        duration_minutes: 21,
+        maxMarks: 176,
+        total_marks: 176,
+        sections: ["verbal_reasoning"],
+        isActive: true,
+        is_active: true
+    },
+    {
+        testId: "UCAT_DECISION_MAKING",
+        test_id: "UCAT_DECISION_MAKING",
+        testName: "Decision Making Test",
+        test_name: "Decision Making Test",
+        exam: "UCAT",
+        source: "builtin",
+        testType: "section_test",
+        test_type: "Section Test",
+        section: "decision_making",
+        type: "Decision Making",
+        level: "Intermediate",
+        totalQuestions: 29,
+        total_questions: 29,
+        durationMinutes: 31,
+        duration_minutes: 31,
+        maxMarks: 116,
+        total_marks: 116,
+        sections: ["decision_making"],
+        isActive: true,
+        is_active: true
+    },
+    {
+        testId: "UCAT_QUANTITATIVE_REASONING",
+        test_id: "UCAT_QUANTITATIVE_REASONING",
+        testName: "Quantitative Reasoning Test",
+        test_name: "Quantitative Reasoning Test",
+        exam: "UCAT",
+        source: "builtin",
+        testType: "section_test",
+        test_type: "Section Test",
+        section: "quantitative_reasoning",
+        type: "Quantitative Reasoning",
+        level: "Intermediate",
+        totalQuestions: 36,
+        total_questions: 36,
+        durationMinutes: 25,
+        duration_minutes: 25,
+        maxMarks: 144,
+        total_marks: 144,
+        sections: ["quantitative_reasoning"],
+        isActive: true,
+        is_active: true
+    },
+    {
+        testId: "UCAT_ABSTRACT_REASONING",
+        test_id: "UCAT_ABSTRACT_REASONING",
+        testName: "Abstract Reasoning Test",
+        test_name: "Abstract Reasoning Test",
+        exam: "UCAT",
+        source: "builtin",
+        testType: "section_test",
+        test_type: "Section Test",
+        section: "abstract_reasoning",
+        type: "Abstract Reasoning",
+        level: "Intermediate",
+        totalQuestions: 55,
+        total_questions: 55,
+        durationMinutes: 13,
+        duration_minutes: 13,
+        maxMarks: 220,
+        total_marks: 220,
+        sections: ["abstract_reasoning"],
+        isActive: true,
+        is_active: true
+    },
+    {
+        testId: "UCAT_SITUATIONAL_JUDGEMENT",
+        test_id: "UCAT_SITUATIONAL_JUDGEMENT",
+        testName: "Situational Judgement Test",
+        test_name: "Situational Judgement Test",
+        exam: "UCAT",
+        source: "builtin",
+        testType: "section_test",
+        test_type: "Section Test",
+        section: "situational_judgement",
+        type: "Situational Judgement",
+        level: "Intermediate",
+        totalQuestions: 69,
+        total_questions: 69,
+        durationMinutes: 26,
+        duration_minutes: 26,
+        maxMarks: 276,
+        total_marks: 276,
+        sections: ["situational_judgement"],
+        isActive: true,
+        is_active: true
+    }
+];
+
+// --- GET BUILT-IN & PREVIOUS YEAR UCAT PAPERS ---
+const getBuiltinTests = async () => {
+    // 1. Built-in 6 canonical test definitions
+    const builtins = UCAT_BUILTIN_TESTS_CONFIG.map(t => ({ ...t }));
+
+    // 2. Discover available previous-year papers dynamically
+    let previousYearPapers = [];
+    try {
+        const previousYearRepository = require("../../repositories/ucat-repositories/previousYear.repository");
+        const papers = await previousYearRepository.listPapers();
+        if (Array.isArray(papers) && papers.length > 0) {
+            previousYearPapers = papers.map(p => {
+                const yearVal = p.year || (p.name && p.name.match(/\d{4}/) ? parseInt(p.name.match(/\d{4}/)[0], 10) : 2021);
+                const qCount = p.question_count || p.total_questions || 233;
+                const durMin = p.duration || p.durationMinutes || 120;
+                return {
+                    id: p.id || p.paper_id || `UCAT_${yearVal}`,
+                    testId: `UCAT_${yearVal}`,
+                    test_id: `UCAT_${yearVal}`,
+                    paperId: String(p.id || p.paper_id || p._id),
+                    paper_id: String(p.id || p.paper_id || p._id),
+                    testName: p.name || `UCAT ${yearVal}`,
+                    test_name: p.name || `UCAT ${yearVal}`,
+                    year: yearVal,
+                    exam: "UCAT",
+                    source: "previous_year",
+                    testType: "official_paper",
+                    test_type: "Official Paper",
+                    type: "Official Paper",
+                    level: "Advanced",
+                    totalQuestions: qCount,
+                    total_questions: qCount,
+                    durationMinutes: durMin,
+                    duration_minutes: durMin,
+                    maxMarks: qCount * 4,
+                    total_marks: qCount * 4,
+                    isActive: p.is_active !== false,
+                    is_active: p.is_active !== false
+                };
+            });
+        }
+    } catch (e) {
+        previousYearPapers = [];
+    }
+
+    if (previousYearPapers.length === 0) {
+        previousYearPapers = [
+            {
+                id: 2021,
+                testId: "UCAT_2021",
+                test_id: "UCAT_2021",
+                testName: "UCAT 2021",
+                test_name: "UCAT 2021",
+                year: 2021,
+                exam: "UCAT",
+                source: "previous_year",
+                testType: "official_paper",
+                test_type: "Official Paper",
+                type: "Official Paper",
+                level: "Advanced",
+                totalQuestions: 233,
+                total_questions: 233,
+                durationMinutes: 120,
+                duration_minutes: 120,
+                maxMarks: 932,
+                total_marks: 932,
+                isActive: true,
+                is_active: true
+            }
+        ];
+    }
+
+    return [...builtins, ...previousYearPapers];
+};
+
 // --- STEP 4: START TEST SESSION ---
 const startTest = async (user, payload = {}) => {
     const {
         student_id,
+        testId,
+        test_id,
+        paperId,
+        paper_id,
         subjects = [],
         chapters = [],
         topic_ids = [],
@@ -153,76 +373,139 @@ const startTest = async (user, payload = {}) => {
         duration = 15
     } = payload;
 
-    const studentId = student_id || (user && user.studentId ? user.studentId : "STU1784364902958UZ1WFH");
-    const isFullExam = payload.test_type === "FULL_EXAM" || payload.test_type === "Full Exam" || Number(questionCount) === 233 || Number(duration) === 120;
-    const totalLimit = isFullExam ? 233 : (Number(questionCount) || Number(limit) || 20);
-    const testDuration = isFullExam ? 120 : (Number(duration) || 15);
+    const studentId = student_id || (user && (user.student_id || user.studentId || user.userId)) || "STU123456";
+    const rawTestId = testId || test_id || paperId || paper_id || (payload.test_type === "FULL_EXAM" || payload.test_type === "Full Exam" ? "UCAT_FULL" : null);
 
-    const targetSubjects = subjects.length > 0 ? subjects : sections;
-    const targetTopics = topics.length > 0 ? topics : chapters;
+    // Look up in built-in definitions
+    const builtinConfig = UCAT_BUILTIN_TESTS_CONFIG.find(
+        t => t.testId === rawTestId || t.test_id === rawTestId || (rawTestId === "UCAT_2021" && t.testId === "UCAT_FULL")
+    );
 
-    const topicTerms = [];
-    if (targetTopics.length > 0) {
-        for (const t of targetTopics) {
-            const clean = String(t).trim();
-            topicTerms.push(new RegExp(clean, "i"));
-            if (clean.includes("&")) {
-                clean.split("&").forEach((part) => {
-                    const p = part.trim();
-                    if (p.length >= 3) {
-                        topicTerms.push(new RegExp(p, "i"));
-                    }
-                });
-            }
+    const isFullExam = rawTestId === "UCAT_FULL" || rawTestId === "UCAT_2021" || payload.test_type === "FULL_EXAM" || payload.test_type === "Full Exam" || Number(questionCount) === 233 || Number(duration) === 120;
+    const testIdentifier = rawTestId || (isFullExam ? "UCAT_FULL" : "UCAT_PRACTICE");
+
+    // Active session check for same test: resume if unfinished, otherwise create fresh attempt
+    if (testIdentifier) {
+        const UcatTestSession = require("../../model/ucat-model/ucatTestSession");
+        const existingSession = await UcatTestSession.findOne({
+            $and: [
+                {
+                    $or: [
+                        { student_id: studentId },
+                        { userId: studentId },
+                        { student_id: "STU123456" }
+                    ]
+                },
+                {
+                    $or: [
+                        { test_id: testIdentifier },
+                        { testId: testIdentifier },
+                        { previous_year_paper_id: testIdentifier }
+                    ]
+                },
+                {
+                    status: { $in: ["In Progress", "Started"] }
+                }
+            ]
+        }).sort({ started_at: -1 }).lean();
+
+        if (existingSession) {
+            const resumed = await getSessionResult(existingSession.sessionId || existingSession._id);
+            resumed.reused = true;
+            return resumed;
         }
     }
 
+    let targetSubjects = [];
+    let targetLimit = 20;
+    let testDuration = 15;
+    let testTitle = payload.title || "UCAT Practice Test";
+    let testLevel = payload.level || "Intermediate";
+
+    if (builtinConfig) {
+        targetSubjects = builtinConfig.sections || [builtinConfig.section];
+        targetLimit = builtinConfig.totalQuestions;
+        testDuration = builtinConfig.durationMinutes;
+        testTitle = builtinConfig.testName;
+        testLevel = builtinConfig.level || "Intermediate";
+    } else if (isFullExam) {
+        targetSubjects = [
+            "verbal_reasoning",
+            "decision_making",
+            "quantitative_reasoning",
+            "abstract_reasoning",
+            "situational_judgement"
+        ];
+        targetLimit = 233;
+        testDuration = 120;
+        testTitle = payload.title || (rawTestId && rawTestId.includes("2021") ? "UCAT 2021" : "UCAT Full Test");
+        testLevel = "Advanced";
+    } else {
+        targetSubjects = subjects.length > 0 ? subjects : (sections.length > 0 ? sections : ["verbal_reasoning"]);
+        targetLimit = Number(questionCount) || Number(limit) || 20;
+        testDuration = Number(duration) || 15;
+    }
+
+    const targetTopics = topics.length > 0 ? topics : chapters;
     let rawQuestions = [];
 
-    if (targetSubjects.length > 0) {
-        const perSubjectLimit = Math.ceil(totalLimit / targetSubjects.length);
+    // Load questions based on test type
+    if (builtinConfig && builtinConfig.testType === "full_test" || isFullExam) {
+        const ucatSections = [
+            "verbal_reasoning",
+            "decision_making",
+            "quantitative_reasoning",
+            "abstract_reasoning",
+            "situational_judgement"
+        ];
+        const sectionDistribution = {
+            verbal_reasoning: 44,
+            decision_making: 29,
+            quantitative_reasoning: 36,
+            abstract_reasoning: 55,
+            situational_judgement: 69
+        };
 
-        for (const subj of targetSubjects) {
-            const subjectRegex = new RegExp("^" + String(subj).trim().toLowerCase().replace(/_/g, "[ _]?") + "$", "i");
-
-            let subjectTopicFilter = null;
-            if (topicTerms.length > 0) {
-                subjectTopicFilter = {
-                    $or: [
-                        { topic_name: { $in: topicTerms } },
-                        { chapter: { $in: topicTerms } }
-                    ]
-                };
-            }
-
-            let query = { subject: subjectRegex };
-            if (topic_ids && topic_ids.length > 0) {
-                query.topic_id = { $in: topic_ids.map(Number) };
-            } else if (subjectTopicFilter) {
-                query = { $and: [{ subject: subjectRegex }, subjectTopicFilter] };
-            }
-
-            let subjQuestions = await UcatQuestion.find(query)
+        for (const sec of ucatSections) {
+            const secRegex = new RegExp("^" + sec.replace(/_/g, "[ _]?") + "$", "i");
+            const quota = sectionDistribution[sec] || 46;
+            const secQuestions = await UcatQuestion.find({ subject: secRegex })
                 .select("-correct_answer -explanation")
-                .limit(perSubjectLimit)
+                .limit(quota)
                 .lean();
+            rawQuestions.push(...secQuestions);
+        }
 
-            if (subjQuestions.length === 0) {
-                subjQuestions = await UcatQuestion.find({ subject: subjectRegex })
-                    .select("-correct_answer -explanation")
-                    .limit(perSubjectLimit)
-                    .lean();
-            }
+        if (rawQuestions.length < targetLimit) {
+            const existingIds = new Set(rawQuestions.map(q => q.id || q._id));
+            const needed = targetLimit - rawQuestions.length;
+            const extra = await UcatQuestion.find({ id: { $nin: Array.from(existingIds) } })
+                .select("-correct_answer -explanation")
+                .limit(needed)
+                .lean();
+            rawQuestions.push(...extra);
+        }
+    } else if (builtinConfig && builtinConfig.testType === "section_test") {
+        // Load ONLY questions belonging to that specific section
+        const sec = builtinConfig.section;
+        const secRegex = new RegExp("^" + sec.replace(/_/g, "[ _]?") + "$", "i");
+        rawQuestions = await UcatQuestion.find({ subject: secRegex })
+            .select("-correct_answer -explanation")
+            .limit(targetLimit)
+            .lean();
 
-            rawQuestions.push(...subjQuestions);
+        if (rawQuestions.length === 0) {
+            rawQuestions = await UcatQuestion.find({})
+                .select("-correct_answer -explanation")
+                .limit(targetLimit)
+                .lean();
         }
     } else {
         let query = {};
-        if (topicTerms.length > 0) {
-            query.$or = [
-                { topic_name: { $in: topicTerms } },
-                { chapter: { $in: topicTerms } }
-            ];
+        if (targetSubjects.length > 0) {
+            query.subject = {
+                $in: targetSubjects.map(s => new RegExp("^" + String(s).trim().toLowerCase().replace(/_/g, "[ _]?") + "$", "i"))
+            };
         }
         if (topic_ids && topic_ids.length > 0) {
             query.topic_id = { $in: topic_ids.map(Number) };
@@ -230,21 +513,21 @@ const startTest = async (user, payload = {}) => {
 
         rawQuestions = await UcatQuestion.find(query)
             .select("-correct_answer -explanation")
-            .limit(totalLimit)
+            .limit(targetLimit)
             .lean();
+
+        if (rawQuestions.length === 0) {
+            rawQuestions = await UcatQuestion.find({})
+                .select("-correct_answer -explanation")
+                .limit(targetLimit)
+                .lean();
+        }
     }
 
-    if (rawQuestions.length === 0) {
-        rawQuestions = await UcatQuestion.find({})
-            .select("-correct_answer -explanation")
-            .limit(totalLimit)
-            .lean();
-    }
+    const selectedQuestions = rawQuestions.slice(0, targetLimit);
+    const questionIds = selectedQuestions.map((q) => q.id || q._id);
 
-    const shuffled = shuffleArray([...rawQuestions]).slice(0, totalLimit);
-    const questionIds = shuffled.map((q) => q.id || q._id);
-
-    const questionsFormatted = shuffled.map((q) => ({
+    const questionsFormatted = selectedQuestions.map((q) => ({
         question_id: q.id || q._id,
         question: q.question,
         option_a: q.option_a,
@@ -255,12 +538,19 @@ const startTest = async (user, payload = {}) => {
         topic_name: q.topic_name || q.chapter || ""
     }));
 
-    const maxMarks = questionsFormatted.length * 4; // 233 questions = 932 marks
+    const maxMarks = (questionsFormatted.length || targetLimit) * 4;
+    const startedAt = new Date();
+    const expiresAt = new Date(startedAt.getTime() + testDuration * 60 * 1000);
 
     const sessionPayload = {
         sessionId: "UCAT_TEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
         student_id: studentId,
-        test_type: payload.test_type || (isFullExam ? "Full Exam" : "Quick Test"),
+        test_id: testIdentifier,
+        testId: testIdentifier,
+        previous_year_paper_id: rawTestId && rawTestId.startsWith("UCAT_20") ? rawTestId : null,
+        title: testTitle,
+        subtitle: builtinConfig ? builtinConfig.type : (isFullExam ? "Official Full Paper" : "Practice Test"),
+        test_type: builtinConfig ? builtinConfig.testType : (isFullExam ? "Official Paper" : "Quick Test"),
         subjects: targetSubjects,
         chapters: targetTopics,
         topic_ids: topic_ids.map(Number),
@@ -268,13 +558,15 @@ const startTest = async (user, payload = {}) => {
         duration: testDuration,
         max_marks: maxMarks,
         total_marks: maxMarks,
+        level: testLevel,
         score: 0,
         correct: 0,
         wrong: 0,
         skipped: questionsFormatted.length,
         accuracy: 0,
         status: "In Progress",
-        started_at: new Date(),
+        started_at: startedAt,
+        expires_at: expiresAt,
         question_ids: questionIds
     };
 
@@ -284,6 +576,8 @@ const startTest = async (user, payload = {}) => {
     resultDoc.totalQuestions = questionsFormatted.length;
     resultDoc.totalMarks = maxMarks;
     resultDoc.max_marks = maxMarks;
+    resultDoc.started_at = startedAt;
+    resultDoc.expires_at = expiresAt;
     return resultDoc;
 };
 
@@ -302,37 +596,63 @@ const submitTest = async (sessionId, answers = []) => {
         throw error;
     }
 
+    // 1. Reconcile answers: start with session.answers from API #6 autosave
+    const answerMap = new Map();
+    if (Array.isArray(session.answers)) {
+        for (const ans of session.answers) {
+            const qId = Number(ans.question_id || ans.questionId);
+            if (qId) {
+                answerMap.set(qId, {
+                    question_id: qId,
+                    selected_option: (ans.selected_option || "").trim().toUpperCase(),
+                    time_spent: Math.max(0, Number(ans.time_spent) || 0)
+                });
+            }
+        }
+    }
+
+    // 2. Overlay any answers sent in submit payload
+    if (Array.isArray(answers)) {
+        for (const ans of answers) {
+            const qId = Number(ans.question_id || ans.questionId);
+            if (qId) {
+                answerMap.set(qId, {
+                    question_id: qId,
+                    selected_option: (ans.selected_option || ans.selected || "").trim().toUpperCase(),
+                    time_spent: Math.max(0, Number(ans.time_spent || ans.timeSpent) || 0)
+                });
+            }
+        }
+    }
+
+    const questionIds = Array.isArray(session.question_ids) && session.question_ids.length > 0
+        ? session.question_ids.map(Number)
+        : Array.from(answerMap.keys());
+
+    const questionDocs = await UcatQuestion.find({
+        id: { $in: questionIds }
+    }).lean();
+
+    const questionMap = new Map();
+    questionDocs.forEach((q) => questionMap.set(Number(q.id), q));
+
     let correctCount = 0;
     let wrongCount = 0;
     let totalScore = 0;
     const reviewItems = [];
     const processedAnswers = [];
 
-    const answerMap = new Map();
-    answers.forEach((ans) => {
-        const qId = ans.question_id || ans.questionId;
-        if (qId) {
-            answerMap.set(Number(qId), ans);
-        }
-    });
-
-    const questionDocs = await UcatQuestion.find({
-        id: { $in: session.question_ids.map(Number) }
-    }).lean();
-
-    const questionMap = new Map();
-    questionDocs.forEach((q) => questionMap.set(Number(q.id), q));
-
-    for (const qId of session.question_ids) {
+    for (const qId of questionIds) {
         const numId = Number(qId);
         const question = questionMap.get(numId);
         const userAns = answerMap.get(numId) || {};
-        const selected = (userAns.selected_option || userAns.selected || "").trim().toUpperCase();
-        const timeSpent = Math.max(Number(userAns.time_spent || userAns.timeSpent) || 0, 0);
+        const selected = (userAns.selected_option || "").trim().toUpperCase();
+        const timeSpent = Math.max(Number(userAns.time_spent) || 0, 0);
 
         if (!question) continue;
 
-        const isCorrect = selected === question.correct_answer;
+        const correctAnswer = (question.correct_answer || "").trim().toUpperCase();
+        const isCorrect = selected === correctAnswer;
         const isSkipped = !selected;
         let marksAwarded = 0;
 
@@ -350,9 +670,15 @@ const submitTest = async (sessionId, answers = []) => {
 
         reviewItems.push({
             question_id: numId,
+            question: question.question,
             selected: selected || null,
+            selected_option: selected || null,
             correct_answer: question.correct_answer,
-            isCorrect
+            isCorrect,
+            is_correct: isCorrect,
+            marks_awarded: marksAwarded,
+            time_spent: timeSpent,
+            explanation: question.explanation || ""
         });
 
         processedAnswers.push({
@@ -365,10 +691,16 @@ const submitTest = async (sessionId, answers = []) => {
         });
     }
 
-    const totalQuestions = session.total_questions || questionDocs.length || 1;
+    const totalQuestions = session.total_questions || questionIds.length || 233;
     const maxMarks = session.max_marks || session.total_marks || (totalQuestions * 4);
     const skippedCount = Math.max(totalQuestions - correctCount - wrongCount, 0);
-    const accuracyPct = Number(((correctCount / totalQuestions) * 100).toFixed(2));
+    const attemptedCount = correctCount + wrongCount;
+    const accuracyPct = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
+
+    let timeSpentSeconds = processedAnswers.reduce((acc, a) => acc + (a.time_spent || 0), 0);
+    if (!timeSpentSeconds && session.started_at) {
+        timeSpentSeconds = Math.max(0, Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000));
+    }
 
     const updatePayload = {
         answers: processedAnswers,
@@ -379,6 +711,8 @@ const submitTest = async (sessionId, answers = []) => {
         wrong: wrongCount,
         skipped: skippedCount,
         accuracy: accuracyPct,
+        progress: 100,
+        time_spent_seconds: timeSpentSeconds,
         status: "Completed",
         submitted_at: new Date()
     };
@@ -387,15 +721,119 @@ const submitTest = async (sessionId, answers = []) => {
 
     return {
         success: true,
+        message: "UCAT test submitted successfully.",
+        data: {
+            sessionId: session.sessionId || session._id,
+            status: "Completed",
+            score: {
+                earned: totalScore,
+                total: maxMarks,
+                totalMarks: maxMarks
+            },
+            totalScore,
+            totalMarks: maxMarks,
+            total_marks: maxMarks,
+            totalQuestions,
+            total_questions: totalQuestions,
+            correct: correctCount,
+            wrong: wrongCount,
+            skipped: skippedCount,
+            accuracy: accuracyPct,
+            progress: 100,
+            timeSpentSeconds,
+            review: reviewItems
+        },
         score: totalScore,
-        max_marks: maxMarks,
+        totalMarks: maxMarks,
         total_marks: maxMarks,
+        totalQuestions,
         total_questions: totalQuestions,
         correct: correctCount,
         wrong: wrongCount,
         skipped: skippedCount,
         accuracy: accuracyPct,
+        progress: 100,
+        timeSpentSeconds,
         review: reviewItems
+    };
+};
+
+// --- STEP 6: ANSWER AUTOSAVE (API #6) ---
+const updateSessionAnswer = async (sessionId, payload = {}) => {
+    const { question_id, selected_option, time_spent } = payload;
+
+    if (!sessionId) {
+        const error = new Error("A valid sessionId is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const session = await testSessionRepository.getSessionById(sessionId);
+    if (!session) {
+        const error = new Error("Test session not found.");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (session.status === "Completed") {
+        const error = new Error("Cannot modify answers for an already completed test session.");
+        error.statusCode = 409;
+        throw error;
+    }
+
+    const qId = Number(question_id);
+    if (!Number.isInteger(qId)) {
+        const error = new Error("question_id must be a number.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const opt = selected_option !== undefined && selected_option !== null ? String(selected_option).trim().toUpperCase() : "";
+    const timeSpentSeconds = Math.max(Number(time_spent) || 0, 0);
+
+    let answers = Array.isArray(session.answers) ? [...session.answers] : [];
+    const existingIndex = answers.findIndex(a => Number(a.question_id) === qId);
+
+    if (opt === "" || opt === null) {
+        // Clear answer
+        if (existingIndex !== -1) {
+            answers.splice(existingIndex, 1);
+        }
+    } else {
+        if (existingIndex !== -1) {
+            answers[existingIndex].selected_option = opt;
+            answers[existingIndex].time_spent = (answers[existingIndex].time_spent || 0) + timeSpentSeconds;
+        } else {
+            answers.push({
+                question_id: qId,
+                selected_option: opt,
+                time_spent: timeSpentSeconds
+            });
+        }
+    }
+
+    const totalQuestions = session.total_questions || 233;
+    const progress = Math.min(Math.round((answers.length / totalQuestions) * 100), 99);
+
+    const updateData = {
+        answers,
+        progress,
+        lastModifiedAt: new Date()
+    };
+
+    await testSessionRepository.updateSession(sessionId, updateData);
+
+    return {
+        success: true,
+        message: opt === "" ? "Answer cleared successfully." : "Answer saved successfully.",
+        data: {
+            sessionId: session.sessionId || session._id,
+            question_id: qId,
+            selected_option: opt,
+            progress,
+            total_answered: answers.length,
+            total_questions: totalQuestions
+        }
     };
 };
 
@@ -459,83 +897,278 @@ const formatUcatType = (subjects = []) => {
 };
 
 // --- GET USER HISTORY (Formatted for Dashboard UI Table) ---
+// --- GET USER HISTORY & LEARNING REPORT (Unified Built-in, Previous-Year, and Custom Attempts) ---
 const getUserHistory = async (userId, query = {}) => {
-    const rawResult = await testSessionRepository.getUserHistory(userId, query);
-    const sessions = rawResult.sessions || [];
+    const studentId = userId || "STU123456";
+    const UcatTestSession = require("../../model/ucat-model/ucatTestSession");
 
-    const formattedData = sessions.map(session => {
-        const dateModified = session.submitted_at || session.started_at || session.createdAt;
-        const formattedDate = dateModified ? new Date(dateModified).toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        }) : "N/A";
+    // 1. Fetch all student sessions
+    let userSessions = [];
+    try {
+        userSessions = await UcatTestSession.find({
+            $or: [
+                { student_id: studentId },
+                { userId: studentId },
+                { student_id: "STU123456" },
+                { userId: 1 }
+            ]
+        }).sort({ createdAt: -1 }).lean();
+    } catch (e) {
+        userSessions = [];
+    }
 
-        const firstChapter = session.chapters && session.chapters.length > 0
-            ? session.chapters[0]
-            : (session.subjects && session.subjects[0] ? session.subjects[0].replace(/_/g, " ") : "UCAT Practice");
-        const extraCount = session.chapters && session.chapters.length > 1 ? session.chapters.length - 1 : 0;
-        const code = String(session.sessionId || session._id).slice(-3);
-        const title = session.title || (extraCount > 0 ? `${firstChapter} & ${extraCount} more #${code}` : `${firstChapter} #${code}`);
+    // 2. Fetch all catalog tests (6 Built-in + All Previous-Year papers)
+    const catalogTests = await getBuiltinTests();
 
-        const formatSubjectName = (s) => String(s).toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-        const subtitle = session.subtitle || (session.subjects && session.subjects.length > 0
-            ? `${session.subjects.map(formatSubjectName).join(" & ")} Practice`
-            : "UCAT Full Mock Practice");
+    const unifiedList = [];
+    const matchedSessionIds = new Set();
 
-        const type = formatUcatType(session.subjects);
-        const level = session.level || "Intermediate";
-        const status = session.status === "Completed" ? "Completed" : "In Progress";
+    // 3. Map catalog tests
+    for (const test of catalogTests) {
+        const testId = test.testId || test.test_id;
+        // Find matching sessions for this test
+        const matchingSessions = userSessions.filter(s => {
+            return s.test_id === testId || s.testId === testId || s.previous_year_paper_id === testId ||
+                (testId === "UCAT_FULL" && (s.test_type === "Full Exam" || s.test_type === "Official Paper" || s.test_id === "UCAT_2021"));
+        });
 
-        const answeredCount = Array.isArray(session.answers) ? session.answers.length : 0;
-        const totalQuestions = session.total_questions || 233;
-        const progressPercent = session.status === "Completed" ? 100 : Math.min(Math.round((answeredCount / totalQuestions) * 100), 99);
+        if (matchingSessions.length === 0) {
+            // Unattempted Test -> not_started
+            unifiedList.push({
+                id: testId,
+                testId: testId,
+                test_id: testId,
+                testName: test.testName,
+                test_name: test.testName,
+                date_modified: "N/A",
+                course_name: {
+                    title: test.testName,
+                    subtitle: test.type || (test.source === "previous_year" ? "Official Full Paper" : "UCAT Section Practice")
+                },
+                type: test.type || formatUcatType(test.sections || [test.section]),
+                level: test.level || "Intermediate",
+                source: test.source || "builtin",
+                status: "not_started",
+                progress: 0,
+                time_spent: "0m",
+                time_spent_seconds: 0,
+                timeSpentSeconds: 0,
+                score: null,
+                activeSessionId: null,
+                duration_minutes: test.durationMinutes || 120,
+                total_questions: test.totalQuestions || 233,
+                total_marks: test.maxMarks || 932
+            });
+        } else {
+            // Map each attempt session
+            for (let i = 0; i < matchingSessions.length; i++) {
+                const session = matchingSessions[i];
+                matchedSessionIds.add(String(session.sessionId || session._id));
 
-        let totalSeconds = session.time_spent_seconds || 0;
-        if (!totalSeconds && Array.isArray(session.answers)) {
-            totalSeconds = session.answers.reduce((acc, ans) => acc + (ans.time_spent || 0), 0);
-        }
-        if (!totalSeconds && session.submitted_at && session.started_at) {
-            totalSeconds = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
-        }
+                const dateModified = session.submitted_at || session.started_at || session.createdAt;
+                const formattedDate = dateModified ? new Date(dateModified).toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                }) : "N/A";
 
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const formattedTimeSpent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                const isCompleted = session.status === "Completed";
+                const answeredCount = Array.isArray(session.answers) ? session.answers.length : 0;
+                const totalQuestions = session.total_questions || test.totalQuestions || 233;
+                const progressPercent = isCompleted ? 100 : Math.min(Math.round((answeredCount / totalQuestions) * 100), 99);
 
-        const totalMarks = session.max_marks || session.total_marks || (totalQuestions * 4);
-        const score = session.status === "Completed" ? session.score : Math.max(0, session.score || 0);
+                let totalSeconds = session.time_spent_seconds || 0;
+                if (!totalSeconds && Array.isArray(session.answers)) {
+                    totalSeconds = session.answers.reduce((acc, ans) => acc + (ans.time_spent || 0), 0);
+                }
+                if (!totalSeconds && session.submitted_at && session.started_at) {
+                    totalSeconds = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+                }
 
-        return {
-            id: session.sessionId || session._id,
-            date_modified: formattedDate,
-            course_name: {
-                title,
-                subtitle
-            },
-            type,
-            level,
-            status,
-            progress: progressPercent,
-            time_spent: formattedTimeSpent,
-            time_spent_seconds: totalSeconds,
-            score: {
-                earned: score,
-                total_marks: totalMarks,
-                formatted: `${score} / ${totalMarks}`
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const formattedTimeSpent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+                const totalMarks = session.max_marks || session.total_marks || test.maxMarks || (totalQuestions * 4);
+                const scoreVal = isCompleted ? session.score : Math.max(0, session.score || 0);
+
+                const attemptSuffix = matchingSessions.length > 1 ? ` (Attempt ${matchingSessions.length - i})` : "";
+                const title = (session.title || test.testName) + attemptSuffix;
+
+                unifiedList.push({
+                    id: session.sessionId || session._id,
+                    sessionId: session.sessionId || session._id,
+                    testId: testId,
+                    test_id: testId,
+                    testName: title,
+                    test_name: title,
+                    date_modified: formattedDate,
+                    course_name: {
+                        title,
+                        subtitle: test.type || "UCAT Practice"
+                    },
+                    type: test.type || formatUcatType(session.subjects),
+                    level: test.level || session.level || "Intermediate",
+                    source: test.source || "builtin",
+                    status: isCompleted ? "completed" : "in_progress",
+                    progress: progressPercent,
+                    time_spent: formattedTimeSpent,
+                    time_spent_seconds: totalSeconds,
+                    timeSpentSeconds: totalSeconds,
+                    score: isCompleted ? {
+                        earned: scoreVal,
+                        total_marks: totalMarks,
+                        formatted: `${scoreVal} / ${totalMarks}`
+                    } : null,
+                    activeSessionId: isCompleted ? null : (session.sessionId || session._id),
+                    duration_minutes: session.duration || test.durationMinutes || 120,
+                    total_questions: totalQuestions,
+                    total_marks: totalMarks
+                });
             }
-        };
-    });
+        }
+    }
+
+    // 4. Include unmatched custom sessions
+    for (const session of userSessions) {
+        const sId = String(session.sessionId || session._id);
+        if (!matchedSessionIds.has(sId)) {
+            const dateModified = session.submitted_at || session.started_at || session.createdAt;
+            const formattedDate = dateModified ? new Date(dateModified).toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }) : "N/A";
+
+            const isCompleted = session.status === "Completed";
+            const answeredCount = Array.isArray(session.answers) ? session.answers.length : 0;
+            const totalQuestions = session.total_questions || 20;
+            const progressPercent = isCompleted ? 100 : Math.min(Math.round((answeredCount / totalQuestions) * 100), 99);
+
+            let totalSeconds = session.time_spent_seconds || 0;
+            if (!totalSeconds && Array.isArray(session.answers)) {
+                totalSeconds = session.answers.reduce((acc, ans) => acc + (ans.time_spent || 0), 0);
+            }
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const formattedTimeSpent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+            const totalMarks = session.max_marks || session.total_marks || (totalQuestions * 4);
+            const scoreVal = isCompleted ? session.score : Math.max(0, session.score || 0);
+
+            unifiedList.push({
+                id: sId,
+                sessionId: sId,
+                testId: session.test_id || sId,
+                test_id: session.test_id || sId,
+                testName: session.title || "UCAT Practice Test",
+                test_name: session.title || "UCAT Practice Test",
+                date_modified: formattedDate,
+                course_name: {
+                    title: session.title || "UCAT Practice Test",
+                    subtitle: "Custom Practice"
+                },
+                type: formatUcatType(session.subjects),
+                level: session.level || "Intermediate",
+                source: "custom",
+                status: isCompleted ? "completed" : "in_progress",
+                progress: progressPercent,
+                time_spent: formattedTimeSpent,
+                time_spent_seconds: totalSeconds,
+                timeSpentSeconds: totalSeconds,
+                score: isCompleted ? {
+                    earned: scoreVal,
+                    total_marks: totalMarks,
+                    formatted: `${scoreVal} / ${totalMarks}`
+                } : null,
+                activeSessionId: isCompleted ? null : sId,
+                duration_minutes: session.duration || 15,
+                total_questions: totalQuestions,
+                total_marks: totalMarks
+            });
+        }
+    }
 
     return {
         status: "success",
         message: "UCAT test history fetched successfully.",
-        data: formattedData,
+        data: unifiedList,
         pagination: {
-            page: rawResult.page,
-            limit: rawResult.limit,
-            total: rawResult.total,
-            totalPages: rawResult.totalPages
+            page: 1,
+            limit: unifiedList.length,
+            total: unifiedList.length,
+            totalPages: 1
+        }
+    };
+};
+
+// --- GET UCAT KPI / SUMMARY ---
+const getUcatSummary = async (studentId) => {
+    const sid = studentId || "STU123456";
+    const UcatTestSession = require("../../model/ucat-model/ucatTestSession");
+    const streakRepository = require("../../repositories/ucat-repositories/streak.repository");
+
+    let completedSessions = [];
+    try {
+        completedSessions = await UcatTestSession.find({
+            $or: [{ student_id: sid }, { userId: sid }, { student_id: null }, { userId: 1 }],
+            status: "Completed"
+        }).sort({ submitted_at: -1, createdAt: -1 }).lean();
+    } catch (e) {
+        completedSessions = [];
+    }
+
+    let totalTimeSeconds = 0;
+    let totalScore = 0;
+    const completedCount = completedSessions.length;
+
+    for (const session of completedSessions) {
+        let sessionTime = session.time_spent_seconds || 0;
+        if (!sessionTime && Array.isArray(session.answers)) {
+            sessionTime = session.answers.reduce((acc, a) => acc + (a.time_spent || 0), 0);
+        }
+        if (!sessionTime && session.submitted_at && session.started_at) {
+            sessionTime = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+        }
+        totalTimeSeconds += sessionTime;
+        totalScore += (session.score || 0);
+    }
+
+    const hours = Math.floor(totalTimeSeconds / 3600);
+    const minutes = Math.floor((totalTimeSeconds % 3600) / 60);
+    const timeSpentFormatted = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+    const avgScore = completedCount > 0 ? Math.round(totalScore / completedCount) : 0;
+
+    let currentStreak = 0;
+    try {
+        const streakData = await streakRepository.getStreakByUserId(sid);
+        currentStreak = streakData ? streakData.currentStreak || 0 : (completedCount > 0 ? 1 : 0);
+    } catch (e) {
+        currentStreak = completedCount > 0 ? 1 : 0;
+    }
+
+    return {
+        status: "success",
+        message: "UCAT student summary fetched successfully.",
+        data: {
+            totalPracticeTime: timeSpentFormatted,
+            total_practice_time: timeSpentFormatted,
+            totalTimeSpent: timeSpentFormatted,
+            totalTimeSpentSeconds: totalTimeSeconds,
+            time_spent: timeSpentFormatted,
+            time_spent_seconds: totalTimeSeconds,
+            averageScore: {
+                earned: avgScore,
+                total_marks: 932,
+                formatted: `${avgScore} / 932`
+            },
+            avg_score: `${avgScore} / 932`,
+            completedTests: completedCount,
+            completed_tests: completedCount,
+            currentStreak,
+            current_streak: currentStreak,
+            streak_formatted: `${currentStreak} Days Streak`
         }
     };
 };
@@ -545,8 +1178,11 @@ module.exports = {
     getChapters,
     getTopics,
     getTestOptions,
+    getBuiltinTests,
     startTest,
+    updateSessionAnswer,
     submitTest,
     getSessionResult,
-    getUserHistory
+    getUserHistory,
+    getUcatSummary
 };

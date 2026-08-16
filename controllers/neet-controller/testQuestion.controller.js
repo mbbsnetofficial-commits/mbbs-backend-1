@@ -343,10 +343,13 @@ exports.startQuickTest = async (req, res) => {
             custom_test_id,
             builtin_test_id,
             test_id,
+            testId,
             test_code,
             platform_test_id,
             previous_year_paper_id,
             paperId,
+            exam,
+            exam_type,
             subjects = [],
             chapters = [],
             questionCount = 180,
@@ -355,10 +358,27 @@ exports.startQuickTest = async (req, res) => {
             level: customLevel
         } = req.body;
 
+        // Check if this is a UCAT exam request
+        if (exam === "UCAT" || exam_type === "ucat" || test_id === "UCAT_2021" || testId === "UCAT_2021" || req.body.test_type === "FULL_EXAM") {
+            const ucatService = require("../../services/ucat-services/testSession.service");
+            const ucatResult = await ucatService.startTest(req.user, req.body);
+            return res.status(200).json({
+                success: true,
+                sessionId: ucatResult.sessionId || ucatResult.id,
+                duration: ucatResult.duration,
+                totalQuestions: ucatResult.totalQuestions || ucatResult.total_questions,
+                totalMarks: ucatResult.totalMarks || ucatResult.total_marks,
+                title: ucatResult.title || "UCAT 2021",
+                subtitle: ucatResult.subtitle || "Official Paper",
+                level: ucatResult.level || "Advanced",
+                data: ucatResult.questions
+            });
+        }
+
         const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.body?.student_id || "STU123456";
 
         // Check if this is a saved Custom Test request
-        const cTestId = custom_test_id || (test_id && test_id >= 2000 ? test_id : null);
+        const cTestId = custom_test_id || (test_id && Number(test_id) >= 2000 ? test_id : null);
         if (cTestId) {
             const customTest = await PlatformTest.findOne({
                 id: Number(cTestId),
@@ -869,6 +889,12 @@ exports.submitTest = async (req, res) => {
     try {
         const { sessionId, answers = [] } = req.body;
 
+        if (String(sessionId).startsWith("UCAT_")) {
+            const ucatService = require("../../services/ucat-services/testSession.service");
+            const ucatResult = await ucatService.submitTest(sessionId, answers);
+            return res.status(200).json(ucatResult);
+        }
+
         if (!sessionId || !mongoose.isValidObjectId(sessionId)) {
             return res.status(400).json({
                 success: false,
@@ -1109,10 +1135,19 @@ exports.getTestHistory = async (req, res) => {
 
 exports.getTestSession = async (req, res) => {
     try {
-        if (!mongoose.isValidObjectId(req.params.sessionId)) {
+        const sid = req.params.sessionId;
+        if (String(sid).startsWith("UCAT_")) {
+            const ucatService = require("../../services/ucat-services/testSession.service");
+            const ucatSession = await ucatService.getSessionResult(sid);
+            return res.status(200).json({
+                success: true,
+                data: ucatSession
+            });
+        }
+        if (!mongoose.isValidObjectId(sid)) {
             return res.status(400).json({ success: false, message: "Invalid sessionId." });
         }
-        const session = await TestSession.findById(req.params.sessionId).lean();
+        const session = await TestSession.findById(sid).lean();
         if (!session) return res.status(404).json({ success: false, message: "Test session not found." });
 
         const questions = await Question.find({ id: { $in: session.question_ids || [] } })
@@ -1215,6 +1250,12 @@ exports.getTestResult = async (req, res) => {
 exports.updateSessionAnswer = async (req, res) => {
     try {
         const { sessionId } = req.params;
+        if (String(sessionId).startsWith("UCAT_")) {
+            const ucatService = require("../../services/ucat-services/testSession.service");
+            const ucatResult = await ucatService.updateSessionAnswer(sessionId, req.body);
+            return res.status(200).json(ucatResult);
+        }
+
         if (!mongoose.isValidObjectId(sessionId)) {
             return res.status(400).json({ success: false, message: "Invalid sessionId." });
         }

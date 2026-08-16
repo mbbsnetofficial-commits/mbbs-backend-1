@@ -101,15 +101,65 @@ const getTestResult = async (req, res, next) => {
     }
 };
 
+// GET /api/v1/ucat/tests/builtin - Get built-in / official UCAT papers
+const getBuiltinTests = async (req, res, next) => {
+    try {
+        const tests = await testSessionService.getBuiltinTests();
+        return res.status(200).json({
+            success: true,
+            message: "UCAT official papers fetched successfully.",
+            data: tests
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// PATCH /api/v1/ucat/test/sessions/:sessionId - Autosave / update answer
+const updateSessionAnswer = async (req, res, next) => {
+    try {
+        const sessionId = req.params.sessionId;
+        const result = await testSessionService.updateSessionAnswer(sessionId, req.body);
+        return res.status(200).json(result);
+    } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
+        next(error);
+    }
+};
+
+// GET /api/v1/student/dashboard/ucat-summary - Get UCAT dashboard summary KPI metrics
+const getUcatSummary = async (req, res, next) => {
+    try {
+        const studentId = req.user?.student_id || req.headers["x-user-id"] || "STU123456";
+        const result = await testSessionService.getUcatSummary(studentId);
+        return res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// GET /api/v1/student/dashboard/ucat-learning-report - Get UCAT learning report
+const getUcatLearningReport = async (req, res, next) => {
+    try {
+        const studentId = req.user?.student_id || req.headers["x-user-id"] || "STU123456";
+        const result = await testSessionService.getUserHistory(studentId, req.query);
+        return res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
 // List student test history
 const getTestHistory = async (req, res, next) => {
     try {
-        const userId = req.user ? req.user.userId : 1;
+        const userId = req.user ? (req.user.student_id || req.user.userId) : (req.headers["x-user-id"] || "STU123456");
         const result = await testSessionService.getUserHistory(userId, req.query);
         return res.status(200).json({
             success: true,
             message: "UCAT test history fetched successfully.",
-            data: result
+            data: result.data || result
         });
     } catch (error) {
         next(error);
@@ -121,9 +171,13 @@ module.exports = {
     getChapters,
     getTopics,
     getTestOptions,
+    getBuiltinTests,
     startTest,
+    updateSessionAnswer,
     submitTest,
     getTestSession,
     getTestResult,
-    getTestHistory
+    getTestHistory,
+    getUcatSummary,
+    getUcatLearningReport
 };

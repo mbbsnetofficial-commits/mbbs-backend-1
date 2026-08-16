@@ -30,9 +30,24 @@ learningReportRouter.get(
     learningReportController.getLearningReportFilters
 );
 
+const ucatTestSessionController = require("../../controllers/ucat-controller/testSession.controller");
+
+// UCAT: Get all active built-in / official UCAT papers
 learningReportRouter.get(
-    "/neet/tests/filters",
-    learningReportController.getLearningReportFilters
+    "/ucat/tests/builtin",
+    ucatTestSessionController.getBuiltinTests
+);
+
+// UCAT: Get student UCAT Learning Report
+learningReportRouter.get(
+    "/student/dashboard/ucat-learning-report",
+    ucatTestSessionController.getUcatLearningReport
+);
+
+// UCAT: Get real UCAT Student Performance Summary
+learningReportRouter.get(
+    "/student/dashboard/ucat-summary",
+    ucatTestSessionController.getUcatSummary
 );
 
 module.exports = learningReportRouter;

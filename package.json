@@ -11,7 +11,7 @@
     "npm": ">=10"
   },
   "scripts": {
-    "test": "NODE_PATH=./node_modules node test/cors.test.js && NODE_PATH=./node_modules node test/csp.test.js && NODE_PATH=./node_modules node test/dnssec.test.js && NODE_PATH=./node_modules node test/coep.test.js && NODE_PATH=./node_modules node test/permissionsPolicy.test.js && NODE_PATH=./node_modules node test/endpoints.test.js && NODE_PATH=./node_modules node test/ucatChat.test.js && NODE_PATH=./node_modules node test/neetLearningReport.test.js && NODE_PATH=./node_modules node test/patchSessionAnswer.test.js && NODE_PATH=./node_modules node test/submitTestFlow.test.js && NODE_PATH=./node_modules node test/customTestFlow.test.js",
+    "test": "NODE_PATH=./node_modules node test/cors.test.js && NODE_PATH=./node_modules node test/csp.test.js && NODE_PATH=./node_modules node test/dnssec.test.js && NODE_PATH=./node_modules node test/coep.test.js && NODE_PATH=./node_modules node test/permissionsPolicy.test.js && NODE_PATH=./node_modules node test/endpoints.test.js && NODE_PATH=./node_modules node test/ucatChat.test.js && NODE_PATH=./node_modules node test/neetLearningReport.test.js && NODE_PATH=./node_modules node test/patchSessionAnswer.test.js && NODE_PATH=./node_modules node test/submitTestFlow.test.js && NODE_PATH=./node_modules node test/customTestFlow.test.js && NODE_PATH=./node_modules node test/ucatExamFlow.test.js",
     "test:cors": "NODE_PATH=./node_modules node test/cors.test.js",
     "test:csp": "NODE_PATH=./node_modules node test/csp.test.js",
     "test:dnssec": "NODE_PATH=./node_modules node test/dnssec.test.js",
@@ -23,6 +23,7 @@
     "test:patch-session-answer": "NODE_PATH=./node_modules node test/patchSessionAnswer.test.js",
     "test:submit-flow": "NODE_PATH=./node_modules node test/submitTestFlow.test.js",
     "test:custom-flow": "NODE_PATH=./node_modules node test/customTestFlow.test.js",
+    "test:ucat-exam": "NODE_PATH=./node_modules node test/ucatExamFlow.test.js",
     "check:dnssec": "node scripts/checkDnssec.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
