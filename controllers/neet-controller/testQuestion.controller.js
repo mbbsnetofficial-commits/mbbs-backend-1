@@ -700,7 +700,13 @@ exports.submitTest = async (req, res) => {
         }
 
         // Questions omitted from the payload are also treated as skipped.
-        skipped = Math.max(session.total_questions - correct - wrong, skipped);
+        const totalQ = session.total_questions || session.question_ids?.length || 180;
+        skipped = Math.max(totalQ - correct - wrong, skipped);
+
+        const totalAttempted = correct + wrong;
+        const accuracy = totalAttempted > 0
+            ? Number(((correct / totalAttempted) * 100).toFixed(2))
+            : (totalQ > 0 ? Number(((correct / totalQ) * 100).toFixed(2)) : 0);
 
         let timeSpentSeconds = 0;
         for (const ans of submittedAnswers) {
