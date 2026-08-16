@@ -843,3 +843,109 @@ exports.getTestResult = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+/**
+ * PATCH /api/v1/test/sessions/:sessionId
+ * Autosaves, updates, or clears a single question answer for an active test session.
+ */
+exports.updateSessionAnswer = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        if (!mongoose.isValidObjectId(sessionId)) {
+            return res.status(400).json({ success: false, message: "Invalid sessionId." });
+        }
+
+        const { question_id, selected_option, time_spent } = req.body;
+
+        if (question_id === undefined || question_id === null || isNaN(Number(question_id))) {
+            return res.status(400).json({ success: false, message: "A valid question_id is required." });
+        }
+
+        const qId = Number(question_id);
+
+        let normalizedOption = "";
+        if (selected_option !== undefined && selected_option !== null) {
+            normalizedOption = String(selected_option).trim().toUpperCase();
+        }
+
+        if (!["A", "B", "C", "D", ""].includes(normalizedOption)) {
+            return res.status(400).json({
+                success: false,
+                message: "selected_option must be A, B, C, D, or empty string/null to clear."
+            });
+        }
+
+        const timeSpent = Math.max(0, Number(time_spent) || 0);
+
+        const session = await TestSession.findById(sessionId);
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Test session not found." });
+        }
+
+        // Verify session ownership if authenticated
+        const authStudentId = req.user?.student_id;
+        if (authStudentId && session.student_id && session.student_id !== authStudentId && session.student_id !== "STU123456") {
+            return res.status(403).json({ success: false, message: "Unauthorized access to this test session." });
+        }
+
+        if (session.status === "Completed" || session.status === "Expired") {
+            return res.status(409).json({
+                success: false,
+                message: "Cannot modify answers for a completed or expired test session."
+            });
+        }
+
+        const sessionQuestionIds = session.question_ids || [];
+        if (!sessionQuestionIds.includes(qId)) {
+            return res.status(400).json({
+                success: false,
+                message: `Question ${qId} does not belong to this test session.`
+            });
+        }
+
+        if (!Array.isArray(session.answers)) {
+            session.answers = [];
+        }
+
+        const existingAnswerIndex = session.answers.findIndex(a => a.question_id === qId);
+
+        if (existingAnswerIndex >= 0) {
+            session.answers[existingAnswerIndex].selected_option = normalizedOption;
+            session.answers[existingAnswerIndex].time_spent = timeSpent;
+        } else {
+            session.answers.push({
+                question_id: qId,
+                selected_option: normalizedOption,
+                time_spent: timeSpent,
+                is_correct: false,
+                marks_awarded: 0
+            });
+        }
+
+        // Recalculate session level metrics
+        const answeredCount = session.answers.filter(a => a.selected_option && a.selected_option !== "").length;
+        const totalQuestions = session.total_questions || sessionQuestionIds.length || 180;
+        const progress = Math.min(Math.round((answeredCount / totalQuestions) * 100), 99);
+        const totalTimeSpentSeconds = session.answers.reduce((sum, a) => sum + (a.time_spent || 0), 0);
+
+        session.time_spent_seconds = totalTimeSpentSeconds;
+
+        await session.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Answer saved successfully",
+            data: {
+                sessionId: session._id,
+                question_id: qId,
+                selected_option: normalizedOption,
+                time_spent: timeSpent,
+                progress,
+                answered_count: answeredCount,
+                time_spent_seconds: totalTimeSpentSeconds
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};

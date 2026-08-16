@@ -7,6 +7,7 @@ const testQuestionRouter = express.Router();
 testQuestionRouter.get("/test/history", testQuestionController.getTestHistory);
 testQuestionRouter.get("/test/sessions/:sessionId/result", testQuestionController.getTestResult);
 testQuestionRouter.get("/test/sessions/:sessionId", testQuestionController.getTestSession);
+testQuestionRouter.patch("/test/sessions/:sessionId", testQuestionController.updateSessionAnswer);
 
 // Step 1: Get all available subjects.
 testQuestionRouter.get(
