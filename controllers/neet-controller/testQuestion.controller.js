@@ -211,10 +211,61 @@ exports.startQuickTest = async (req, res) => {
                     });
                 }
 
-                const questionIds = Array.isArray(paper.question_ids) ? [...new Set(paper.question_ids)] : [];
-                const questions = await Question.find({ id: { $in: questionIds }, is_active: { $ne: false } })
-                    .select("-_id -correct_answer -explanation -createdAt -updatedAt -__v")
-                    .lean();
+                let questionIds = Array.isArray(paper.question_ids) ? [...new Set(paper.question_ids)] : [];
+                let questions = [];
+
+                if (questionIds.length > 0) {
+                    questions = await Question.find({ id: { $in: questionIds }, is_active: { $ne: false } })
+                        .select("-_id -correct_answer -explanation -createdAt -updatedAt -__v")
+                        .lean();
+                }
+
+                // If unmapped in database, dynamically sample questions across NEET subjects
+                if (questions.length === 0 || questions.length < (paper.question_count || 180)) {
+                    const targetCount = paper.question_count || 180;
+                    let selectedQuestions = [];
+                    const neetSubjects = ["Physics", "Chemistry", "Botany", "Zoology"];
+                    const perSubject = Math.floor(targetCount / 4) || 45;
+
+                    for (const subj of neetSubjects) {
+                        const topics = await Topic.find({ subject: subj, is_active: { $ne: false } }).lean();
+                        const topicIds = topics.map(t => t.id);
+                        if (topicIds.length > 0) {
+                            const subjQuestions = await Question.aggregate([
+                                { $match: { is_active: { $ne: false }, topic_id: { $in: topicIds } } },
+                                { $sample: { size: perSubject } }
+                            ]);
+                            selectedQuestions.push(...subjQuestions);
+                        }
+                    }
+
+                    if (selectedQuestions.length < targetCount) {
+                        const existingIds = new Set(selectedQuestions.map(q => q.id));
+                        const needed = targetCount - selectedQuestions.length;
+                        const extraMatch = { is_active: { $ne: false } };
+                        if (existingIds.size > 0) extraMatch.id = { $nin: Array.from(existingIds) };
+
+                        const extraQuestions = await Question.aggregate([
+                            { $match: extraMatch },
+                            { $sample: { size: needed } }
+                        ]);
+                        selectedQuestions.push(...extraQuestions);
+                    }
+
+                    questionIds = selectedQuestions.map(q => q.id);
+                    questions = selectedQuestions.map(q => {
+                        const { _id, correct_answer, explanation, ...rest } = q;
+                        return rest;
+                    });
+
+                    if (questionIds.length > 0) {
+                        await PreviousYearQuestion.updateOne(
+                            { id: paper.id },
+                            { $set: { question_ids: questionIds } }
+                        ).catch(() => {});
+                    }
+                }
+
                 const questionById = new Map(questions.map(q => [q.id, q]));
                 const orderedQuestions = questionIds.map(id => questionById.get(id)).filter(Boolean);
 
@@ -226,7 +277,7 @@ exports.startQuickTest = async (req, res) => {
                     title: paper.name,
                     subtitle: "Previous Year Paper",
                     level: "Advanced",
-                    subjects: [],
+                    subjects: ["Physics", "Chemistry", "Botany", "Zoology"],
                     chapters: [],
                     topic_ids: [],
                     question_ids: questionIds,
