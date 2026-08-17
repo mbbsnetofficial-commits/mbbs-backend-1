@@ -1,6 +1,5 @@
-"use strict";
-
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", "config", "config.env") });
 const http = require("http");
 const assert = require("assert");
 const mongoose = require("mongoose");

@@ -112,6 +112,17 @@ authSchema.index(
     }
 );
 
+// Optional email field: only string emails participate in uniqueness,
+// preventing duplicate null key errors when users sign up via phone only.
+authSchema.index(
+    { email: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { email: { $type: "string" } },
+        name: "email_1"
+    }
+);
+
 
 // ==========================================
 // Generate Student ID & Hash Password

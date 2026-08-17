@@ -29,6 +29,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "repair:auth-phone-index": "node scripts/repairAuthPhoneIndex.js",
+    "repair:auth-email-index": "node scripts/repairAuthEmailIndex.js",
     "repair:user-activity-indexes": "node scripts/repairUserActivityIndexes.js"
   },
   "dependencies": {

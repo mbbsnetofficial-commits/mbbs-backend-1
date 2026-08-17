@@ -1,7 +1,6 @@
 "use strict";
 
 const crypto = require("crypto");
-const validator = require("validator");
 const Auth = require("../../model/neet-models/auth");
 const SignupOtp = require("../../model/neet-models/signupOtp");
 const { createAuthSession } = require("../../services/authToken.service");
@@ -30,7 +29,6 @@ exports.startSignup = async (req, res) => {
     try {
         const rawName = req.body.fullName || req.body.name || `${req.body.firstName || ""} ${req.body.lastName || ""}`.trim();
         const fullName = typeof rawName === "string" ? rawName.trim() : "";
-        const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
         const rawPhone = req.body.phoneNumber || req.body.phone || req.body.whatsappNumber || req.body.whatsapp_number;
         const phoneNumber = normalizePhone(rawPhone);
 
@@ -45,13 +43,6 @@ exports.startSignup = async (req, res) => {
             return res.status(400).json({
                 status: "fail",
                 message: "Please enter a valid WhatsApp number."
-            });
-        }
-
-        if (email && !validator.isEmail(email)) {
-            return res.status(400).json({
-                status: "fail",
-                message: "Please enter a valid email address."
             });
         }
 
@@ -95,7 +86,6 @@ exports.startSignup = async (req, res) => {
                     full_name: fullName,
                     first_name: firstName,
                     last_name: lastName,
-                    email: email || "",
                     otp_hash: hashOtp(otp),
                     otp_expires_at: new Date(now + OTP_VALID_MINUTES * 60000),
                     resend_available_at: new Date(now + RESEND_SECONDS * 1000),
@@ -228,7 +218,6 @@ exports.verifySignupOtp = async (req, res) => {
             firstName,
             lastName,
             phoneNumber,
-            email: record.email || undefined,
             auth_providers: ["whatsapp"],
             is_active: true
         });
@@ -262,9 +251,16 @@ exports.verifySignupOtp = async (req, res) => {
 
     } catch (error) {
         if (error.code === 11000) {
+            const keyPattern = error.keyPattern || {};
+            let message = "This WhatsApp number or email is already registered.";
+            if (keyPattern.phoneNumber) {
+                message = "This mobile number is already registered. Please log in.";
+            } else if (keyPattern.email) {
+                message = "This email address is already registered. Please log in with your account.";
+            }
             return res.status(409).json({
                 status: "fail",
-                message: "This WhatsApp number or email is already registered."
+                message
             });
         }
         console.error("Error in verifySignupOtp:", error);
