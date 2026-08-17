@@ -2037,7 +2037,7 @@ const swaggerOptions = {
                 post: {
                     tags: ['Authentication'],
                     summary: 'Step 1: Start registration and send WhatsApp OTP',
-                    description: 'Validates full name and WhatsApp phone number, checks uniqueness in neet-auth, generates a 6-digit OTP on the backend, and delivers it via Twilio WhatsApp.',
+                    description: 'Validates full name and WhatsApp phone number, checks uniqueness in neet-auth, generates a 4-digit OTP on the backend, and delivers it via Twilio WhatsApp.',
                     requestBody: {
                         required: true,
                         content: {
@@ -2047,8 +2047,7 @@ const swaggerOptions = {
                                     required: ['fullName', 'phoneNumber'],
                                     properties: {
                                         fullName: { type: 'string', example: 'Sanjay Kumar' },
-                                        phoneNumber: { type: 'string', example: '+919444308959' },
-                                        email: { type: 'string', format: 'email', example: 'sanjay@example.com' }
+                                        phoneNumber: { type: 'string', example: '+919444308959' }
                                     }
                                 }
                             }
@@ -2059,6 +2058,33 @@ const swaggerOptions = {
                         400: { description: 'Full name or phone number is invalid.' },
                         409: { description: 'Phone number is already registered in neet-auth.' },
                         429: { description: 'Resend cooldown active.' }
+                    }
+                }
+            },
+            '/api/v1/auth/sign-up': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 1: Start registration and send WhatsApp OTP (Alias)',
+                    description: 'Alias for /api/v1/auth/register.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['fullName', 'phoneNumber'],
+                                    properties: {
+                                        fullName: { type: 'string', example: 'Sanjay Kumar' },
+                                        phoneNumber: { type: 'string', example: '+919444308959' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'OTP generated and sent to WhatsApp.' },
+                        400: { description: 'Full name or phone number is invalid.' },
+                        409: { description: 'Phone number is already registered in neet-auth.' }
                     }
                 }
             },
@@ -2076,7 +2102,7 @@ const swaggerOptions = {
                                     required: ['phoneNumber', 'otp'],
                                     properties: {
                                         phoneNumber: { type: 'string', example: '+919444308959' },
-                                        otp: { type: 'string', example: '842354' }
+                                        otp: { type: 'string', example: '8423' }
                                     }
                                 }
                             }
@@ -2093,7 +2119,7 @@ const swaggerOptions = {
                 post: {
                     tags: ['Authentication'],
                     summary: 'Step 1: Request WhatsApp login verification code',
-                    description: 'Finds user in neet-auth collection by WhatsApp number, generates 6-digit OTP, and dispatches via Twilio WhatsApp.',
+                    description: 'Finds user in neet-auth collection by WhatsApp number, generates 4-digit OTP, and dispatches via Twilio WhatsApp.',
                     requestBody: {
                         required: true,
                         content: {
@@ -2129,7 +2155,7 @@ const swaggerOptions = {
                                     required: ['phoneNumber', 'otp'],
                                     properties: {
                                         phoneNumber: { type: 'string', example: '+919444308959' },
-                                        otp: { type: 'string', example: '280406' }
+                                        otp: { type: 'string', example: '2804' }
                                     }
                                 }
                             }
@@ -2142,10 +2168,35 @@ const swaggerOptions = {
                     }
                 }
             },
+            '/api/v1/auth/verify-otp': {
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Step 2: Verify WhatsApp login OTP (Alias)',
+                    description: 'Alias for /api/v1/auth/login/verify-otp.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['phoneNumber', 'otp'],
+                                    properties: {
+                                        phoneNumber: { type: 'string', example: '+919444308959' },
+                                        otp: { type: 'string', example: '2804' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Login successful, JWT tokens returned.' }
+                    }
+                }
+            },
             '/api/v1/auth/resend-otp': {
                 post: {
                     tags: ['Authentication'],
-                    summary: 'Resend OTP to WhatsApp number',
+                    summary: 'Resend OTP to WhatsApp number (15s cooldown)',
                     requestBody: {
                         required: true,
                         content: {
@@ -2163,7 +2214,74 @@ const swaggerOptions = {
                     },
                     responses: {
                         200: { description: 'Fresh OTP sent to WhatsApp.' },
-                        429: { description: 'Cooldown active.' }
+                        429: { description: '15-second cooldown active.' }
+                    }
+                }
+            },
+            '/api/v1/neet/tests/builtin': {
+                get: {
+                    tags: ['NEET Practice Tests'],
+                    summary: 'Get all active Built-in NEET Tests and Previous Year Papers',
+                    description: 'Returns the 5 platform-owned NEET full/subject tests (Physics, Chemistry, Botany, Zoology, NEET Full Mock) along with past official papers.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: {
+                            description: 'List of built-in tests and previous year papers.'
+                        },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/neet-learning-report': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get unified NEET Learning Report table with attempt history',
+                    description: 'Returns student test attempt history and available tests (Built-in, Previous Year, and calling student\'s Custom Tests) with real scores and status.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['all', 'not_started', 'in_progress', 'completed'] }, description: 'Filter by attempt status' },
+                        { name: 'source', in: 'query', schema: { type: 'string', enum: ['all', 'builtin', 'previous_year', 'custom'] }, description: 'Filter by test source' },
+                        { name: 'type', in: 'query', schema: { type: 'string' }, description: 'Filter by test type' },
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } }
+                    ],
+                    responses: {
+                        200: { description: 'NEET Learning Report table data.' },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/neet-summary': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get NEET KPI Summary performance cards',
+                    description: 'Returns real aggregated metrics (practice time, average score, completed tests, streak).',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'NEET student summary metrics.' },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/neet-learning-report/filters': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get NEET Learning Report dropdown filter options',
+                    description: 'Returns list of test types and statuses for dropdown binding.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Filter options.' }
+                    }
+                }
+            },
+            '/api/v1/student/dashboard/ucat-learning-report/filters': {
+                get: {
+                    tags: ['Student Dashboard'],
+                    summary: 'Get UCAT Learning Report dropdown filter options',
+                    description: 'Returns list of test types and statuses for UCAT dropdown binding.',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Filter options.' }
                     }
                 }
             },
@@ -2568,6 +2686,100 @@ const swaggerOptions = {
                             description: 'Invalid payload, server, or database error.',
                             content: { 'application/json': { schema: { $ref: '#/components/schemas/TestErrorResponse' } } }
                         }
+                    }
+                }
+            },
+            '/api/v1/test/save': {
+                post: {
+                    tags: ['Quick Test'],
+                    summary: 'Save Custom Test Definition',
+                    description: 'Persists a Custom Test configuration for the authenticated student in PlatformTest without starting a session.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['title', 'subjects', 'questionCount', 'duration'],
+                                    properties: {
+                                        title: { type: 'string', example: 'Physics Mechanics Practice' },
+                                        subjects: { type: 'array', items: { type: 'string' }, example: ['Physics'] },
+                                        chapters: { type: 'array', items: { type: 'string' }, example: ['Kinematics', 'Laws of Motion'] },
+                                        topic_ids: { type: 'array', items: { type: 'integer' }, example: [101, 102] },
+                                        questionCount: { type: 'integer', example: 45 },
+                                        duration: { type: 'integer', example: 45 },
+                                        level: { type: 'string', enum: ['Beginner', 'Intermediate', 'Advanced'], example: 'Intermediate' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: {
+                            description: 'Custom test saved successfully.',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            message: { type: 'string', example: 'Custom test saved successfully.' },
+                                            data: {
+                                                type: 'object',
+                                                properties: {
+                                                    id: { type: 'integer', example: 2001 },
+                                                    custom_test_id: { type: 'integer', example: 2001 },
+                                                    test_name: { type: 'string', example: 'Physics Mechanics Practice' },
+                                                    test_code: { type: 'string', example: 'CUSTOM_1786962837_101' },
+                                                    source: { type: 'string', example: 'custom' },
+                                                    type: { type: 'string', example: 'Custom Test' },
+                                                    subjects: { type: 'array', items: { type: 'string' } },
+                                                    chapters: { type: 'array', items: { type: 'string' } },
+                                                    total_questions: { type: 'integer', example: 45 },
+                                                    total_marks: { type: 'integer', example: 180 },
+                                                    duration_minutes: { type: 'integer', example: 45 },
+                                                    status: { type: 'string', example: 'not_started' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        400: { description: 'Validation error in title, subjects, question count, or duration.' },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
+            '/api/v1/test/custom/save': {
+                post: {
+                    tags: ['Quick Test'],
+                    summary: 'Save Custom Test Definition (Alias)',
+                    description: 'Alias for /api/v1/test/save.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['title', 'subjects', 'questionCount', 'duration'],
+                                    properties: {
+                                        title: { type: 'string', example: 'Physics Mechanics Practice' },
+                                        subjects: { type: 'array', items: { type: 'string' } },
+                                        chapters: { type: 'array', items: { type: 'string' } },
+                                        questionCount: { type: 'integer', example: 45 },
+                                        duration: { type: 'integer', example: 45 }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'Custom test saved successfully.' },
+                        400: { description: 'Validation error.' },
+                        401: { description: 'Authentication required.' }
                     }
                 }
             },
