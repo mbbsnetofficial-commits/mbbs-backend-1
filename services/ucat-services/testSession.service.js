@@ -373,7 +373,13 @@ const startTest = async (user, payload = {}) => {
         duration = 15
     } = payload;
 
-    const studentId = student_id || (user && (user.student_id || user.studentId || user.userId)) || "STU123456";
+    const studentId = user?.student_id || user?.studentId || (typeof user === "string" ? user : null);
+    if (!studentId) {
+        const error = new Error("Authentication required. Please login as a student.");
+        error.statusCode = 401;
+        throw error;
+    }
+
     const rawTestId = testId || test_id || paperId || paper_id || (payload.test_type === "FULL_EXAM" || payload.test_type === "Full Exam" ? "UCAT_FULL" : null);
 
     // Look up in built-in definitions
@@ -388,29 +394,17 @@ const startTest = async (user, payload = {}) => {
     if (testIdentifier) {
         const UcatTestSession = require("../../model/ucat-model/ucatTestSession");
         const existingSession = await UcatTestSession.findOne({
-            $and: [
-                {
-                    $or: [
-                        { student_id: studentId },
-                        { userId: studentId },
-                        { student_id: "STU123456" }
-                    ]
-                },
-                {
-                    $or: [
-                        { test_id: testIdentifier },
-                        { testId: testIdentifier },
-                        { previous_year_paper_id: testIdentifier }
-                    ]
-                },
-                {
-                    status: { $in: ["In Progress", "Started"] }
-                }
-            ]
+            student_id: studentId,
+            $or: [
+                { test_id: testIdentifier },
+                { testId: testIdentifier },
+                { previous_year_paper_id: testIdentifier }
+            ],
+            status: { $in: ["In Progress", "Started"] }
         }).sort({ started_at: -1 }).lean();
 
         if (existingSession) {
-            const resumed = await getSessionResult(existingSession.sessionId || existingSession._id);
+            const resumed = await getSessionResult(existingSession.sessionId || existingSession._id, studentId);
             resumed.reused = true;
             return resumed;
         }
@@ -582,11 +576,19 @@ const startTest = async (user, payload = {}) => {
 };
 
 // --- STEP 5: SUBMIT TEST SESSION ---
-const submitTest = async (sessionId, answers = []) => {
+const submitTest = async (sessionId, answers = [], user = null) => {
     const session = await testSessionRepository.getSessionById(sessionId);
     if (!session) {
         const error = new Error("Test session not found.");
         error.statusCode = 404;
+        throw error;
+    }
+
+    // Verify session ownership
+    const authStudentId = user?.student_id || user?.studentId || (typeof user === "string" ? user : null);
+    if (authStudentId && session.student_id && session.student_id !== authStudentId) {
+        const error = new Error("Unauthorized access to this test session.");
+        error.statusCode = 403;
         throw error;
     }
 
@@ -759,7 +761,7 @@ const submitTest = async (sessionId, answers = []) => {
 };
 
 // --- STEP 6: ANSWER AUTOSAVE (API #6) ---
-const updateSessionAnswer = async (sessionId, payload = {}) => {
+const updateSessionAnswer = async (sessionId, payload = {}, user = null) => {
     const { question_id, selected_option, time_spent } = payload;
 
     if (!sessionId) {
@@ -772,6 +774,14 @@ const updateSessionAnswer = async (sessionId, payload = {}) => {
     if (!session) {
         const error = new Error("Test session not found.");
         error.statusCode = 404;
+        throw error;
+    }
+
+    // Verify session ownership
+    const authStudentId = user?.student_id || user?.studentId || (typeof user === "string" ? user : null);
+    if (authStudentId && session.student_id && session.student_id !== authStudentId) {
+        const error = new Error("Unauthorized access to this test session.");
+        error.statusCode = 403;
         throw error;
     }
 
@@ -838,11 +848,19 @@ const updateSessionAnswer = async (sessionId, payload = {}) => {
 };
 
 // --- GET SESSION RESULT ---
-const getSessionResult = async (sessionId) => {
+const getSessionResult = async (sessionId, user = null) => {
     const session = await testSessionRepository.getSessionById(sessionId);
     if (!session) {
         const error = new Error("Test session not found.");
         error.statusCode = 404;
+        throw error;
+    }
+
+    // Verify session ownership
+    const authStudentId = user?.student_id || user?.studentId || (typeof user === "string" ? user : null);
+    if (authStudentId && session.student_id && session.student_id !== authStudentId) {
+        const error = new Error("Unauthorized access to this test session.");
+        error.statusCode = 403;
         throw error;
     }
 
@@ -899,19 +917,14 @@ const formatUcatType = (subjects = []) => {
 // --- GET USER HISTORY (Formatted for Dashboard UI Table) ---
 // --- GET USER HISTORY & LEARNING REPORT (Unified Built-in, Previous-Year, and Custom Attempts) ---
 const getUserHistory = async (userId, query = {}) => {
-    const studentId = userId || "STU123456";
+    const studentId = typeof userId === "string" ? userId : (userId?.student_id || userId?.studentId);
     const UcatTestSession = require("../../model/ucat-model/ucatTestSession");
 
-    // 1. Fetch all student sessions
+    // 1. Fetch all student sessions strictly for authenticated student
     let userSessions = [];
     try {
         userSessions = await UcatTestSession.find({
-            $or: [
-                { student_id: studentId },
-                { userId: studentId },
-                { student_id: "STU123456" },
-                { userId: 1 }
-            ]
+            student_id: studentId
         }).sort({ createdAt: -1 }).lean();
     } catch (e) {
         userSessions = [];
@@ -1104,14 +1117,14 @@ const getUserHistory = async (userId, query = {}) => {
 
 // --- GET UCAT KPI / SUMMARY ---
 const getUcatSummary = async (studentId) => {
-    const sid = studentId || "STU123456";
+    const sid = typeof studentId === "string" ? studentId : studentId?.student_id;
     const UcatTestSession = require("../../model/ucat-model/ucatTestSession");
     const streakRepository = require("../../repositories/ucat-repositories/streak.repository");
 
     let completedSessions = [];
     try {
         completedSessions = await UcatTestSession.find({
-            $or: [{ student_id: sid }, { userId: sid }, { student_id: null }, { userId: 1 }],
+            student_id: sid,
             status: "Completed"
         }).sort({ submitted_at: -1, createdAt: -1 }).lean();
     } catch (e) {

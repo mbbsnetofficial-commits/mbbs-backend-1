@@ -49,14 +49,16 @@ const getTestOptions = async (req, res, next) => {
 // Step 4: Start quick or custom practice test
 const startTest = async (req, res, next) => {
     try {
-        const userId = req.user ? req.user.userId : 1;
-        const result = await testSessionService.startTest(userId, req.body);
+        const result = await testSessionService.startTest(req.user, req.body);
         return res.status(201).json({
             success: true,
             message: "UCAT test session started successfully.",
             data: result
         });
     } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
         next(error);
     }
 };
@@ -68,9 +70,12 @@ const submitTest = async (req, res, next) => {
         if (!sessionId) {
             return res.status(400).json({ success: false, message: "sessionId is required." });
         }
-        const result = await testSessionService.submitTest(sessionId, answers || []);
+        const result = await testSessionService.submitTest(sessionId, answers || [], req.user);
         return res.status(200).json(result);
     } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
         next(error);
     }
 };
@@ -78,12 +83,15 @@ const submitTest = async (req, res, next) => {
 // Get single owned session details
 const getTestSession = async (req, res, next) => {
     try {
-        const result = await testSessionService.getSessionResult(req.params.sessionId);
+        const result = await testSessionService.getSessionResult(req.params.sessionId, req.user);
         return res.status(200).json({
             success: true,
             data: result
         });
     } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
         next(error);
     }
 };
@@ -91,12 +99,15 @@ const getTestSession = async (req, res, next) => {
 // Get session completion result & answer review
 const getTestResult = async (req, res, next) => {
     try {
-        const result = await testSessionService.getSessionResult(req.params.sessionId);
+        const result = await testSessionService.getSessionResult(req.params.sessionId, req.user);
         return res.status(200).json({
             success: true,
             data: result
         });
     } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
         next(error);
     }
 };
@@ -119,7 +130,7 @@ const getBuiltinTests = async (req, res, next) => {
 const updateSessionAnswer = async (req, res, next) => {
     try {
         const sessionId = req.params.sessionId;
-        const result = await testSessionService.updateSessionAnswer(sessionId, req.body);
+        const result = await testSessionService.updateSessionAnswer(sessionId, req.body, req.user);
         return res.status(200).json(result);
     } catch (error) {
         if (error.statusCode) {
@@ -132,7 +143,10 @@ const updateSessionAnswer = async (req, res, next) => {
 // GET /api/v1/student/dashboard/ucat-summary - Get UCAT dashboard summary KPI metrics
 const getUcatSummary = async (req, res, next) => {
     try {
-        const studentId = req.user?.student_id || req.headers["x-user-id"] || "STU123456";
+        const studentId = req.user?.student_id;
+        if (!studentId) {
+            return res.status(401).json({ success: false, message: "Authentication required." });
+        }
         const result = await testSessionService.getUcatSummary(studentId);
         return res.status(200).json(result);
     } catch (error) {
@@ -143,7 +157,10 @@ const getUcatSummary = async (req, res, next) => {
 // GET /api/v1/student/dashboard/ucat-learning-report - Get UCAT learning report
 const getUcatLearningReport = async (req, res, next) => {
     try {
-        const studentId = req.user?.student_id || req.headers["x-user-id"] || "STU123456";
+        const studentId = req.user?.student_id;
+        if (!studentId) {
+            return res.status(401).json({ success: false, message: "Authentication required." });
+        }
         const result = await testSessionService.getUserHistory(studentId, req.query);
         return res.status(200).json(result);
     } catch (error) {
@@ -154,8 +171,11 @@ const getUcatLearningReport = async (req, res, next) => {
 // List student test history
 const getTestHistory = async (req, res, next) => {
     try {
-        const userId = req.user ? (req.user.student_id || req.user.userId) : (req.headers["x-user-id"] || "STU123456");
-        const result = await testSessionService.getUserHistory(userId, req.query);
+        const studentId = req.user?.student_id;
+        if (!studentId) {
+            return res.status(401).json({ success: false, message: "Authentication required." });
+        }
+        const result = await testSessionService.getUserHistory(studentId, req.query);
         return res.status(200).json({
             success: true,
             message: "UCAT test history fetched successfully.",

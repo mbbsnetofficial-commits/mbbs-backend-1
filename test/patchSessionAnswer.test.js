@@ -21,9 +21,16 @@ const server = app.listen(0, async () => {
         }
     }
 
+    const jwt = require("jsonwebtoken");
+    const Auth = require("../model/neet-models/auth");
+    let testUser = null;
+    let testToken = "";
+
     const makeRequest = (path, body = null, method = "GET") => {
         return new Promise((resolve, reject) => {
-            const headers = {};
+            const headers = {
+                "Authorization": `Bearer ${testToken}`
+            };
             if (body) {
                 headers["Content-Type"] = "application/json";
             }
@@ -57,6 +64,23 @@ const server = app.listen(0, async () => {
     };
 
     try {
+        if (mongoose.connection.readyState === 1) {
+            await Auth.deleteMany({ student_id: "STU123456" });
+            testUser = await Auth.create({
+                fullName: "Autosave Test Student",
+                student_id: "STU123456",
+                phoneNumber: `+91988888${Math.floor(1000 + Math.random() * 9000)}`,
+                auth_providers: ["whatsapp"],
+                is_active: true
+            });
+        }
+
+        testToken = jwt.sign(
+            { id: testUser ? testUser._id.toString() : new mongoose.Types.ObjectId().toString(), student_id: "STU123456" },
+            process.env.SECRET_KEY || "default_jwt_secret_key_mbbs_net_production_2026",
+            { expiresIn: "1h" }
+        );
+
         // Create an active test session for testing
         let dummySessionId = new mongoose.Types.ObjectId().toString();
         let createdSession = null;
@@ -166,5 +190,12 @@ const server = app.listen(0, async () => {
         process.exitCode = 1;
     } finally {
         server.close();
+        if (testUser) {
+            await Auth.deleteOne({ _id: testUser._id }).catch(() => {});
+        }
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect().catch(() => {});
+        }
+        process.exit(process.exitCode || 0);
     }
 });

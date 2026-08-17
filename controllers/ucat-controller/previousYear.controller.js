@@ -38,28 +38,37 @@ const startPaperTest = async (req, res, next) => {
             data: result
         });
     } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
         next(error);
     }
 };
 
 const submitPaperTest = async (req, res, next) => {
     try {
-        const result = await previousYearService.submitPaperTest(req.body);
+        const result = await previousYearService.submitPaperTest(req.body, req.user);
         return res.status(200).json(result);
     } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
         next(error);
     }
 };
 
 const getPaperTestResult = async (req, res, next) => {
     try {
-        const result = await previousYearService.getPaperTestResult(req.params.sessionId);
+        const result = await previousYearService.getPaperTestResult(req.params.sessionId, req.user);
         return res.status(200).json({
             success: true,
             message: "Previous-year UCAT test session result fetched successfully.",
             data: result
         });
     } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
         next(error);
     }
 };

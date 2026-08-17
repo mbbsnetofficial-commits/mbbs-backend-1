@@ -22,9 +22,17 @@ const server = app.listen(0, async () => {
         }
     }
 
+    const jwt = require("jsonwebtoken");
+    const Auth = require("../model/neet-models/auth");
+    let testUser = null;
+    let testToken = "";
+
     const makeRequest = (path, body = null, method = "POST") => {
         return new Promise((resolve, reject) => {
-            const headers = { "Content-Type": "application/json" };
+            const headers = {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${testToken}`
+            };
             const req = http.request({
                 hostname: "127.0.0.1",
                 port,
@@ -50,6 +58,22 @@ const server = app.listen(0, async () => {
     };
 
     try {
+        if (mongoose.connection.readyState === 1) {
+            await Auth.deleteMany({ student_id: "STU_TEST_SUBMIT" });
+            testUser = await Auth.create({
+                fullName: "Submit Test Student",
+                student_id: "STU_TEST_SUBMIT",
+                phoneNumber: `+91988888${Math.floor(1000 + Math.random() * 9000)}`,
+                auth_providers: ["whatsapp"],
+                is_active: true
+            });
+        }
+
+        testToken = jwt.sign(
+            { id: testUser ? testUser._id.toString() : new mongoose.Types.ObjectId().toString(), student_id: "STU_TEST_SUBMIT" },
+            process.env.SECRET_KEY || "default_jwt_secret_key_mbbs_net_production_2026",
+            { expiresIn: "1h" }
+        );
         // Prepare mock/real questions if in memory or DB
         const testQ1 = 99901;
         const testQ2 = 99902;
@@ -195,5 +219,12 @@ const server = app.listen(0, async () => {
         process.exitCode = 1;
     } finally {
         server.close();
+        if (testUser) {
+            await Auth.deleteOne({ _id: testUser._id }).catch(() => {});
+        }
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect().catch(() => {});
+        }
+        process.exit(process.exitCode || 0);
     }
 });

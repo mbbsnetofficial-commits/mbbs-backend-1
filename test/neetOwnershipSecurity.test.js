@@ -259,5 +259,9 @@ const server = app.listen(0, async () => {
         process.exitCode = 1;
     } finally {
         server.close();
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect().catch(() => {});
+        }
+        process.exit(process.exitCode || 0);
     }
 });

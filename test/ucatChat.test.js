@@ -107,5 +107,6 @@ const server = app.listen(0, async () => {
         process.exitCode = 1;
     } finally {
         server.close();
+        process.exit(process.exitCode || 0);
     }
 });

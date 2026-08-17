@@ -52,15 +52,37 @@ const server = app.listen(0, async () => {
     };
 
     try {
-        const studentId = "STU_CUSTOM_TEST_USER";
-        const studentHeaders = { "x-user-id": studentId };
+        const jwt = require("jsonwebtoken");
+        const Auth = require("../model/neet-models/auth");
+        const studentId = `STU_CUSTOM_${Date.now()}`;
+        const topicId = 88801;
+        const q1 = 888001;
+        const q2 = 888002;
+        let testUser = null;
+
+        if (mongoose.connection.readyState === 1) {
+            await Auth.deleteMany({ student_id: studentId });
+            testUser = await Auth.create({
+                fullName: "Custom Test Student",
+                student_id: studentId,
+                phoneNumber: `+91988888${Math.floor(1000 + Math.random() * 9000)}`,
+                auth_providers: ["whatsapp"],
+                is_active: true
+            });
+        }
+
+        const testToken = jwt.sign(
+            { id: testUser ? testUser._id.toString() : new mongoose.Types.ObjectId().toString(), student_id: studentId },
+            process.env.SECRET_KEY || "default_jwt_secret_key_mbbs_net_production_2026",
+            { expiresIn: "1h" }
+        );
+        const studentHeaders = {
+            "Authorization": `Bearer ${testToken}`,
+            "x-user-id": studentId
+        };
 
         if (mongoose.connection.readyState === 1) {
             // Seed topic and questions for test
-            const topicId = 88801;
-            const q1 = 888001;
-            const q2 = 888002;
-
             await Topic.deleteMany({ id: topicId });
             await Question.deleteMany({ id: { $in: [q1, q2] } });
             await PlatformTest.deleteMany({ student_id: studentId });
@@ -127,12 +149,17 @@ const server = app.listen(0, async () => {
             const sessionId = startRes.body.sessionId;
             assert.ok(sessionId, "Should return sessionId");
             assert.strictEqual(startRes.body.data.length, 2, "Should return 2 questions");
+            const qIds = startRes.body.data.map(q => q.id || q.question_id);
+            const dbQs = await Question.find({ id: { $in: qIds } }).lean();
+            const dbQMap = new Map(dbQs.map(q => [q.id, q.correct_answer]));
+            const ans1 = dbQMap.get(qIds[0]) || "A";
+            const ans2 = dbQMap.get(qIds[1]) || "B";
             console.log(`✔ Step 4 PASS: Started Custom Test, created session ${sessionId}`);
 
             // 5. API #6 Autosave an answer
             let patchRes = await makeRequest(`/api/v1/test/sessions/${sessionId}`, {
-                question_id: q1,
-                selected_option: "A",
+                question_id: qIds[0],
+                selected_option: ans1,
                 time_spent: 25
             }, "PATCH", studentHeaders);
 
@@ -143,16 +170,18 @@ const server = app.listen(0, async () => {
             // 6. API #5 Resume
             let resumeRes = await makeRequest(`/api/v1/test/sessions/${sessionId}`, null, "GET", studentHeaders);
             assert.strictEqual(resumeRes.statusCode, 200);
-            assert.strictEqual(resumeRes.body.status, "Started");
-            const q1Answer = resumeRes.body.answers.find(a => a.question_id === q1);
-            assert.ok(q1Answer && q1Answer.selected_option === "A", "Autosaved answer should be restored in API #5");
+            const sessionData = resumeRes.body.data || resumeRes.body;
+            assert.strictEqual(sessionData.status, "Started");
+            const q1Answer = (sessionData.answers || []).find(a => a.question_id === qIds[0]);
+            assert.ok(q1Answer && q1Answer.selected_option === ans1, "Autosaved answer should be restored in API #5");
             console.log("✔ Step 6 PASS: Resumed session via API #5 with answer intact");
 
             // 7. API #7 Submit
             let submitRes = await makeRequest("/api/v1/test/submit", {
                 sessionId: sessionId,
                 answers: [
-                    { question_id: q2, selected_option: "B", time_spent: 30 } // Second question correct
+                    { question_id: qIds[0], selected_option: ans1, time_spent: 25 },
+                    { question_id: qIds[1], selected_option: ans2, time_spent: 30 }
                 ]
             }, "POST", studentHeaders);
 
@@ -174,11 +203,30 @@ const server = app.listen(0, async () => {
             console.log("✔ Step 8 PASS: Learning Report updated to 'completed' with score=8");
 
             // 9. Negative Test: Unauthorized student
+            let otherUser = null;
+            let otherToken = "";
+            if (mongoose.connection.readyState === 1) {
+                await Auth.deleteMany({ student_id: "OTHER_STUDENT_999" });
+                otherUser = await Auth.create({
+                    fullName: "Other Student",
+                    student_id: "OTHER_STUDENT_999",
+                    phoneNumber: `+91988888${Math.floor(1000 + Math.random() * 9000)}`,
+                    auth_providers: ["whatsapp"],
+                    is_active: true
+                });
+            }
+            otherToken = jwt.sign(
+                { id: otherUser ? otherUser._id.toString() : new mongoose.Types.ObjectId().toString(), student_id: "OTHER_STUDENT_999" },
+                process.env.SECRET_KEY || "default_jwt_secret_key_mbbs_net_production_2026",
+                { expiresIn: "1h" }
+            );
+
             let unauthStart = await makeRequest("/api/v1/test/start", {
                 custom_test_id: customTestId
-            }, "POST", { "x-user-id": "OTHER_STUDENT_999" });
+            }, "POST", { "Authorization": `Bearer ${otherToken}` });
             assert.strictEqual(unauthStart.statusCode, 403, "Other student should be forbidden");
             console.log("✔ Step 9 PASS: Other student forbidden from starting another's Custom Test (403)");
+            if (otherUser) await Auth.deleteOne({ _id: otherUser._id }).catch(() => {});
 
             // 10. Negative Test: Insufficient questions validation error
             let invalidSave = await makeRequest("/api/v1/test/save", {
@@ -206,5 +254,12 @@ const server = app.listen(0, async () => {
         process.exitCode = 1;
     } finally {
         server.close();
+        if (typeof testUser !== "undefined" && testUser) {
+            await Auth.deleteOne({ _id: testUser._id }).catch(() => {});
+        }
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect().catch(() => {});
+        }
+        process.exit(process.exitCode || 0);
     }
 });

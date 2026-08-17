@@ -46,8 +46,13 @@ const getPaperById = async (paperId) => {
 
 const startPaperTest = async (paperId, user, payload = {}) => {
     const paper = await getPaperById(paperId);
-    const { limit = 30, duration = 120, student_id } = payload;
-    const studentId = student_id || (user && user.studentId ? user.studentId : "STU1784364902958UZ1WFH");
+    const { limit = 30, duration = 120 } = payload;
+    const studentId = user?.student_id || user?.studentId || (typeof user === "string" ? user : null);
+    if (!studentId) {
+        const error = new Error("Authentication required. Please login as a student.");
+        error.statusCode = 401;
+        throw error;
+    }
 
     const totalLimit = Number(limit) || 30;
 
@@ -99,7 +104,7 @@ const startPaperTest = async (paperId, user, payload = {}) => {
     return sanitizeSessionResponse(createdSession);
 };
 
-const submitPaperTest = async (payload = {}) => {
+const submitPaperTest = async (payload = {}, user = null) => {
     const { sessionId, answers = [] } = payload;
     if (!sessionId) {
         const error = new Error("sessionId is required.");
@@ -108,6 +113,19 @@ const submitPaperTest = async (payload = {}) => {
     }
 
     const session = await testSessionRepository.getSessionById(sessionId);
+    if (!session) {
+        const error = new Error("Test session not found.");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    // Verify session ownership
+    const authStudentId = user?.student_id || user?.studentId || (typeof user === "string" ? user : null);
+    if (authStudentId && session.student_id && session.student_id !== authStudentId) {
+        const error = new Error("Unauthorized access to this test session.");
+        error.statusCode = 403;
+        throw error;
+    }
     if (!session) {
         const error = new Error("Test session not found.");
         error.statusCode = 404;
@@ -199,11 +217,19 @@ const submitPaperTest = async (payload = {}) => {
     };
 };
 
-const getPaperTestResult = async (sessionId) => {
+const getPaperTestResult = async (sessionId, user = null) => {
     const session = await testSessionRepository.getSessionById(sessionId);
     if (!session) {
         const error = new Error("Previous-year test session not found.");
         error.statusCode = 404;
+        throw error;
+    }
+
+    // Verify session ownership
+    const authStudentId = user?.student_id || user?.studentId || (typeof user === "string" ? user : null);
+    if (authStudentId && session.student_id && session.student_id !== authStudentId) {
+        const error = new Error("Unauthorized access to this test session.");
+        error.statusCode = 403;
         throw error;
     }
 

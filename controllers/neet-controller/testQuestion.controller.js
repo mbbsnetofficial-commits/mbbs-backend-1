@@ -1147,11 +1147,18 @@ exports.getTestSession = async (req, res) => {
         const sid = req.params.sessionId;
         if (String(sid).startsWith("UCAT_")) {
             const ucatService = require("../../services/ucat-services/testSession.service");
-            const ucatSession = await ucatService.getSessionResult(sid);
-            return res.status(200).json({
-                success: true,
-                data: ucatSession
-            });
+            try {
+                const ucatSession = await ucatService.getSessionResult(sid, req.user);
+                return res.status(200).json({
+                    success: true,
+                    data: ucatSession
+                });
+            } catch (ucatErr) {
+                if (ucatErr.statusCode) {
+                    return res.status(ucatErr.statusCode).json({ success: false, message: ucatErr.message });
+                }
+                throw ucatErr;
+            }
         }
         if (!mongoose.isValidObjectId(sid)) {
             return res.status(400).json({ success: false, message: "Invalid sessionId." });

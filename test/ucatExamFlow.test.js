@@ -50,11 +50,34 @@ const server = app.listen(0, async () => {
     };
 
     try {
+        const Auth = require("../model/neet-models/auth");
+        const jwt = require("jsonwebtoken");
         const studentId = "STU_UCAT_BUILTIN_001";
-        const studentHeaders = { "x-user-id": studentId, "x-student-id": studentId };
+        let user = null;
+        if (mongoose.connection.readyState === 1) {
+            await Auth.deleteMany({ student_id: studentId });
+            user = await Auth.create({
+                fullName: "Builtin Flow Test Student",
+                student_id: studentId,
+                phoneNumber: "+919555555555",
+                auth_providers: ["whatsapp"],
+                is_active: true
+            });
+        }
+
+        const token = jwt.sign(
+            { id: user ? user._id.toString() : new mongoose.Types.ObjectId().toString(), student_id: studentId },
+            process.env.SECRET_KEY || "default_jwt_secret_key_mbbs_net_production_2026",
+            { expiresIn: "1h" }
+        );
+        const studentHeaders = {
+            "Authorization": `Bearer ${token}`,
+            "x-user-id": studentId,
+            "x-student-id": studentId
+        };
 
         // 1. GET UCAT Test Catalog
-        let catalogRes = await makeRequest("/api/v1/ucat/tests/builtin", null, "GET");
+        let catalogRes = await makeRequest("/api/v1/ucat/tests/builtin", null, "GET", studentHeaders);
         assert.strictEqual(catalogRes.statusCode, 200, "Catalog should return 200");
         assert.strictEqual(catalogRes.body.success, true);
         const data = catalogRes.body.data;
@@ -128,21 +151,26 @@ const server = app.listen(0, async () => {
             assert.strictEqual(vrStart.body.data.total_marks, 176);
             console.log(`✔ Step 3 PASS: Started Verbal Reasoning Test (Session: ${vrSessionId}, Duration: 21m, Marks: 176)`);
 
+            const firstQ = (vrStart.body.data.questions && vrStart.body.data.questions[0]) || { id: qVR };
+            const firstQId = firstQ.id || firstQ.question_id || qVR;
+            const qDoc = await UcatQuestion.findOne({ id: firstQId }).lean();
+            const correctOpt = (qDoc && qDoc.correct_answer) ? qDoc.correct_answer.trim().toUpperCase() : "A";
+
             // 4. Autosave answer (API #6)
             let autosaveRes = await makeRequest(`/api/v1/ucat/test/sessions/${vrSessionId}`, {
-                question_id: qVR,
-                selected_option: "A",
+                question_id: firstQId,
+                selected_option: correctOpt,
                 time_spent: 18
             }, "PATCH", studentHeaders);
             assert.strictEqual(autosaveRes.statusCode, 200);
-            assert.strictEqual(autosaveRes.body.data.selected_option, "A");
+            assert.strictEqual(autosaveRes.body.data.selected_option, correctOpt);
             console.log("✔ Step 4 PASS: Autosaved answer via PATCH /sessions/:id");
 
             // 5. Resume session (API #5)
             let resumeRes = await makeRequest(`/api/v1/ucat/test/sessions/${vrSessionId}`, null, "GET", studentHeaders);
             assert.strictEqual(resumeRes.statusCode, 200);
-            const savedAns = resumeRes.body.data.answers.find(a => a.question_id === qVR);
-            assert.ok(savedAns && savedAns.selected_option === "A");
+            const savedAns = resumeRes.body.data.answers.find(a => a.question_id === firstQId);
+            assert.ok(savedAns && savedAns.selected_option === correctOpt);
             console.log("✔ Step 5 PASS: Resumed session via GET /sessions/:id with answer intact");
 
             // 6. Submit session (API #7)
@@ -185,6 +213,7 @@ const server = app.listen(0, async () => {
             // Cleanup
             await UcatQuestion.deleteMany({ id: { $in: [qVR, qDM] } });
             await UcatTestSession.deleteMany({ student_id: studentId });
+            if (user) await Auth.deleteOne({ _id: user._id });
         } else {
             console.log("ℹ DB not connected, skipping live DB session tests");
         }
@@ -195,5 +224,12 @@ const server = app.listen(0, async () => {
         process.exitCode = 1;
     } finally {
         server.close();
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect().catch(() => {});
+        }
+        if (ucatConnection.readyState !== 0) {
+            await ucatConnection.close().catch(() => {});
+        }
+        process.exit(process.exitCode || 0);
     }
 });
