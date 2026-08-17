@@ -6,6 +6,8 @@ const { protect } = require("../../utilities/auth");
 
 const learningReportRouter = express.Router();
 
+learningReportRouter.use(protect);
+
 // 1. Get all active built-in tests from the database
 learningReportRouter.get(
     "/neet/tests/builtin",

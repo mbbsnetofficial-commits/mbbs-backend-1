@@ -21,53 +21,58 @@ exports.protect = async (req, res, next) => {
             token = req.headers.authorization.split(" ")[1];
         }
 
-        if (token) {
-            try {
-                const decoded = jwt.verify(token, process.env.SECRET_KEY, {
-                    algorithms: ["HS256"]
-                });
-                if (decoded && decoded.id) {
-                    const user = await Auth.findById(decoded.id)
-                        .select("student_id token_version is_active")
-                        .lean();
-
-                    if (user && user.is_active !== false) {
-                        req.user = {
-                            ...decoded,
-                            _id: decoded.id,
-                            id: decoded.id,
-                            student_id: user.student_id
-                        };
-                        return next();
-                    }
-                }
-            } catch (err) {
-                // Token invalid/expired - fallback to guest user below
-            }
+        if (!token) {
+            return res.status(401).json({
+                status: "fail",
+                message: "Authentication required. Please provide a valid Bearer access token."
+            });
         }
 
-        // Try to fetch any existing user from DB as fallback, or use static fallback
+        let decoded;
         try {
-            const defaultDbUser = await Auth.findOne({ is_active: true }).lean();
-            if (defaultDbUser) {
-                req.user = {
-                    ...defaultDbUser,
-                    id: defaultDbUser._id.toString(),
-                    _id: defaultDbUser._id.toString(),
-                    student_id: defaultDbUser.student_id || "STU123456"
-                };
-                return next();
-            }
-        } catch {
-            // Ignore DB error
+            decoded = jwt.verify(token, process.env.SECRET_KEY, {
+                algorithms: ["HS256"]
+            });
+        } catch (jwtErr) {
+            return res.status(401).json({
+                status: "fail",
+                message: jwtErr.name === "TokenExpiredError"
+                    ? "Access token has expired. Please refresh your token or login again."
+                    : "Invalid access token. Please login again."
+            });
         }
 
-        req.user = FALLBACK_USER;
+        if (!decoded || !decoded.id) {
+            return res.status(401).json({
+                status: "fail",
+                message: "Invalid token payload."
+            });
+        }
+
+        const user = await Auth.findById(decoded.id)
+            .select("student_id token_version is_active")
+            .lean();
+
+        if (!user || user.is_active === false) {
+            return res.status(401).json({
+                status: "fail",
+                message: "User account not found or has been deactivated."
+            });
+        }
+
+        req.user = {
+            ...decoded,
+            _id: decoded.id,
+            id: decoded.id,
+            student_id: user?.student_id || decoded.student_id
+        };
         return next();
 
     } catch (error) {
-        req.user = FALLBACK_USER;
-        return next();
+        return res.status(500).json({
+            status: "fail",
+            message: error.message
+        });
     }
 };
 
