@@ -181,7 +181,7 @@ exports.saveCustomTest = async (req, res) => {
             level
         } = req.body;
 
-        const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.student_id || "STU123456";
+        const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.student_id;
 
         // 1. Validation
         const finalTitle = (title || test_name || "").trim();
@@ -375,7 +375,7 @@ exports.startQuickTest = async (req, res) => {
             });
         }
 
-        const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.body?.student_id || "STU123456";
+        const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.body?.student_id;
 
         // Check if this is a saved Custom Test request
         const cTestId = custom_test_id || (test_id && Number(test_id) >= 2000 ? test_id : null);
@@ -393,8 +393,8 @@ exports.startQuickTest = async (req, res) => {
                 });
             }
 
-            // Ownership / Security check
-            if (customTest.student_id && studentId && customTest.student_id !== studentId && studentId !== "STU123456") {
+            // Ownership / Security check: Only the creator student can start their custom test
+            if (customTest.student_id && studentId && customTest.student_id !== studentId) {
                 return res.status(403).json({
                     success: false,
                     message: "Unauthorized access to this custom test."
@@ -910,6 +910,15 @@ exports.submitTest = async (req, res) => {
             });
         }
 
+        // Verify session ownership
+        const authStudentId = req.user?.student_id;
+        if (authStudentId && session.student_id && session.student_id !== authStudentId) {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized access to this test session."
+            });
+        }
+
         if (session.status === "Completed") {
             return res.status(409).json({
                 success: false,
@@ -1094,8 +1103,8 @@ exports.getTestHistory = async (req, res) => {
     try {
         const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
         const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 20, 1), 100);
-        const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.query.student_id || "STU123456";
-        const filter = { $or: [{ student_id: studentId }, { student_id: "STU123456" }, { student_id: null }] };
+        const studentId = req.user?.student_id || req.headers["x-user-id"] || req.headers["x-student-id"] || req.query.student_id;
+        const filter = { student_id: studentId };
 
         if (req.query.status) {
             if (!["Started", "Completed", "Expired"].includes(req.query.status)) {
@@ -1150,6 +1159,15 @@ exports.getTestSession = async (req, res) => {
         const session = await TestSession.findById(sid).lean();
         if (!session) return res.status(404).json({ success: false, message: "Test session not found." });
 
+        // Verify session ownership
+        const authStudentId = req.user?.student_id;
+        if (authStudentId && session.student_id && session.student_id !== authStudentId) {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized access to this test session."
+            });
+        }
+
         const questions = await Question.find({ id: { $in: session.question_ids || [] } })
             .select("-_id -correct_answer -explanation -createdAt -updatedAt -__v")
             .lean();
@@ -1196,6 +1214,16 @@ exports.getTestResult = async (req, res) => {
         }
         const session = await TestSession.findById(req.params.sessionId).lean();
         if (!session) return res.status(404).json({ success: false, message: "Test session not found." });
+
+        // Verify session ownership
+        const authStudentId = req.user?.student_id;
+        if (authStudentId && session.student_id && session.student_id !== authStudentId) {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized access to this test session."
+            });
+        }
+
         if (session.status !== "Completed") {
             return res.status(409).json({ success: false, message: "Test result is available only after the session is completed." });
         }
@@ -1287,9 +1315,9 @@ exports.updateSessionAnswer = async (req, res) => {
             return res.status(404).json({ success: false, message: "Test session not found." });
         }
 
-        // Verify session ownership if authenticated
+        // Verify session ownership
         const authStudentId = req.user?.student_id;
-        if (authStudentId && session.student_id && session.student_id !== authStudentId && session.student_id !== "STU123456") {
+        if (authStudentId && session.student_id && session.student_id !== authStudentId) {
             return res.status(403).json({ success: false, message: "Unauthorized access to this test session." });
         }
 

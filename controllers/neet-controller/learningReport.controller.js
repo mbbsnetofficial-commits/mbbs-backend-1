@@ -28,7 +28,7 @@ exports.getBuiltinTests = async (req, res) => {
  */
 exports.getNeetLearningReport = async (req, res) => {
     try {
-        const studentId = req.user?.student_id || "STU123456";
+        const studentId = req.user?.student_id;
         const result = await learningReportService.getNeetLearningReport(studentId, req.query);
         return res.status(200).json(result);
     } catch (error) {
@@ -45,7 +45,7 @@ exports.getNeetLearningReport = async (req, res) => {
  */
 exports.getNeetSummary = async (req, res) => {
     try {
-        const studentId = req.user?.student_id || "STU123456";
+        const studentId = req.user?.student_id;
         const result = await learningReportService.getNeetSummary(studentId);
         return res.status(200).json(result);
     } catch (error) {
