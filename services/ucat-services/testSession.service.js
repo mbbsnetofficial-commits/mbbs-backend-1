@@ -1308,21 +1308,21 @@ const getUcatSummary = async (studentId) => {
     const UcatTestSession = require("../../model/ucat-model/ucatTestSession");
     const streakRepository = require("../../repositories/ucat-repositories/streak.repository");
 
+    let allSessions = [];
     let completedSessions = [];
     try {
-        completedSessions = await UcatTestSession.find({
-            student_id: sid,
-            status: "Completed"
-        }).sort({ submitted_at: -1, createdAt: -1 }).lean();
+        allSessions = await UcatTestSession.find({
+            student_id: sid
+        }).sort({ createdAt: -1 }).lean();
+        completedSessions = allSessions.filter(s => s.status === "Completed");
     } catch (e) {
+        allSessions = [];
         completedSessions = [];
     }
 
+    // 1. Total Practice Time: Sum seconds across all test activity (in-progress + completed)
     let totalTimeSeconds = 0;
-    let totalScore = 0;
-    const completedCount = completedSessions.length;
-
-    for (const session of completedSessions) {
+    for (const session of allSessions) {
         let sessionTime = session.time_spent_seconds || 0;
         if (!sessionTime && Array.isArray(session.answers)) {
             sessionTime = session.answers.reduce((acc, a) => acc + (a.time_spent || 0), 0);
@@ -1331,15 +1331,29 @@ const getUcatSummary = async (studentId) => {
             sessionTime = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
         }
         totalTimeSeconds += sessionTime;
+    }
+
+    // 2. Average Score: Computed across completed tests
+    let totalScore = 0;
+    let totalMaxMarks = 0;
+    const completedCount = completedSessions.length;
+
+    for (const session of completedSessions) {
         totalScore += (session.score || 0);
+        totalMaxMarks += (session.max_marks || session.total_marks || (session.total_questions * 4) || 932);
     }
 
     const hours = Math.floor(totalTimeSeconds / 3600);
     const minutes = Math.floor((totalTimeSeconds % 3600) / 60);
-    const timeSpentFormatted = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    const timeSpentFormatted = totalTimeSeconds > 0 
+        ? (hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`)
+        : "0m";
 
     const avgScore = completedCount > 0 ? Math.round(totalScore / completedCount) : 0;
+    const avgMaxMarks = completedCount > 0 ? Math.round(totalMaxMarks / completedCount) : 932;
+    const avgPercentage = avgMaxMarks > 0 ? Math.round((avgScore / avgMaxMarks) * 100) : 0;
 
+    // 3. Streak Calculation
     let currentStreak = 0;
     try {
         const streakData = await streakRepository.getStreakByUserId(sid);
@@ -1352,23 +1366,36 @@ const getUcatSummary = async (studentId) => {
         status: "success",
         message: "UCAT student summary fetched successfully.",
         data: {
+            // Total Practice Time (Card 1)
             totalPracticeTime: timeSpentFormatted,
             total_practice_time: timeSpentFormatted,
             totalTimeSpent: timeSpentFormatted,
+            total_time_spent: timeSpentFormatted,
             totalTimeSpentSeconds: totalTimeSeconds,
+            total_time_spent_seconds: totalTimeSeconds,
             time_spent: timeSpentFormatted,
-            time_spent_seconds: totalTimeSeconds,
+            display_total_time: totalTimeSeconds > 0 ? timeSpentFormatted : "—",
+
+            // Average Score (Card 2)
             averageScore: {
                 earned: avgScore,
-                total_marks: 932,
-                formatted: `${avgScore} / 932`
+                total_marks: avgMaxMarks,
+                formatted: completedCount > 0 ? `${avgScore} / ${avgMaxMarks}` : "—",
+                percentage: avgPercentage
             },
-            avg_score: `${avgScore} / 932`,
+            average_score: completedCount > 0 ? `${avgScore} / ${avgMaxMarks}` : "—",
+            average_score_number: avgScore,
+            average_score_percentage: avgPercentage,
+            display_average_score: completedCount > 0 ? `${avgScore} / ${avgMaxMarks}` : "—",
+
+            // Additional KPIs
             completedTests: completedCount,
             completed_tests: completedCount,
+            totalAttempts: allSessions.length,
+            total_attempts: allSessions.length,
             currentStreak,
             current_streak: currentStreak,
-            streak_formatted: `${currentStreak} Days Streak`
+            streak_formatted: currentStreak === 1 ? "1 Day Streak" : `${currentStreak} Days Streak`
         }
     };
 };
