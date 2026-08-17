@@ -73,7 +73,7 @@ exports.login = async (req, res) => {
                 });
             }
 
-            const otp = crypto.randomInt(100000, 1000000).toString();
+            const otp = crypto.randomInt(1000, 10000).toString();
             const now = Date.now();
 
             await SignupOtp.findOneAndUpdate(
@@ -220,10 +220,10 @@ exports.verifyLoginOtp = async (req, res) => {
         const phoneNumber = normalizePhone(rawPhone);
         const otp = typeof body.otp === "string" ? body.otp.trim() : String(body.otp || "").trim();
 
-        if (!phoneNumber || !/^\d{6}$/.test(otp)) {
+        if (!phoneNumber || !/^\d{4,6}$/.test(otp)) {
             return res.status(400).json({
                 status: "fail",
-                message: "A valid WhatsApp number and 6-digit verification code are required."
+                message: "A valid WhatsApp number and 4-digit verification code are required."
             });
         }
 

@@ -42,7 +42,7 @@ const normalizePhone = (value) => {
  * Sends OTP to a phone number via WhatsApp with automatic SMS fallback.
  * 
  * @param {string} phoneNumber - Recipient phone number (e.g. +919876543210)
- * @param {string} otp - 6-digit OTP code generated server-side
+ * @param {string} otp - 4-digit OTP code generated server-side
  * @param {string} purpose - "registration" or "login"
  * @returns {Promise<object>} Twilio message delivery status
  */

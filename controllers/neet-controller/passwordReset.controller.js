@@ -72,7 +72,7 @@ exports.requestPasswordResetOtp = async (req, res) => {
             });
         }
 
-        const otp = crypto.randomInt(100000, 1000000).toString();
+        const otp = crypto.randomInt(1000, 10000).toString();
         const now = Date.now();
         await PasswordReset.findOneAndUpdate(
             { user_id: user._id },
@@ -150,10 +150,10 @@ exports.verifyPasswordResetOtp = async (req, res) => {
     try {
         const normalizedPhone = normalizePhoneNumber(req.body.phoneNumber);
         const otp = typeof req.body.otp === "string" ? req.body.otp.trim() : "";
-        if (!normalizedPhone || !/^\d{6}$/.test(otp)) {
+        if (!normalizedPhone || !/^\d{4,6}$/.test(otp)) {
             return res.status(400).json({
                 status: "fail",
-                message: "A valid phoneNumber and 6-digit OTP are required."
+                message: "A valid phoneNumber and 4-digit OTP are required."
             });
         }
 
