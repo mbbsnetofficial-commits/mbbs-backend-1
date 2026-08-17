@@ -56,40 +56,53 @@ const sendWhatsappOtp = async (phoneNumber, otp, purpose = "verification") => {
     const toWhatsapp = `whatsapp:${normalized}`;
     const rawSender = process.env.TWILIO_PHONE_NUMBER ? process.env.TWILIO_PHONE_NUMBER.trim() : "+14244048607";
     const waSender = rawSender.startsWith("whatsapp:") ? rawSender : `whatsapp:${rawSender}`;
+    const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID ? process.env.TWILIO_MESSAGING_SERVICE_SID.trim() : null;
     const messageBody = `Your MBBS.NET ${purpose} code is: *${otp}*\n\nValid for 5 minutes. Please do not share this code with anyone.`;
 
     // 1. Attempt WhatsApp Delivery
     try {
-        const message = await client.messages.create({
-            from: waSender,
+        const waPayload = {
             to: toWhatsapp,
             body: messageBody
-        });
+        };
+        if (messagingServiceSid) {
+            waPayload.messagingServiceSid = messagingServiceSid;
+        } else {
+            waPayload.from = waSender;
+        }
+
+        const message = await client.messages.create(waPayload);
         console.log(`[Twilio WhatsApp] OTP dispatched to ${toWhatsapp}, SID: ${message.sid}, Status: ${message.status}`);
         return {
             channel: "whatsapp",
             sid: message.sid,
             status: message.status,
             to: toWhatsapp,
-            from: waSender
+            from: messagingServiceSid || waSender
         };
     } catch (waError) {
         console.warn(`[Twilio WhatsApp Notice] (${waError.message}). Attempting instant SMS fallback to ${normalized}...`);
         
         // 2. Instant SMS Fallback for full delivery reliability
         try {
-            const smsMessage = await client.messages.create({
-                from: rawSender.replace("whatsapp:", ""),
+            const smsPayload = {
                 to: normalized,
                 body: `Your MBBS.NET ${purpose} code is: ${otp}. Valid for 5 minutes. Do not share this OTP.`
-            });
+            };
+            if (messagingServiceSid) {
+                smsPayload.messagingServiceSid = messagingServiceSid;
+            } else {
+                smsPayload.from = rawSender.replace("whatsapp:", "");
+            }
+
+            const smsMessage = await client.messages.create(smsPayload);
             console.log(`[Twilio SMS Fallback] OTP dispatched via SMS to ${normalized}, SID: ${smsMessage.sid}, Status: ${smsMessage.status}`);
             return {
                 channel: "sms",
                 sid: smsMessage.sid,
                 status: smsMessage.status,
                 to: normalized,
-                from: rawSender
+                from: messagingServiceSid || rawSender
             };
         } catch (smsError) {
             console.error(`[Twilio SMS Fallback Failed] Error: ${smsError.message}`);
