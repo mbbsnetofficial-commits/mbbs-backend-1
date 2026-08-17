@@ -3,6 +3,15 @@
 const testSessionRepository = require("../../repositories/ucat-repositories/testSession.repository");
 const UcatQuestion = require("../../model/ucat-model/ucatQuestion");
 const UcatTopic = require("../../model/ucat-model/ucatTopic");
+const UcatPlatformTest = require("../../model/ucat-model/ucatPlatformTest");
+
+const UCAT_SUBJECT_ENUM = [
+    "VERBAL_REASONING",
+    "DECISION_MAKING",
+    "QUANTITATIVE_REASONING",
+    "ABSTRACT_REASONING",
+    "SITUATIONAL_JUDGEMENT"
+];
 
 const sanitizeSessionResponse = (session) => {
     if (!session) return null;
@@ -358,6 +367,7 @@ const getBuiltinTests = async () => {
 // --- STEP 4: START TEST SESSION ---
 const startTest = async (user, payload = {}) => {
     const {
+        custom_test_id,
         student_id,
         testId,
         test_id,
@@ -380,6 +390,126 @@ const startTest = async (user, payload = {}) => {
         throw error;
     }
 
+    // --- SAVED CUSTOM TEST FLOW ---
+    if (custom_test_id) {
+        const customTest = await UcatPlatformTest.findOne({
+            id: Number(custom_test_id),
+            is_builtin: false,
+            is_active: true
+        }).lean();
+
+        if (!customTest) {
+            const error = new Error("Custom test not found or is inactive.");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        // Ownership check
+        if (customTest.student_id && customTest.student_id !== studentId) {
+            const error = new Error("Unauthorized access to this custom test.");
+            error.statusCode = 403;
+            throw error;
+        }
+
+        // Check for existing active session for this saved custom test
+        const UcatTestSession = require("../../model/ucat-model/ucatTestSession");
+        const existingSession = await UcatTestSession.findOne({
+            student_id: studentId,
+            custom_test_id: customTest.id,
+            status: { $in: ["In Progress", "Started"] }
+        }).sort({ started_at: -1 }).lean();
+
+        if (existingSession) {
+            const resumed = await getSessionResult(existingSession.sessionId || existingSession._id, studentId);
+            resumed.reused = true;
+            return resumed;
+        }
+
+        // Use saved configuration to select questions
+        const cSubjects = customTest.subjects || [];
+        const cTopicIds = customTest.topic_ids || [];
+        const cLimit = customTest.total_questions;
+        const cDuration = customTest.duration;
+
+        let query = {};
+        if (cSubjects.length > 0) {
+            query.subject = {
+                $in: cSubjects.map(s => new RegExp("^" + String(s).trim().toLowerCase().replace(/_/g, "[ _]?") + "$", "i"))
+            };
+        }
+        if (cTopicIds.length > 0) {
+            query.topic_id = { $in: cTopicIds.map(Number) };
+        }
+
+        let rawQuestions = await UcatQuestion.find(query)
+            .select("-correct_answer -explanation")
+            .limit(cLimit)
+            .lean();
+
+        if (rawQuestions.length === 0) {
+            rawQuestions = await UcatQuestion.find({})
+                .select("-correct_answer -explanation")
+                .limit(cLimit)
+                .lean();
+        }
+
+        const selectedQuestions = rawQuestions.slice(0, cLimit);
+        const questionIds = selectedQuestions.map(q => q.id || q._id);
+        const questionsFormatted = selectedQuestions.map(q => ({
+            question_id: q.id || q._id,
+            question: q.question,
+            option_a: q.option_a,
+            option_b: q.option_b,
+            option_c: q.option_c,
+            option_d: q.option_d,
+            subject: q.subject,
+            topic_name: q.topic_name || q.chapter || ""
+        }));
+
+        const maxMarks = (questionsFormatted.length || cLimit) * 4;
+        const startedAt = new Date();
+        const expiresAt = new Date(startedAt.getTime() + cDuration * 60 * 1000);
+
+        const sessionPayload = {
+            sessionId: "UCAT_TEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+            student_id: studentId,
+            custom_test_id: customTest.id,
+            test_id: "UCAT_CUSTOM_" + customTest.id,
+            testId: "UCAT_CUSTOM_" + customTest.id,
+            title: customTest.test_name,
+            subtitle: "Custom Practice",
+            test_type: "Custom Test",
+            subjects: cSubjects,
+            chapters: customTest.chapters || [],
+            topic_ids: cTopicIds,
+            total_questions: questionsFormatted.length,
+            duration: cDuration,
+            max_marks: maxMarks,
+            total_marks: maxMarks,
+            level: customTest.level || "Intermediate",
+            score: 0,
+            correct: 0,
+            wrong: 0,
+            skipped: questionsFormatted.length,
+            accuracy: 0,
+            status: "In Progress",
+            started_at: startedAt,
+            expires_at: expiresAt,
+            question_ids: questionIds
+        };
+
+        const sessionDoc = await testSessionRepository.createSession(sessionPayload);
+        const resultDoc = sanitizeSessionResponse(sessionDoc);
+        resultDoc.questions = questionsFormatted;
+        resultDoc.totalQuestions = questionsFormatted.length;
+        resultDoc.totalMarks = maxMarks;
+        resultDoc.max_marks = maxMarks;
+        resultDoc.started_at = startedAt;
+        resultDoc.expires_at = expiresAt;
+        return resultDoc;
+    }
+
+    // --- EXISTING DIRECT-START FLOW (unchanged) ---
     const rawTestId = testId || test_id || paperId || paper_id || (payload.test_type === "FULL_EXAM" || payload.test_type === "Full Exam" ? "UCAT_FULL" : null);
 
     // Look up in built-in definitions
@@ -1042,7 +1172,7 @@ const getUserHistory = async (userId, query = {}) => {
         }
     }
 
-    // 4. Include unmatched custom sessions
+    // 4. Include unmatched custom sessions (runtime sessions without catalog match)
     for (const session of userSessions) {
         const sId = String(session.sessionId || session._id);
         if (!matchedSessionIds.has(sId)) {
@@ -1069,11 +1199,17 @@ const getUserHistory = async (userId, query = {}) => {
             const totalMarks = session.max_marks || session.total_marks || (totalQuestions * 4);
             const scoreVal = isCompleted ? session.score : Math.max(0, session.score || 0);
 
+            // Track custom_test_ids that have sessions (for step 5)
+            if (session.custom_test_id) {
+                matchedSessionIds.add("custom_def_" + session.custom_test_id);
+            }
+
             unifiedList.push({
                 id: sId,
                 sessionId: sId,
                 testId: session.test_id || sId,
                 test_id: session.test_id || sId,
+                custom_test_id: session.custom_test_id || null,
                 testName: session.title || "UCAT Practice Test",
                 test_name: session.title || "UCAT Practice Test",
                 date_modified: formattedDate,
@@ -1100,6 +1236,57 @@ const getUserHistory = async (userId, query = {}) => {
                 total_marks: totalMarks
             });
         }
+    }
+
+    // 5. Include saved custom test definitions that have NOT been started yet
+    try {
+        const savedCustomTests = await UcatPlatformTest.find({
+            student_id: studentId,
+            is_active: true,
+            is_builtin: false
+        }).sort({ created_at: -1 }).lean();
+
+        for (const test of savedCustomTests) {
+            // Skip if this definition already has sessions mapped above
+            if (matchedSessionIds.has("custom_def_" + test.id)) continue;
+
+            // Check if any session references this custom test
+            const hasSession = userSessions.some(s => s.custom_test_id === test.id);
+            if (hasSession) continue;
+
+            unifiedList.push({
+                id: "custom_def_" + test.id,
+                custom_test_id: test.id,
+                testId: "UCAT_CUSTOM_" + test.id,
+                test_id: "UCAT_CUSTOM_" + test.id,
+                testName: test.test_name,
+                test_name: test.test_name,
+                date_modified: test.created_at ? new Date(test.created_at).toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                }) : "N/A",
+                course_name: {
+                    title: test.test_name,
+                    subtitle: "Custom Practice"
+                },
+                type: formatUcatType(test.subjects),
+                level: test.level || "Intermediate",
+                source: "custom",
+                status: "not_started",
+                progress: 0,
+                time_spent: "0m",
+                time_spent_seconds: 0,
+                timeSpentSeconds: 0,
+                score: null,
+                activeSessionId: null,
+                duration_minutes: test.duration,
+                total_questions: test.total_questions,
+                total_marks: test.total_marks || (test.total_questions * 4)
+            });
+        }
+    } catch (e) {
+        // If UcatPlatformTest collection doesn't exist yet, skip gracefully
     }
 
     return {
@@ -1218,6 +1405,234 @@ const getLearningReportFilters = () => {
     };
 };
 
+// --- SAVE CUSTOM TEST DEFINITION ---
+const saveCustomTest = async (user, payload = {}) => {
+    const studentId = user?.student_id;
+    if (!studentId) {
+        const error = new Error("Authentication required. Please login as a student.");
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const {
+        title,
+        test_name,
+        subjects = [],
+        chapters = [],
+        topic_ids = [],
+        questionCount,
+        total_questions,
+        duration,
+        level
+    } = payload;
+
+    // 1. Validate title
+    const finalTitle = (title || test_name || "").trim();
+    if (!finalTitle) {
+        const error = new Error("Test name is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // 2. Validate subjects
+    if (!Array.isArray(subjects) || subjects.length === 0) {
+        const error = new Error("At least one subject must be selected.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const validSubjects = UCAT_SUBJECT_ENUM.map(s => s.toLowerCase());
+    for (const subj of subjects) {
+        const normalized = String(subj).trim().toLowerCase().replace(/[\s-]+/g, "_");
+        if (!validSubjects.includes(normalized)) {
+            const error = new Error(`Invalid subject: ${subj}. Allowed: ${UCAT_SUBJECT_ENUM.join(", ")}`);
+            error.statusCode = 400;
+            throw error;
+        }
+    }
+
+    // 3. Validate question count
+    const finalQuestionCount = Number(questionCount || total_questions);
+    if (!Number.isInteger(finalQuestionCount) || finalQuestionCount <= 0) {
+        const error = new Error("A positive integer question count is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // 4. Validate duration
+    const finalDuration = Number(duration);
+    if (!Number.isFinite(finalDuration) || finalDuration <= 0) {
+        const error = new Error("A positive duration in minutes is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const combinedTopicIds = [...new Set((topic_ids || []).map(Number).filter(Number.isFinite))];
+
+    // 5. Validate question availability
+    let questionQuery = {};
+    if (subjects.length > 0) {
+        questionQuery.subject = {
+            $in: subjects.map(s => new RegExp("^" + String(s).trim().toLowerCase().replace(/_/g, "[ _]?") + "$", "i"))
+        };
+    }
+    if (combinedTopicIds.length > 0) {
+        questionQuery.topic_id = { $in: combinedTopicIds };
+    }
+
+    const availableQuestionCount = await UcatQuestion.countDocuments(questionQuery);
+    if (availableQuestionCount < finalQuestionCount) {
+        const error = new Error(`Only ${availableQuestionCount} questions are available for the selected configuration.`);
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // 6. Duplicate save protection (same name + student within 15s)
+    const recentDuplicate = await UcatPlatformTest.findOne({
+        student_id: studentId,
+        test_name: finalTitle,
+        is_builtin: false,
+        is_active: true,
+        created_at: { $gte: new Date(Date.now() - 15000) }
+    }).lean();
+
+    if (recentDuplicate) {
+        return {
+            id: recentDuplicate.id,
+            custom_test_id: recentDuplicate.id,
+            test_name: recentDuplicate.test_name,
+            test_code: recentDuplicate.test_code,
+            source: "custom",
+            type: "Custom Test",
+            subjects: recentDuplicate.subjects,
+            chapters: recentDuplicate.chapters || [],
+            total_questions: recentDuplicate.total_questions,
+            total_marks: recentDuplicate.total_marks,
+            duration_minutes: recentDuplicate.duration,
+            status: "not_started",
+            duplicate: true
+        };
+    }
+
+    // 7. Generate next ID (starting at 3001 for UCAT)
+    const lastTest = await UcatPlatformTest.findOne().sort({ id: -1 }).lean();
+    const nextId = (lastTest?.id && lastTest.id >= 3000 ? lastTest.id + 1 : 3001);
+    const testCode = `UCAT_CUSTOM_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`;
+
+    const customTest = await UcatPlatformTest.create({
+        id: nextId,
+        student_id: studentId,
+        test_name: finalTitle,
+        test_code: testCode,
+        test_type: "Custom Test",
+        source: "custom",
+        is_builtin: false,
+        is_active: true,
+        subjects: subjects,
+        chapters: chapters || [],
+        topic_ids: combinedTopicIds,
+        total_questions: finalQuestionCount,
+        total_marks: finalQuestionCount * 4,
+        duration: finalDuration,
+        level: level || "Intermediate",
+        description: `${subjects.join(", ")} UCAT Custom Practice Test`
+    });
+
+    return {
+        id: customTest.id,
+        custom_test_id: customTest.id,
+        test_name: customTest.test_name,
+        test_code: customTest.test_code,
+        source: "custom",
+        type: "Custom Test",
+        subjects: customTest.subjects,
+        chapters: customTest.chapters,
+        total_questions: customTest.total_questions,
+        total_marks: customTest.total_marks,
+        duration_minutes: customTest.duration,
+        status: "not_started"
+    };
+};
+
+// --- LIST STUDENT'S SAVED CUSTOM TESTS ---
+const listCustomTests = async (studentId) => {
+    if (!studentId) {
+        const error = new Error("Authentication required.");
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const tests = await UcatPlatformTest.find({
+        student_id: studentId,
+        is_active: true,
+        is_builtin: false
+    }).sort({ created_at: -1 }).lean();
+
+    return tests.map(t => ({
+        id: t.id,
+        custom_test_id: t.id,
+        test_name: t.test_name,
+        test_code: t.test_code,
+        source: "custom",
+        type: "Custom Test",
+        subjects: t.subjects,
+        chapters: t.chapters || [],
+        topic_ids: t.topic_ids || [],
+        total_questions: t.total_questions,
+        total_marks: t.total_marks || (t.total_questions * 4),
+        duration_minutes: t.duration,
+        level: t.level || "Intermediate",
+        status: "not_started",
+        created_at: t.created_at
+    }));
+};
+
+// --- GET SINGLE CUSTOM TEST WITH OWNERSHIP CHECK ---
+const getCustomTest = async (customTestId, user) => {
+    const studentId = user?.student_id || (typeof user === "string" ? user : null);
+    if (!studentId) {
+        const error = new Error("Authentication required.");
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const test = await UcatPlatformTest.findOne({
+        id: Number(customTestId),
+        is_active: true,
+        is_builtin: false
+    }).lean();
+
+    if (!test) {
+        const error = new Error("Custom test not found.");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (test.student_id !== studentId) {
+        const error = new Error("Unauthorized access to this custom test.");
+        error.statusCode = 403;
+        throw error;
+    }
+
+    return {
+        id: test.id,
+        custom_test_id: test.id,
+        test_name: test.test_name,
+        test_code: test.test_code,
+        source: "custom",
+        type: "Custom Test",
+        subjects: test.subjects,
+        chapters: test.chapters || [],
+        topic_ids: test.topic_ids || [],
+        total_questions: test.total_questions,
+        total_marks: test.total_marks || (test.total_questions * 4),
+        duration_minutes: test.duration,
+        level: test.level || "Intermediate",
+        status: "not_started",
+        created_at: test.created_at
+    };
+};
+
 module.exports = {
     getSubjects,
     getChapters,
@@ -1230,5 +1645,8 @@ module.exports = {
     getSessionResult,
     getUserHistory,
     getUcatSummary,
-    getLearningReportFilters
+    getLearningReportFilters,
+    saveCustomTest,
+    listCustomTests,
+    getCustomTest
 };

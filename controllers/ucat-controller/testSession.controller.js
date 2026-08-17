@@ -200,6 +200,65 @@ const getLearningReportFilters = async (req, res, next) => {
     }
 };
 
+// POST /api/v1/ucat/test/custom/save - Save a custom test definition
+const saveCustomTest = async (req, res, next) => {
+    try {
+        const studentId = req.user?.student_id;
+        if (!studentId) {
+            return res.status(401).json({ success: false, message: "Authentication required." });
+        }
+        const result = await testSessionService.saveCustomTest(req.user, req.body);
+        return res.status(201).json({
+            success: true,
+            message: "UCAT custom test saved successfully.",
+            data: result
+        });
+    } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
+        next(error);
+    }
+};
+
+// GET /api/v1/ucat/test/custom - List student's saved custom tests
+const listCustomTests = async (req, res, next) => {
+    try {
+        const studentId = req.user?.student_id;
+        if (!studentId) {
+            return res.status(401).json({ success: false, message: "Authentication required." });
+        }
+        const tests = await testSessionService.listCustomTests(studentId);
+        return res.status(200).json({
+            success: true,
+            message: "UCAT custom tests fetched successfully.",
+            data: tests,
+            total: tests.length
+        });
+    } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
+        next(error);
+    }
+};
+
+// GET /api/v1/ucat/test/custom/:customTestId - Get one custom test with ownership check
+const getCustomTest = async (req, res, next) => {
+    try {
+        const result = await testSessionService.getCustomTest(req.params.customTestId, req.user);
+        return res.status(200).json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
+        next(error);
+    }
+};
+
 module.exports = {
     getSubjects,
     getChapters,
@@ -214,5 +273,8 @@ module.exports = {
     getTestHistory,
     getUcatSummary,
     getUcatLearningReport,
-    getLearningReportFilters
+    getLearningReportFilters,
+    saveCustomTest,
+    listCustomTests,
+    getCustomTest
 };

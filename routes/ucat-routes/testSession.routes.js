@@ -36,6 +36,11 @@ router.post("/chapters", testSessionController.getChapters);
 // Step 3: POST /api/v1/ucat/test/topics - Get topics for selected chapters
 router.post("/topics", testSessionController.getTopics);
 
+// Custom Test Definitions: save, list, get (all owned by student)
+router.post("/custom/save", testSessionController.saveCustomTest);
+router.get("/custom", testSessionController.listCustomTests);
+router.get("/custom/:customTestId", testSessionController.getCustomTest);
+
 // Step 4: POST /api/v1/ucat/test/start - Start a quick practice test or Full Exam (API #4 Start)
 router.post("/start", testSessionController.startTest);
 

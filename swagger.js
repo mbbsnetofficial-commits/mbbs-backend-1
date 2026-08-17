@@ -5312,6 +5312,70 @@ const swaggerOptions = {
                     }
                 }
             },
+            '/api/v1/ucat/test/custom/save': {
+                post: {
+                    tags: ['UCAT Custom Tests'],
+                    summary: 'Save a UCAT custom test definition',
+                    description: 'Creates a persistent custom test definition owned by the authenticated student. Does NOT start a session or consume questions.',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['title', 'subjects', 'total_questions', 'duration'],
+                                    properties: {
+                                        title: { type: 'string', example: 'Verbal Reasoning Practice' },
+                                        subjects: { type: 'array', items: { type: 'string' }, example: ['VERBAL_REASONING'] },
+                                        chapters: { type: 'array', items: { type: 'string' }, example: [] },
+                                        topic_ids: { type: 'array', items: { type: 'number' }, example: [] },
+                                        total_questions: { type: 'number', example: 20 },
+                                        duration: { type: 'number', example: 15 },
+                                        level: { type: 'string', example: 'Intermediate' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        201: { description: 'Custom test saved successfully.' },
+                        400: { description: 'Validation error (missing fields, insufficient questions).' },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/custom': {
+                get: {
+                    tags: ['UCAT Custom Tests'],
+                    summary: 'List saved custom test definitions',
+                    description: 'Returns all custom test definitions owned by the authenticated student. Another student cannot see these.',
+                    responses: {
+                        200: { description: 'Custom tests fetched successfully.' },
+                        401: { description: 'Authentication required.' }
+                    }
+                }
+            },
+            '/api/v1/ucat/test/custom/{customTestId}': {
+                get: {
+                    tags: ['UCAT Custom Tests'],
+                    summary: 'Get a specific custom test definition',
+                    description: 'Returns a single custom test definition. Returns 403 if the test belongs to another student.',
+                    parameters: [
+                        {
+                            name: 'customTestId',
+                            in: 'path',
+                            required: true,
+                            schema: { type: 'number' },
+                            description: 'The custom test definition ID'
+                        }
+                    ],
+                    responses: {
+                        200: { description: 'Custom test fetched successfully.' },
+                        403: { description: 'Unauthorized access to this custom test.' },
+                        404: { description: 'Custom test not found.' }
+                    }
+                }
+            },
             '/api/v1/ucat/test/start': {
                 post: {
                     tags: ['UCAT Practice Tests'],

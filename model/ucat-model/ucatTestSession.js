@@ -29,6 +29,11 @@ const ucatTestSessionSchema = new mongoose.Schema(
                 type: mongoose.Schema.Types.Mixed
             }
         ],
+        custom_test_id: {
+            type: Number,
+            default: null,
+            index: true
+        },
         question_ids: [
             {
                 type: Number
