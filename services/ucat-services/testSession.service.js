@@ -1333,25 +1333,25 @@ const getUcatSummary = async (studentId) => {
         totalTimeSeconds += sessionTime;
     }
 
-    // 2. Average Score: Computed across completed tests
-    let totalScore = 0;
-    let totalMaxMarks = 0;
+    // 2. Average Score: Computed across completed tests normalized to standard 932 benchmark
+    let totalPercentage = 0;
     const completedCount = completedSessions.length;
 
     for (const session of completedSessions) {
-        totalScore += (session.score || 0);
-        totalMaxMarks += (session.max_marks || session.total_marks || (session.total_questions * 4) || 932);
+        const sScore = session.score || 0;
+        const sMax = session.max_marks || session.total_marks || (session.total_questions * 4) || 932;
+        const pct = sMax > 0 ? (sScore / sMax) : 0;
+        totalPercentage += pct;
     }
+
+    const avgPercentage = completedCount > 0 ? Math.round((totalPercentage / completedCount) * 100) : 0;
+    const avgScore932 = completedCount > 0 ? Math.round((totalPercentage / completedCount) * 932) : 0;
 
     const hours = Math.floor(totalTimeSeconds / 3600);
     const minutes = Math.floor((totalTimeSeconds % 3600) / 60);
     const timeSpentFormatted = totalTimeSeconds > 0 
         ? (hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`)
         : "0m";
-
-    const avgScore = completedCount > 0 ? Math.round(totalScore / completedCount) : 0;
-    const avgMaxMarks = completedCount > 0 ? Math.round(totalMaxMarks / completedCount) : 932;
-    const avgPercentage = avgMaxMarks > 0 ? Math.round((avgScore / avgMaxMarks) * 100) : 0;
 
     // 3. Streak Calculation
     let currentStreak = 0;
@@ -1376,17 +1376,17 @@ const getUcatSummary = async (studentId) => {
             time_spent: timeSpentFormatted,
             display_total_time: totalTimeSeconds > 0 ? timeSpentFormatted : "—",
 
-            // Average Score (Card 2)
+            // Average Score (Card 2) - Standard 932 Marks Benchmark
             averageScore: {
-                earned: avgScore,
-                total_marks: avgMaxMarks,
-                formatted: completedCount > 0 ? `${avgScore} / ${avgMaxMarks}` : "—",
+                earned: avgScore932,
+                total_marks: 932,
+                formatted: completedCount > 0 ? `${avgScore932} / 932` : "—",
                 percentage: avgPercentage
             },
-            average_score: completedCount > 0 ? `${avgScore} / ${avgMaxMarks}` : "—",
-            average_score_number: avgScore,
+            average_score: completedCount > 0 ? `${avgScore932} / 932` : "—",
+            average_score_number: avgScore932,
             average_score_percentage: avgPercentage,
-            display_average_score: completedCount > 0 ? `${avgScore} / ${avgMaxMarks}` : "—",
+            display_average_score: completedCount > 0 ? `${avgScore932} / 932` : "—",
 
             // Additional KPIs
             completedTests: completedCount,
