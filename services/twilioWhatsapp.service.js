@@ -54,7 +54,7 @@ const sendWhatsappOtp = async (phoneNumber, otp, purpose = "verification") => {
 
     const client = getTwilioClient();
     const toWhatsapp = `whatsapp:${normalized}`;
-    const rawSender = process.env.TWILIO_PHONE_NUMBER ? process.env.TWILIO_PHONE_NUMBER.trim() : "+12605688334";
+    const rawSender = process.env.TWILIO_PHONE_NUMBER ? process.env.TWILIO_PHONE_NUMBER.trim() : "+14244048607";
     const waSender = rawSender.startsWith("whatsapp:") ? rawSender : `whatsapp:${rawSender}`;
     const messageBody = `Your MBBS.NET ${purpose} code is: *${otp}*\n\nValid for 5 minutes. Please do not share this code with anyone.`;
 
