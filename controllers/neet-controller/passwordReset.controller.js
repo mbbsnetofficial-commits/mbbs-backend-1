@@ -5,7 +5,7 @@ const PasswordReset = require("../../model/neet-models/passwordReset");
 
 const OTP_VALID_MINUTES = 5;
 const RESET_TOKEN_VALID_MINUTES = 10;
-const RESEND_COOLDOWN_SECONDS = 60;
+const RESEND_COOLDOWN_SECONDS = 15;
 const MAX_OTP_ATTEMPTS = 5;
 
 const hashValue = value => crypto

@@ -4,7 +4,7 @@ const Auth = require("../model/neet-models/auth");
 const PasswordSetupToken = require("../model/neet-models/passwordSetupToken");
 
 const TOKEN_VALID_MINUTES = 15;
-const RESEND_COOLDOWN_SECONDS = 60;
+const RESEND_COOLDOWN_SECONDS = 15;
 
 const serviceError = (statusCode, message) =>
     Object.assign(new Error(message), { statusCode });

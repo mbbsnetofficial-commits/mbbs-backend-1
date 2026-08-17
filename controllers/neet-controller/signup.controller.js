@@ -7,7 +7,7 @@ const { createAuthSession } = require("../../services/authToken.service");
 const { normalizePhone, sendWhatsappOtp } = require("../../services/twilioWhatsapp.service");
 
 const OTP_VALID_MINUTES = 5;
-const RESEND_SECONDS = 60;
+const RESEND_SECONDS = 15;
 const MAX_ATTEMPTS = 5;
 
 const hashOtp = (otp) => crypto
