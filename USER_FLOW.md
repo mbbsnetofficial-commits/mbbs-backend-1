@@ -47,7 +47,7 @@ flowchart TD
 
 ---
 
-## 3. NEET Practice & Question of the Day (QOD) Flow
+## 3. NEET Practice & Quick Test Flow
 
 ```mermaid
 sequenceDiagram
@@ -57,13 +57,13 @@ sequenceDiagram
     participant API as Backend 1 Core
     participant DB as MongoDB
 
-    Student->>UI: Open Daily QOD Dashboard
-    UI->>API: GET /api/v1/qod
-    API-->>UI: Return Today's Question & Current Streak
-    Student->>UI: Select Option & Submit
-    UI->>API: POST /api/v1/qod/answer { questionId, selectedOption }
-    API->>DB: Log Activity & Update Streak Count
-    API-->>UI: Return Explanation & Updated Streak
+    Student->>UI: Select Subject & Chapters for Quick Test
+    UI->>API: GET /api/v1/test-questions
+    API-->>UI: Return Practice Questions
+    Student->>UI: Answer Questions & Submit Test
+    UI->>API: POST /api/v1/test-questions/submit
+    API->>DB: Record Test Session & Score
+    API-->>UI: Return Test Results & Instant Feedback
     UI->>API: GET /api/v1/leaderboard
     API-->>UI: Render Top Ranked Students
 ```

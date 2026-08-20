@@ -35,7 +35,6 @@ const { rejectUnsafeRequestKeys } = require("./middleware/security.middleware");
 const {
     authRouter,
     platformAdminRouter,
-    qodRouter,
     testQuestionRouter,
     previousYearQuestionRouter,
     chatRouter,
@@ -134,7 +133,6 @@ app.use("/api/v1/admin", (req, res) => {
     });
 });
 
-app.use("/api/v1", qodRouter);
 app.use("/api/v1", testQuestionRouter);
 app.use("/api/v1", testLeaderboardRouter);
 app.use("/api/v1/previous-year-tests", previousYearQuestionRouter);

@@ -2,7 +2,6 @@ const Auth = require("../../model/neet-models/auth");
 const StudentProfile = require("../../model/neet-models/studentProfile");
 const Question = require("../../model/neet-models/questions");
 const Topic = require("../../model/neet-models/topic");
-const QuestionOfTheDay = require("../../model/neet-models/qod");
 const QuestionFeedback = require("../../model/neet-models/questionFeedback");
 const ReviewComment = require("../../model/neet-models/reviewComment");
 const Notification = require("../../model/neet-models/notification");
@@ -38,12 +37,11 @@ const nextNumericId = async Model => {
 
 exports.getDashboard = async (req, res) => {
     try {
-        const [students, activeProfiles, questions, topics, qod, tests, pendingFeedback, pendingReviews, unreadNotifications] = await Promise.all([
+        const [students, activeProfiles, questions, topics, tests, pendingFeedback, pendingReviews, unreadNotifications] = await Promise.all([
             Auth.countDocuments(),
             StudentProfile.countDocuments({ is_active: true }),
             Question.countDocuments(),
             Topic.countDocuments(),
-            QuestionOfTheDay.countDocuments(),
             TestSession.countDocuments(),
             QuestionFeedback.countDocuments({ status: "pending" }),
             ReviewComment.countDocuments({ status: "pending" }),
@@ -55,7 +53,6 @@ exports.getDashboard = async (req, res) => {
             active_student_profiles: activeProfiles,
             questions,
             topics,
-            questions_of_the_day: qod,
             test_sessions: tests,
             pending_question_feedback: pendingFeedback,
             pending_review_comments: pendingReviews,
@@ -143,7 +140,6 @@ const listContent = Model => async (req, res) => {
 
 exports.listQuestions = listContent(Question);
 exports.listTopics = listContent(Topic);
-exports.listQod = listContent(QuestionOfTheDay);
 
 const updateContentStatus = (Model, label, paramName = "id") => async (req, res) => {
     try {
@@ -182,7 +178,6 @@ const updateContentStatus = (Model, label, paramName = "id") => async (req, res)
 
 exports.updateQuestionStatus = updateContentStatus(Question, "Question");
 exports.updateTopicStatus = updateContentStatus(Topic, "Topic");
-exports.updateQodStatus = updateContentStatus(QuestionOfTheDay, "Question of the Day");
 exports.updatePlatformTestStatus = updateContentStatus(PlatformTest, "Platform test", "testId");
 exports.updatePreviousYearTestStatus = updateContentStatus(
     PreviousYearQuestion,
@@ -220,22 +215,6 @@ exports.updateTopic = async (req, res) => {
         const topic = await Topic.findOneAndUpdate({ id: Number(req.params.id) }, updates, { new: true, runValidators: true });
         if (!topic) return res.status(404).json({ status: "fail", message: "Topic not found." });
         return res.status(200).json({ status: "success", data: topic });
-    } catch (error) { return res.status(400).json({ status: "fail", message: error.message }); }
-};
-
-exports.createQod = async (req, res) => {
-    try {
-        const qod = await QuestionOfTheDay.create({ ...req.body, id: req.body.id || await nextNumericId(QuestionOfTheDay) });
-        return res.status(201).json({ status: "success", data: qod });
-    } catch (error) { return res.status(error.code === 11000 ? 409 : 400).json({ status: "fail", message: error.message }); }
-};
-
-exports.updateQod = async (req, res) => {
-    try {
-        const { id, ...updates } = req.body;
-        const qod = await QuestionOfTheDay.findOneAndUpdate({ id: Number(req.params.id) }, updates, { new: true, runValidators: true });
-        if (!qod) return res.status(404).json({ status: "fail", message: "Question of the Day not found." });
-        return res.status(200).json({ status: "success", data: qod });
     } catch (error) { return res.status(400).json({ status: "fail", message: error.message }); }
 };
 

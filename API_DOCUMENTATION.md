@@ -47,8 +47,6 @@ The ecosystem uses **JSON Web Tokens (JWT)**. Backend 1 acts as the Identity Pro
 ### 2. NEET Practice & Question Bank (`Backend 1`)
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/qod` | Fetch Question of the Day with streak status | Optional |
-| `POST` | `/api/v1/qod/answer` | Submit answer for Question of the Day | Optional |
 | `GET` | `/api/v1/test-questions` | Fetch NEET practice questions with subject/topic filters | Optional |
 | `POST` | `/api/v1/test-questions/submit` | Submit practice test session & receive instant score | Bearer Token |
 | `GET` | `/api/v1/leaderboard` | Global & Weekly student performance leaderboard | None |

@@ -83,7 +83,6 @@ const NOTIFICATION_TYPE_ENUM = Object.freeze([
     "general",
     "system",
     "test",
-    "qod",
     "chatbot",
     "account",
     "reminder"

@@ -6,7 +6,7 @@ const swaggerOptions = {
         info: {
             title: 'MBBS NEET API',
             version: '1.0.0',
-            description: 'API documentation for authentication, Question of the Day, and quick-test features.'
+            description: 'API documentation for authentication and quick-test features.'
         },
         servers: [
             {
@@ -22,10 +22,6 @@ const swaggerOptions = {
             {
                 name: 'Authentication',
                 description: 'User registration and login endpoints'
-            },
-            {
-                name: 'Question of the Day',
-                description: 'Fetch the daily question and submit one answer per student'
             },
             {
                 name: 'Quick Test',
@@ -1182,91 +1178,6 @@ const swaggerOptions = {
                         createdAt: { type: 'string', format: 'date-time' }
                     }
                 },
-                QuestionOfTheDay: {
-                    type: 'object',
-                    properties: {
-                        id: { type: 'integer', example: 4029 },
-                        question_date: {
-                            type: 'string',
-                            format: 'date-time',
-                            example: '2026-07-16T00:00:00.000Z'
-                        },
-                        question: {
-                            type: 'string',
-                            example: 'Which organelle is known as the powerhouse of the cell?'
-                        },
-                        option_a: { type: 'string', example: 'Nucleus' },
-                        option_b: { type: 'string', example: 'Mitochondrion' },
-                        option_c: { type: 'string', example: 'Ribosome' },
-                        option_d: { type: 'string', example: 'Golgi apparatus' },
-                        difficulty: {
-                            type: 'string',
-                            enum: ['Easy', 'Medium', 'Hard'],
-                            example: 'Easy'
-                        },
-                        question_type: { type: 'string', example: 'Single Correct Answer' },
-                        topic_id: { type: 'integer', example: 12 },
-                        alreadyAnswered: {
-                            type: 'boolean',
-                            description: 'Whether the logged-in student has already submitted an answer.',
-                            example: false
-                        }
-                    }
-                },
-                QuestionSubmissionRequest: {
-                    type: 'object',
-                    required: ['question_id', 'selected_option'],
-                    properties: {
-                        question_id: {
-                            type: 'integer',
-                            description: 'The numeric ID returned by the Question of the Day API.',
-                            example: 4029
-                        },
-                        selected_option: {
-                            type: 'string',
-                            enum: ['A', 'B', 'C', 'D'],
-                            description: 'The option selected by the student.',
-                            example: 'B'
-                        }
-                    }
-                },
-                QuestionSubmissionResult: {
-                    type: 'object',
-                    properties: {
-                        question_id: { type: 'integer', example: 101 },
-                        selected_option: { type: 'string', enum: ['A', 'B', 'C', 'D'], example: 'B' },
-                        correct_answer: { type: 'string', enum: ['A', 'B', 'C', 'D'], example: 'B' },
-                        is_correct: { type: 'boolean', example: true },
-                        explanation: {
-                            type: 'string',
-                            example: 'Mitochondria produce most of the cell\'s ATP.'
-                        },
-                        streak: { $ref: '#/components/schemas/QodStreak' }
-                    }
-                },
-                QodStreak: {
-                    type: 'object',
-                    properties: {
-                        current_streak: { type: 'integer', minimum: 0, example: 5 },
-                        longest_streak: { type: 'integer', minimum: 0, example: 12 },
-                        total_days_answered: { type: 'integer', minimum: 0, example: 30 },
-                        correct_answer_count: { type: 'integer', minimum: 0, example: 24 },
-                        last_answered_date: { type: 'string', nullable: true, example: '2026-07-25' },
-                        streak_started_at: { type: 'string', nullable: true, example: '2026-07-21' },
-                        answered_today: { type: 'boolean', example: true },
-                        today_correct: { type: 'boolean', nullable: true, example: true },
-                        timezone: { type: 'string', example: 'Asia/Kolkata' }
-                    }
-                },
-                QodStreakHistoryEntry: {
-                    type: 'object',
-                    properties: {
-                        date: { type: 'string', example: '2026-07-25' },
-                        answered: { type: 'boolean', example: true },
-                        is_correct: { type: 'boolean', example: true },
-                        question_id: { type: 'integer', example: 4029 }
-                    }
-                },
                 AIContentRequest: {
                     type: 'object',
                     required: ['title', 'content'],
@@ -1451,7 +1362,7 @@ const swaggerOptions = {
                         message: { type: 'string', maxLength: 1000, example: 'Your test result and insights are ready.' },
                         notification_type: {
                             type: 'string',
-                            enum: ['system', 'test', 'qod', 'chatbot', 'account', 'reminder'],
+                            enum: ['system', 'test', 'chatbot', 'account', 'reminder'],
                             default: 'system',
                             example: 'test'
                         },
@@ -3282,7 +3193,7 @@ const swaggerOptions = {
                         {
                             name: 'notification_type',
                             in: 'query',
-                            schema: { type: 'string', enum: ['system', 'test', 'qod', 'chatbot', 'account', 'reminder'] }
+                            schema: { type: 'string', enum: ['system', 'test', 'chatbot', 'account', 'reminder'] }
                         }
                     ],
                     responses: {
@@ -3485,16 +3396,6 @@ const swaggerOptions = {
             '/api/v1/admin/topics/{id}/status': {
                 patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate a topic', description: 'Soft-deactivation keeps the topic but excludes it from new test selection.', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean', example: false } } } } } }, responses: { 200: { description: 'Topic status updated.' }, 400: { description: 'Invalid ID or status.' }, 404: { description: 'Topic not found.' } } }
             },
-            '/api/v1/admin/qod': {
-                get: { tags: ['Platform Admin'], summary: 'List Questions of the Day', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'is_active', in: 'query', schema: { type: 'boolean' } }], responses: { 200: { description: 'QOD records returned.' } } },
-                post: { tags: ['Platform Admin'], summary: 'Create a Question of the Day', security: [{ adminBearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 201: { description: 'QOD created.' } } }
-            },
-            '/api/v1/admin/qod/{id}': {
-                patch: { tags: ['Platform Admin'], summary: 'Update a Question of the Day', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } }, responses: { 200: { description: 'QOD updated.' }, 404: { description: 'QOD not found.' } } }
-            },
-            '/api/v1/admin/qod/{id}/status': {
-                patch: { tags: ['Platform Admin'], summary: 'Activate or deactivate a Question of the Day', description: 'A deactivated QOD is not returned to students and does not accept a new submission.', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['is_active'], properties: { is_active: { type: 'boolean', example: false } } } } } }, responses: { 200: { description: 'QOD status updated.' }, 400: { description: 'Invalid ID or status.' }, 404: { description: 'QOD not found.' } } }
-            },
             '/api/v1/admin/moderation/{resource}': {
                 get: { tags: ['Platform Admin'], summary: 'List question feedback or review comments', security: [{ adminBearerAuth: [] }], parameters: [{ name: 'resource', in: 'path', required: true, schema: { type: 'string', enum: ['question-feedback', 'review-comments'] } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'reviewed', 'resolved', 'rejected'] } }], responses: { 200: { description: 'Moderation items returned.' } } }
             },
@@ -3525,7 +3426,7 @@ const swaggerOptions = {
                                         year: { type: 'integer', minimum: 2000, maximum: 2200, example: 2027 },
                                         title: { type: 'string', maxLength: 150, example: 'Platform announcement' },
                                         message: { type: 'string', maxLength: 1000, example: 'A new test is available.' },
-                                        notification_type: { type: 'string', enum: ['GENERAL', 'SYSTEM', 'TEST', 'QOD', 'CHATBOT', 'ACCOUNT', 'REMINDER'], default: 'GENERAL' },
+                                        notification_type: { type: 'string', enum: ['GENERAL', 'SYSTEM', 'TEST', 'CHATBOT', 'ACCOUNT', 'REMINDER'], default: 'GENERAL' },
                                         priority: { type: 'string', enum: ['LOW', 'NORMAL', 'HIGH'], default: 'NORMAL' },
                                         action_url: { type: 'string', maxLength: 500, nullable: true, example: '/tests' },
                                         data: { type: 'object', nullable: true }
@@ -4765,162 +4666,6 @@ const swaggerOptions = {
                     responses: { 200: { description: 'Test scored and stored.' }, 400: { description: 'Invalid payload or answer.' }, 404: { description: 'Previous-year session not found.' }, 409: { description: 'Session already submitted.' } }
                 }
             },
-            '/api/v1/question-of-the-day': {
-                get: {
-                    tags: ['Question of the Day'],
-                    summary: "Get today's Question of the Day",
-                    description: 'Uses the student ID from the JWT, finds the question scheduled for today, and reports whether that student has already answered it. The correct answer is not returned by this endpoint.',
-                    security: [{ bearerAuth: [] }],
-                    responses: {
-                        200: {
-                            description: "Today's question was found.",
-                            content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            status: { type: 'string', example: 'success' },
-                                            data: { $ref: '#/components/schemas/QuestionOfTheDay' }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        401: {
-                            description: 'JWT is missing, invalid, or expired.',
-                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
-                        },
-                        404: {
-                            description: 'No question is scheduled for today.',
-                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
-                        },
-                        500: {
-                            description: 'An unexpected server or database error occurred.',
-                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
-                        }
-                    }
-                }
-            },
-            '/api/v1/question-of-the-day/submit': {
-                post: {
-                    tags: ['Question of the Day'],
-                    summary: "Submit an answer to today's question",
-                    description: 'Validates the selected option, prevents a student from submitting twice, saves the result, and then returns the correct answer and explanation.',
-                    security: [{ bearerAuth: [] }],
-                    requestBody: {
-                        required: true,
-                        content: {
-                            'application/json': {
-                                schema: { $ref: '#/components/schemas/QuestionSubmissionRequest' }
-                            }
-                        }
-                    },
-                    responses: {
-                        201: {
-                            description: 'The answer was saved successfully.',
-                            content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            status: { type: 'string', example: 'success' },
-                                            message: { type: 'string', example: 'Answer submitted successfully.' },
-                                            data: { $ref: '#/components/schemas/QuestionSubmissionResult' }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        400: {
-                            description: 'A required field is missing or selected_option is not A, B, C, or D.',
-                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
-                        },
-                        401: {
-                            description: 'JWT is missing, invalid, or expired.',
-                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
-                        },
-                        404: {
-                            description: 'The supplied question_id does not exist.',
-                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
-                        },
-                        409: {
-                            description: 'The logged-in student has already answered this question.',
-                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
-                        },
-                        500: {
-                            description: 'An unexpected server or database error occurred.',
-                            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
-                        }
-                    }
-                }
-            },
-            '/api/v1/question-of-the-day/streak': {
-                get: {
-                    tags: ['Question of the Day'],
-                    summary: 'Get the logged-in student QOD streak',
-                    description: 'Rebuilds the streak summary from unique QOD participation days and stores it in qod-streaks. A current streak remains active when the last answer was today or yesterday.',
-                    security: [{ bearerAuth: [] }],
-                    responses: {
-                        200: {
-                            description: 'Current and longest streak statistics returned.',
-                            content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            status: { type: 'string', example: 'success' },
-                                            data: { $ref: '#/components/schemas/QodStreak' }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
-                        500: { description: 'Server or database error.' }
-                    }
-                }
-            },
-            '/api/v1/question-of-the-day/streak/history': {
-                get: {
-                    tags: ['Question of the Day'],
-                    summary: 'Get monthly QOD streak history',
-                    description: 'Returns unique QOD participation dates for the requested month. The current month is used when month is omitted.',
-                    security: [{ bearerAuth: [] }],
-                    parameters: [
-                        {
-                            name: 'month',
-                            in: 'query',
-                            required: false,
-                            schema: { type: 'string', pattern: '^\\d{4}-(0[1-9]|1[0-2])$' },
-                            example: '2026-07'
-                        }
-                    ],
-                    responses: {
-                        200: {
-                            description: 'Monthly QOD answer history returned.',
-                            content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            status: { type: 'string', example: 'success' },
-                                            month: { type: 'string', example: '2026-07' },
-                                            timezone: { type: 'string', example: 'Asia/Kolkata' },
-                                            data: {
-                                                type: 'array',
-                                                items: { $ref: '#/components/schemas/QodStreakHistoryEntry' }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        400: { description: 'month is not in YYYY-MM format.' },
-                        401: { description: 'Student token is missing, invalid, expired, or revoked.' },
-                        500: { description: 'Server or database error.' }
-                    }
-                }
-            },
             '/api/v1/ucat/questions': {
                 get: {
                     tags: ['UCAT Questions'],
@@ -5886,7 +5631,7 @@ const swaggerOptions = {
                 get: {
                     tags: ['Student Dashboard'],
                     summary: 'Get aggregated student dashboard summary',
-                    description: 'Returns real-time personalized dashboard snapshot including student profile, QOD streak stats, overall test performance, subject breakdown, AI focus zones, unread notifications, and recent test sessions.',
+                    description: 'Returns real-time personalized dashboard snapshot including student profile, overall test performance, subject breakdown, AI focus zones, unread notifications, and recent test sessions.',
                     security: [{ bearerAuth: [] }],
                     responses: {
                         200: {
@@ -5994,7 +5739,7 @@ const swaggerOptions = {
                 get: {
                     tags: ['Student Dashboard'],
                     summary: 'Get paginated student recent activity timeline',
-                    description: 'Returns student activity timeline (completed tests, QOD attempts, profile updates) with page & limit pagination parameters.',
+                    description: 'Returns student activity timeline (completed tests, profile updates) with page & limit pagination parameters.',
                     security: [{ bearerAuth: [] }],
                     parameters: [
                         { name: 'page', in: 'query', required: false, schema: { type: 'integer', default: 1 } },

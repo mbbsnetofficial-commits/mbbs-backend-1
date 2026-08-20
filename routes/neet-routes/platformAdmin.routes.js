@@ -33,12 +33,6 @@ platformAdminRouter.route("/topics")
 platformAdminRouter.patch("/topics/:id", adminControlController.updateTopic);
 platformAdminRouter.patch("/topics/:id/status", adminControlController.updateTopicStatus);
 
-platformAdminRouter.route("/qod")
-    .get(adminControlController.listQod)
-    .post(adminControlController.createQod);
-platformAdminRouter.patch("/qod/:id", adminControlController.updateQod);
-platformAdminRouter.patch("/qod/:id/status", adminControlController.updateQodStatus);
-
 platformAdminRouter.get("/moderation/:resource", adminControlController.listModeration);
 platformAdminRouter.patch("/moderation/:resource/:itemId", adminControlController.updateModeration);
 platformAdminRouter.post("/notifications", adminControlController.sendNotification);
