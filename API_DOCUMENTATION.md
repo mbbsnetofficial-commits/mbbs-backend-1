@@ -1,167 +1,281 @@
 # 📚 MBBS.NET Ecosystem API Documentation
 
-Welcome to the official API documentation for the **MBBS.NET System**. This ecosystem comprises two decoupled microservices:
-
-1. **MBBS Backend 1 (`MBBS-backend`)**: Primary backend handling Student & Admin Authentication, NEET Practice & Question Bank, UCAT Module, Blog CMS, AI Chat, User Activity Tracking, and Admin Control Panel.
-2. **MBBS Backend 2 (`MBBS-backend-2`)**: Dedicated **CSE (College Search Engine)** handling Destination Country Discovery, Interactive Eligibility Questionnaire, University Matching & Recommendation Algorithm, and Course Details.
+Welcome to the official API documentation for the **MBBS.NET System**. This backend provides comprehensive APIs for Student Authentication, NEET Practice & Examination, UCAT Exam Preparation, Learning Reports & Dashboard Analytics, Blog CMS Engine, AI Tutoring, and Platform Administration.
 
 ---
 
-## 🌐 Service Deployment & Base URLs
+## 🌐 Deployments & Base URLs
 
-| Service Name | Environment | Base URL | Documentation |
-| :--- | :--- | :--- | :--- |
-| **MBBS Backend 1 (Core)** | Production | `https://api.mbbs.net` | `https://api.mbbs.net/api-docs` |
-| **MBBS Backend 2 (CSE Engine)** | Production | `https://cse-api.mbbs.net` | `https://cse-api.mbbs.net/api-docs` |
-| **Local Development** | Local | `http://localhost:3000` | `http://localhost:3000/api-docs` |
+| Environment | Base URL | Swagger UI Documentation |
+| :--- | :--- | :--- |
+| **Production (Railway)** | `https://mbbs-backend-1-production.up.railway.app` | `https://mbbs-backend-1-production.up.railway.app/api-docs` |
+| **Custom Domain** | `https://api.mbbs.net` | `https://api.mbbs.net/api-docs` |
+| **Local Development** | `http://localhost:3000` | `http://localhost:3000/api-docs` |
 
----
-
-## 🔐 Authentication & Authorization Mechanics
-
-The ecosystem uses **JSON Web Tokens (JWT)**. Backend 1 acts as the Identity Provider (IdP).
-
-- **Header Name**: `Authorization`
-- **Header Format**: `Bearer <JWT_TOKEN>`
-- **Token Validity**: Access Tokens expire in `1h`, Refresh Tokens expire in `30d`.
-- **Backend Cross-Validation**: Backend 2 (`MBBS-backend-2`) shares the `SECRET_KEY` with Backend 1 to decode and verify JWT Bearer tokens transparently without extra HTTP hops.
+> 🔒 **Swagger Basic Authentication**: Accessing `/api-docs`, `/swagger.json`, or `/openapi.json` requires basic authentication credentials configured on the server.
 
 ---
 
-## 🚀 API Endpoint Reference Index
+## 🔐 Authentication & Authorization
 
-### 1. Authentication & Account Management (`Backend 1`)
+All authenticated endpoints expect a standard JSON Web Token (JWT) in the `Authorization` header:
+
+```http
+Authorization: Bearer <YOUR_ACCESS_TOKEN>
+```
+
+- **Token Type**: Bearer JWT
+- **Access Token Expiry**: 30 Days (configurable via `LOGIN_EXPIRES`)
+- **Refresh Token Expiry**: 30 Days (configurable via `REFRESH_TOKEN_EXPIRES`)
+- **Admin Tokens**: Separate JWT issued via `POST /api/v1/admin/login`
+
+---
+
+## 📑 Table of Contents
+
+1. [Authentication & Account Management](#1-authentication--account-management)
+2. [Platform Admin Authentication](#2-platform-admin-authentication)
+3. [NEET Practice Tests & Question Bank](#3-neet-practice-tests--question-bank)
+4. [NEET Previous Year Question Papers (PYQ)](#4-neet-previous-year-question-papers-pyq)
+5. [UCAT Entrance Examination Module](#5-ucat-entrance-examination-module)
+6. [Student Dashboard & Learning Reports](#6-student-dashboard--learning-reports)
+7. [Student Profile, Activity & Leaderboard](#7-student-profile-activity--leaderboard)
+8. [Notifications & Question Feedback](#8-notifications--question-feedback)
+9. [Blog CMS & Public Content Engine](#9-blog-cms--public-content-engine)
+10. [Admin Blog Management APIs](#10-admin-blog-management-apis)
+11. [AI Review Tutoring & Blog Assistant](#11-ai-review-tutoring--blog-assistant)
+12. [Standard Response & Error Formats](#12-standard-response--error-formats)
+
+---
+
+## 1. Authentication & Account Management
+
+**Base Path**: `/api/v1/auth`
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/signup` | Register new student account & trigger OTP | None |
-| `POST` | `/api/v1/auth/verify-signup-otp` | Verify OTP and activate student account | None |
-| `POST` | `/api/v1/auth/login` | Login with Phone/Email & Password | None |
-| `POST` | `/api/v1/auth/google-login` | Verify Firebase Google ID Token & Login | None |
-| `POST` | `/api/v1/auth/refresh-token` | Exchange valid Refresh Token for new Access Token | None |
-| `POST` | `/api/v1/auth/send-reset-otp` | Trigger password reset OTP to phone/email | None |
-| `POST` | `/api/v1/auth/verify-reset-otp` | Verify password reset OTP | None |
-| `POST` | `/api/v1/auth/reset-password` | Set new account password via verified OTP session | None |
+| `POST` | `/signup` | Register student with Phone, Email & Password; triggers OTP | None |
+| `POST` | `/verify-signup-otp` | Verify 6-digit WhatsApp/SMS OTP and activate account | None |
+| `POST` | `/login` | Authenticate with Email/Phone & Password | None |
+| `POST` | `/google-login` | Authenticate using Firebase Google ID Token (`idToken`) | None |
+| `POST` | `/refresh-token` | Exchange valid Refresh Token for fresh Access Token | None |
+| `POST` | `/send-reset-otp` | Send password reset OTP to registered Phone/Email | None |
+| `POST` | `/verify-reset-otp` | Verify reset OTP and receive a one-time `resetToken` | None |
+| `POST` | `/reset-password` | Reset password using `resetToken` | None |
+| `POST` | `/change-password` | Update password for logged-in student | `Bearer Token` |
+
+### Sample Payload: Student Signup
+```json
+{
+  "firstName": "Sanjay",
+  "lastName": "Kumar",
+  "email": "sanjay@example.com",
+  "phoneNumber": "8903605604",
+  "password": "password123",
+  "confirmPassword": "password123"
+}
+```
 
 ---
 
-### 2. NEET Practice & Question Bank (`Backend 1`)
+## 2. Platform Admin Authentication
+
+**Base Path**: `/api/v1/admin`
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/test-questions` | Fetch NEET practice questions with subject/topic filters | Optional |
-| `POST` | `/api/v1/test-questions/submit` | Submit practice test session & receive instant score | Bearer Token |
-| `GET` | `/api/v1/leaderboard` | Global & Weekly student performance leaderboard | None |
-| `GET` | `/api/v1/previous-year-tests` | List NEET Previous Year Question (PYQ) Papers | None |
-| `GET` | `/api/v1/previous-year-tests/:id` | Fetch specific PYQ paper with questions | None |
+| `POST` | `/login` | Platform administrator authentication | None |
+| `GET` | `/me` | Retrieve current authenticated admin profile | `Admin Bearer Token` |
 
 ---
 
-### 3. UCAT Entrance Exam Module (`Backend 1`)
+## 3. NEET Practice Tests & Question Bank
+
+**Base Path**: `/api/v1`
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/ucat/test/start` | Initialize a timed UCAT test session | Bearer Token |
-| `POST` | `/api/v1/ucat/test/submit` | Submit UCAT test responses and compute score | Bearer Token |
-| `GET` | `/api/v1/ucat/streaks` | Get student UCAT preparation streak | Bearer Token |
-| `POST` | `/api/v1/ucat/chat` | Send question to AI UCAT Tutor | Bearer Token |
-| `GET` | `/api/v1/ucat/insights` | Fetch AI-driven performance zone insights | Bearer Token |
+| `GET` | `/test-questions` | Fetch practice questions with filters (`subjects`, `chapters`, `limit`, `difficulty`) | Optional |
+| `POST` | `/test-questions/submit` | Submit practice test responses and compute score & review | `Bearer Token` |
+| `GET` | `/test-questions/results/:sessionId` | Fetch detailed score breakdown, question analysis & review | `Bearer Token` |
+| `GET` | `/test-questions/history` | Retrieve student practice test history | `Bearer Token` |
+| `GET` | `/leaderboard` | Top student rankings based on completed test performance | None |
+
+### Sample Payload: Test Submission
+```json
+{
+  "sessionId": "NEET_TEST_1722458400000_123",
+  "answers": [
+    {
+      "question_id": "60a7c1b2c45e8a001c9a1234",
+      "selected_option": "B",
+      "time_spent": 45
+    }
+  ]
+}
+```
 
 ---
 
-### 4. CSE - Open University Finder Engine (`Backend 2`)
+## 4. NEET Previous Year Question Papers (PYQ)
+
+**Base Path**: `/api/v1/previous-year-tests`
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/cse/countries` | **Step 1**: Load available destination countries | None |
-| `GET` | `/api/v1/cse/countries/:countryId/questions` | **Step 2A**: Load country eligibility questionnaire (Path) | None |
-| `POST` | `/api/v1/cse/countries/questions` | **Step 2B**: Load questionnaire (JSON Body `{country_id}`) | None |
-| `POST` | `/api/v1/cse/recommendations` | **Step 3**: Submit student marks/budget & get ranked universities | Optional |
-| `GET` | `/api/v1/cse/recommendations/:sessionId` | Retrieve saved recommendation session results | None |
-| `GET` | `/api/v1/cse/universities/:identifier` | **Step 4**: Fetch university profile, fee structure & courses | None |
-| `POST` | `/api/v1/cse/seed` | Seed initial countries, questions, universities & courses | Admin Key |
+| `GET` | `/` | List all available NEET Previous Year question papers | None |
+| `GET` | `/:id` | Fetch specific PYQ paper details and question set | None |
+| `POST` | `/submit` | Submit completed previous year test paper | `Bearer Token` |
+| `GET` | `/results/:sessionId` | Retrieve result analysis for PYQ attempt | `Bearer Token` |
 
 ---
 
-### 5. Blog & Content Management System (CMS) (`Backend 1`)
+## 5. UCAT Entrance Examination Module
+
+**Base Path**: `/api/v1/ucat`
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/pages` | List published static pages (Terms, Privacy, About) | None |
-| `GET` | `/api/v1/blog-search` | Search articles by keyword, category, or tag | None |
-| `GET` | `/api/v1/blog-reviews` | Public user reviews and feedback on articles | None |
-| `POST` | `/api/v1/blog-reviews` | Submit article review | Bearer Token |
+| `GET` | `/test/questions` | Browse UCAT question bank with section & difficulty filters | None |
+| `GET` | `/test/topics` | List UCAT topics and subtopics per section | None |
+| `GET` | `/test/filters` | Get all available UCAT filter options (sections, difficulties) | None |
+| `POST` | `/test/start` | Initialize timed UCAT practice or test session | `Bearer Token` |
+| `POST` | `/test/submit` | Submit UCAT answers, compute scaled score & band | `Bearer Token` |
+| `GET` | `/test/results/:sessionId` | Retrieve UCAT session performance report | `Bearer Token` |
+| `GET` | `/test/history` | List previous UCAT test attempts | `Bearer Token` |
+| `GET` | `/previous-year-tests` | List past UCAT official examination papers | None |
+| `GET` | `/streaks` | Get student daily practice streak statistics | `Bearer Token` |
+| `POST` | `/streaks/record` | Log practice activity to maintain active streak | `Bearer Token` |
+| `GET` | `/insights/zones` | Fetch student section accuracy and weak/strong zones | `Bearer Token` |
+| `POST` | `/insights/generate` | Generate AI-driven performance insights for a test session | `Bearer Token` |
+| `POST` | `/chat/sessions` | Create AI UCAT review chat session grounded in wrong answers | `Bearer Token` |
+| `POST` | `/chat/sessions/:sessionId/messages` | Send message to AI tutor in an active review chat | `Bearer Token` |
 
 ---
 
-### 6. Admin Blog Management APIs (`Backend 1`)
+## 6. Student Dashboard & Learning Reports
+
+**Base Path**: `/api/v1`
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/admin/blogs` | List all blogs with pagination, filter, search | Admin Token |
-| `POST` | `/api/v1/admin/blogs` | Create a new blog post in DRAFT status | Admin Token |
-| `GET` | `/api/v1/admin/blogs/:id` | Get single blog details by MongoDB ObjectId | Admin Token |
-| `PATCH` | `/api/v1/admin/blogs/:id` | Update fields of an existing blog post | Admin Token |
-| `POST` | `/api/v1/admin/blogs/:id/publish` | Publish a draft or scheduled blog post | Admin Token |
-| `POST` | `/api/v1/admin/blogs/:id/unpublish` | Revert published blog post to DRAFT status | Admin Token |
-| `POST` | `/api/v1/admin/blogs/:id/schedule` | Schedule blog publication for a future date/time | Admin Token |
-| `POST` | `/api/v1/admin/blogs/:id/duplicate` | Duplicate an existing blog as a new draft | Admin Token |
-| `POST` | `/api/v1/admin/blogs/:id/featured-image` | Upload and attach featured banner image | Admin Token |
-| `DELETE` | `/api/v1/admin/blogs/:id` | **Soft Delete Blog**: Marks `isDeleted=true`, status `ARCHIVED` | Admin Token |
-| `DELETE` | `/api/v1/admin/blogs/:id/permanent` | **Permanent Delete Blog**: Permanently purges from DB | Admin Token |
-| `PATCH` | `/api/v1/admin/blogs/:id/restore` | Restore soft-deleted blog back to DRAFT status | Admin Token |
+| `GET` | `/neet/tests/builtin` | List all active built-in NEET tests from database | `Bearer Token` |
+| `GET` | `/student/dashboard/neet-summary` | High-level NEET performance metrics, score cards & stats | `Bearer Token` |
+| `GET` | `/student/dashboard/neet-learning-report` | Unified NEET Learning Report (Built-in + PYQ attempts) | `Bearer Token` |
+| `GET` | `/student/dashboard/neet-learning-report/filters` | Dropdown filter options for NEET learning report | `Bearer Token` |
+| `GET` | `/ucat/tests/builtin` | List all active built-in UCAT test papers | `Bearer Token` |
+| `GET` | `/student/dashboard/ucat-summary` | High-level UCAT performance metrics & subtest scores | `Bearer Token` |
+| `GET` | `/student/dashboard/ucat-learning-report` | Unified UCAT Learning Report | `Bearer Token` |
+| `GET` | `/student/dashboard/ucat-learning-report/filters` | Dropdown filter options for UCAT learning report | `Bearer Token` |
 
 ---
 
-### 7. Student Dashboard APIs (`Backend 1`)
+## 7. Student Profile, Activity & Leaderboard
+
+**Base Path**: `/api/v1`
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/student/dashboard/summary` | Real-time aggregated student dashboard snapshot (profile, streak, stats, saved blogs preview, saved universities) | Bearer Token |
-| `GET` | `/api/v1/student/dashboard/stats` | Compact KPI cards (streak, questions, accuracy, practice time, saved universities count) | Bearer Token |
-| `GET` | `/api/v1/student/dashboard/performance` | In-depth subject accuracy breakdown & score trends | Bearer Token |
-| `GET` | `/api/v1/student/dashboard/recent-activity` | Paginated timeline of student activity history | Bearer Token |
-| `GET` | `/api/v1/student/dashboard/saved-blogs` | List student's bookmarked blogs formatted with full metadata | Bearer Token |
-| `GET` | `/api/v1/student/dashboard/university-finder/saved-universities` | List student's saved target MBBS universities | Bearer Token |
-| `POST` | `/api/v1/student/dashboard/university-finder/save-university` | Bookmark target university for dashboard | Bearer Token |
-| `DELETE` | `/api/v1/student/dashboard/university-finder/save-university/:universityId` | Remove saved university from dashboard | Bearer Token |
-| `GET` | `/api/v1/student/dashboard/university-finder/recommendations` | List saved University Finder recommendation sessions | Bearer Token |
-| `POST` | `/api/v1/student/dashboard/university-finder/recommendations` | Save University Finder quiz search recommendation results | Bearer Token |
+| `GET` | `/student-profile/me` | Fetch authenticated student profile | `Bearer Token` |
+| `POST` | `/student-profile` | Create or update student profile details | `Bearer Token` |
+| `POST` | `/student-activity/record` | Log student in-app learning activity | `Bearer Token` |
+| `GET` | `/user-activity/:userId` | Retrieve activity history for numeric user ID | None |
+| `POST` | `/authors/:authorId/follow` | Follow a blog author | `Bearer Token` |
+| `DELETE` | `/authors/:authorId/follow` | Unfollow a blog author | `Bearer Token` |
+| `GET` | `/authors/following/me` | List authors followed by current student | `Bearer Token` |
+| `POST` | `/blogs/:blogId/like` | Like or unlike a blog article | `Bearer Token` |
+| `POST` | `/blogs/:blogId/save` | Bookmark or unbookmark a blog article | `Bearer Token` |
+| `GET` | `/blogs/saved/me` | List student bookmarked blog articles | `Bearer Token` |
 
 ---
 
-## 📋 Comprehensive Blog Model Fields
+## 8. Notifications & Question Feedback
 
-Below is the complete list of all database schema fields for a Blog entry:
+**Base Path**: `/api/v1`
 
-| Field Name | Type | Required | Description |
+| Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `_id` | ObjectId | Auto | Unique MongoDB Identifier |
-| `title` | String | **Yes** | Article Title (max 250 chars) |
-| `blogCode` | String | Auto | Unique Immutable Code (e.g. `BLG-NEET-2026-X12`) |
-| `slug` | String | **Yes** | URL Slug (Unique, Lowercase) |
-| `shortDescription` | String | No | Brief summary (max 500 chars) |
-| `excerpt` | String | Auto/Optional | Auto-generated or manual text snippet (180 chars) |
-| `content` | Object/String | **Yes** | Full article content (Rich Text / HTML / JSON Blocks) |
-| `blogType` | Enum | No | `BLOG`, `NEWS`, `ARTICLE`, `GUIDE`, `FAQ`, `CASE_STUDY` |
-| `template` | ObjectId | **Yes** | Reference to `BlogTemplate` |
-| `category` | ObjectId | **Yes** | Reference to `BlogCategory` |
-| `tags` | Array[ObjectId] | No | References to `BlogTag` |
-| `author` | ObjectId | **Yes** | Reference to `BlogAuthor` |
-| `featuredImage` | Object | No | `{ url: String, alt: String, caption: String }` |
-| `gallery` | Array[Object] | No | Array of `{ url: String, alt: String }` |
-| `videos` | Array[Object] | No | Array of `{ title: String, url: String }` |
-| `status` | Enum | No | `DRAFT`, `REVIEW`, `SCHEDULED`, `PUBLISHED`, `ARCHIVED` |
-| `visibility` | Enum | No | `PUBLIC`, `PRIVATE`, `PASSWORD` |
-| `password` | String | Conditional | Required if `visibility === "PASSWORD"` |
-| `publishedAt` | Date | Auto | Timestamp when published |
-| `scheduledAt` | Date | Conditional | Future publication timestamp |
-| `isFeatured` | Boolean | Default false | Highlight in featured carousel |
-| `isTrending` | Boolean | Default false | Highlight in trending section |
-| `isPinned` | Boolean | Default false | Pin to top of category listing |
-| `readingTime` | Number | Auto | Calculated reading time in minutes |
-| `totalViews` | Number | Default 0 | Total reader view count |
-| `totalLikes` | Number | Default 0 | Total user like count |
-| `totalShares` | Number | Default 0 | Total share count |
-| `totalComments` | Number | Default 0 | Total comment count |
-| `seo` | Object | No | `{ metaTitle, metaDescription, keywords: [], canonicalUrl, robots }` |
-| `faqs` | Array[Object] | No | Array of `{ question: String, answer: String }` |
-| `relatedBlogs` | Array[ObjectId] | No | References to other `Blog` documents |
-| `metadata` | Object | Default `{}` | Custom key-value metadata |
-| `createdBy` | ObjectId | Auto | Admin user who created the blog |
-| `updatedBy` | ObjectId | Auto | Admin user who last updated the blog |
-| `isDeleted` | Boolean | Default false | Soft deletion flag |
-| `deletedAt` | Date | Default null | Soft deletion timestamp |
+| `GET` | `/notifications` | List student notifications with pagination | `Bearer Token` |
+| `GET` | `/notifications/unread-count` | Get total count of unread notifications | `Bearer Token` |
+| `PATCH` | `/notifications/read-all` | Mark all notifications as read | `Bearer Token` |
+| `PATCH` | `/notifications/:notificationId/read` | Mark a specific notification as read | `Bearer Token` |
+| `DELETE` | `/notifications/:notificationId` | Dismiss a specific notification | `Bearer Token` |
+| `POST` | `/question-feedback` | Submit student feedback or issue on a test question | `Bearer Token` |
+| `GET` | `/question-feedback/:questionId` | Retrieve student feedback for a question | `Bearer Token` |
+| `POST` | `/review-comments` | Submit review comment for test or question | `Bearer Token` |
+| `GET` | `/review-comments/:targetId` | Retrieve review comments for target resource | None |
+
+---
+
+## 9. Blog CMS & Public Content Engine
+
+**Base Path**: `/api/v1`
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/pages` | Fetch public static pages (About, Terms, Privacy) | None |
+| `GET` | `/pages/:slug` | Fetch single page by slug | None |
+| `GET` | `/blog-search` | Search published blogs by keyword, category, tag | None |
+| `GET` | `/blog-reviews` | List approved public article reviews | None |
+| `POST` | `/blog-reviews` | Submit user review on a published blog post | `Bearer Token` |
+
+---
+
+## 10. Admin Blog Management APIs
+
+**Base Path**: `/api/v1/admin`
+
+| Resource | Endpoints | Description | Auth |
+| :--- | :--- | :--- | :--- |
+| **Blogs** | `GET/POST /blogs`, `GET/PATCH/DELETE /blogs/:id` | Full lifecycle CMS (draft, schedule, publish, soft/hard delete, restore) | `Admin Token` |
+| **Publishing** | `POST /blogs/:id/publish`, `/unpublish`, `/schedule`, `/duplicate` | Publication workflow management | `Admin Token` |
+| **Templates** | `GET/POST /blog-templates`, `GET/PATCH/DELETE /blog-templates/:id` | Reusable layout structures and sections | `Admin Token` |
+| **Categories**| `GET/POST /blog-categories`, `GET/PATCH/DELETE /blog-categories/:id` | Hierarchical blog category management | `Admin Token` |
+| **Tags** | `GET/POST /blog-tags`, `GET/PATCH/DELETE /blog-tags/:id` | Searchable tags and metrics | `Admin Token` |
+| **Authors** | `GET/POST /blog-authors`, `GET/PATCH/DELETE /blog-authors/:id` | Author profiles, credentials and social links | `Admin Token` |
+| **Media** | `POST /blog-media/upload`, `GET /blog-media`, `DELETE /blog-media/:id` | Cloudinary asset management | `Admin Token` |
+| **SEO** | `GET/PATCH /blog-seo/:id` | Meta tags, canonical URLs, Schema.org config | `Admin Token` |
+| **Reviews** | `GET/PATCH/DELETE /blog-reviews/:id` | Review moderation, approve/reject reviews | `Admin Token` |
+| **Analytics**| `GET /blog-analytics/overview`, `/performance`, `/views` | Live metrics, readership growth & snapshots | `Admin Token` |
+
+---
+
+## 11. AI Review Tutoring & Blog Assistant
+
+**Base Path**: `/api/v1`
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/chat/sessions` | Initialize AI review chat session grounded in wrong answers | `Bearer Token` |
+| `POST` | `/chat/messages` | Exchange conversational messages with Gemini AI tutor | `Bearer Token` |
+| `POST` | `/admin/ai/generate-content` | Generate blog content sections via Gemini AI | `Admin Token` |
+| `POST` | `/admin/ai/seo-suggestions` | Generate AI meta titles, descriptions & keywords | `Admin Token` |
+
+---
+
+## 12. Standard Response & Error Formats
+
+### Successful Response (`200 OK` / `201 Created`)
+```json
+{
+  "status": "success",
+  "message": "Operation completed successfully.",
+  "data": { ... }
+}
+```
+
+### Error Response (`400 Bad Request` / `401 Unauthorized` / `404 Not Found`)
+```json
+{
+  "status": "fail",
+  "message": "Invalid credentials or request parameters."
+}
+```
+
+### Server Error (`500 Internal Server Error`)
+```json
+{
+  "status": "fail",
+  "message": "An unexpected server error occurred."
+}
+```
