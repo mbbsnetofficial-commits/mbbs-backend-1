@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Notification = require("../../model/neet-models/notification");
+const DeviceToken = require("../../model/neet-models/deviceToken");
 const { createNotificationService } = require("../../services/notification.service");
 const {
     NOTIFICATION_TYPE_ENUM,
@@ -193,6 +194,68 @@ exports.dismissNotification = async (req, res) => {
         return res.status(200).json({
             status: "success",
             message: "Notification dismissed successfully."
+        });
+    } catch (error) {
+        return res.status(500).json({ status: "fail", message: error.message });
+    }
+};
+
+exports.registerDeviceToken = async (req, res) => {
+    try {
+        const { token, device_type = "android", device_id, app_version } = req.body;
+        if (!token || typeof token !== "string" || !token.trim()) {
+            return res.status(400).json({
+                status: "fail",
+                message: "token is required."
+            });
+        }
+
+        const cleanToken = token.trim();
+        const validDeviceType = ["android", "ios", "web"].includes(String(device_type).toLowerCase())
+            ? String(device_type).toLowerCase()
+            : "android";
+
+        await DeviceToken.findOneAndUpdate(
+            { token: cleanToken },
+            {
+                user_id: req.user.id,
+                student_id: req.user.student_id,
+                token: cleanToken,
+                device_type: validDeviceType,
+                device_id: device_id || null,
+                app_version: app_version || null,
+                is_active: true
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        return res.status(200).json({
+            status: "success",
+            message: "Device token registered successfully."
+        });
+    } catch (error) {
+        return res.status(500).json({ status: "fail", message: error.message });
+    }
+};
+
+exports.deactivateDeviceToken = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token || typeof token !== "string" || !token.trim()) {
+            return res.status(400).json({
+                status: "fail",
+                message: "token is required."
+            });
+        }
+
+        await DeviceToken.updateOne(
+            { token: token.trim(), user_id: req.user.id },
+            { $set: { is_active: false } }
+        );
+
+        return res.status(200).json({
+            status: "success",
+            message: "Device token deactivated successfully."
         });
     } catch (error) {
         return res.status(500).json({ status: "fail", message: error.message });

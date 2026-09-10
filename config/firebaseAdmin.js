@@ -21,7 +21,9 @@ const serviceAccountFromEnv = () => {
     return null;
 };
 
-const getFirebaseAuth = () => {
+const { getMessaging } = require("firebase-admin/messaging");
+
+const ensureFirebaseInitialized = () => {
     if (!getApps().length) {
         const serviceAccount = serviceAccountFromEnv();
         initializeApp({
@@ -29,7 +31,16 @@ const getFirebaseAuth = () => {
             projectId: process.env.FIREBASE_PROJECT_ID || "mbbs-e6f31"
         });
     }
+};
+
+const getFirebaseAuth = () => {
+    ensureFirebaseInitialized();
     return getAuth();
 };
 
-module.exports = { getFirebaseAuth };
+const getFirebaseMessaging = () => {
+    ensureFirebaseInitialized();
+    return getMessaging();
+};
+
+module.exports = { getFirebaseAuth, getFirebaseMessaging };

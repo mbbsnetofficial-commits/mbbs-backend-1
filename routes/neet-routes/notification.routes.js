@@ -11,6 +11,11 @@ notificationRouter
     .post(notificationController.createNotification)
     .get(notificationController.listNotifications);
 
+notificationRouter
+    .route("/notifications/device-token")
+    .post(notificationController.registerDeviceToken)
+    .delete(notificationController.deactivateDeviceToken);
+
 notificationRouter.get(
     "/notifications/unread-count",
     notificationController.getUnreadCount

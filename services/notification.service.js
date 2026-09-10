@@ -1,6 +1,94 @@
 const Notification = require("../model/neet-models/notification");
 const Auth = require("../model/neet-models/auth");
 const StudentProfile = require("../model/neet-models/studentProfile");
+const DeviceToken = require("../model/neet-models/deviceToken");
+
+const sendPushNotificationToUsers = async ({
+    userIds,
+    title,
+    message,
+    notificationType = "GENERAL",
+    priority = "normal",
+    actionUrl = null,
+    data = null
+}) => {
+    try {
+        if (!userIds || !userIds.length) return;
+
+        const deviceTokens = await DeviceToken.find({
+            user_id: { $in: userIds },
+            is_active: true
+        }).select("token").lean();
+
+        if (!deviceTokens || !deviceTokens.length) return;
+
+        const tokens = deviceTokens.map(dt => dt.token).filter(Boolean);
+        if (!tokens.length) return;
+
+        const { getFirebaseMessaging } = require("../config/firebaseAdmin");
+        const messaging = getFirebaseMessaging();
+
+        const normType = String(notificationType || "GENERAL").toUpperCase();
+        const isTest = normType === "TEST" || normType === "RESULT";
+        const channelId = isTest ? "mbbs_tests_channel" : "mbbs_general_notifications";
+        const isHighPriority = priority === "urgent" || priority === "high" || isTest;
+
+        const chunkSize = 500;
+        for (let i = 0; i < tokens.length; i += chunkSize) {
+            const batchTokens = tokens.slice(i, i + chunkSize);
+            const payload = {
+                tokens: batchTokens,
+                notification: {
+                    title,
+                    body: message
+                },
+                data: {
+                    type: normType,
+                    title,
+                    body: message,
+                    action_url: actionUrl ? String(actionUrl) : "",
+                    ...(data && typeof data === "object"
+                        ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)]))
+                        : {})
+                },
+                android: {
+                    priority: isHighPriority ? "high" : "normal",
+                    notification: {
+                        channelId,
+                        icon: "ic_notification",
+                        sound: "default"
+                    }
+                }
+            };
+
+            const response = await messaging.sendEachForMulticast(payload);
+
+            if (response.failureCount > 0) {
+                const invalidTokens = [];
+                response.responses.forEach((resp, idx) => {
+                    if (!resp.success) {
+                        const code = resp.error?.code;
+                        if (
+                            code === "messaging/registration-token-not-registered" ||
+                            code === "messaging/invalid-registration-token"
+                        ) {
+                            invalidTokens.push(batchTokens[idx]);
+                        }
+                    }
+                });
+
+                if (invalidTokens.length > 0) {
+                    await DeviceToken.updateMany(
+                        { token: { $in: invalidTokens } },
+                        { $set: { is_active: false } }
+                    );
+                }
+            }
+        }
+    } catch (pushErr) {
+        console.error("⚠️ [Push Notification Error]:", pushErr.message);
+    }
+};
 
 exports.createNotificationService = async ({
     userId,
@@ -11,16 +99,30 @@ exports.createNotificationService = async ({
     priority = "normal",
     actionUrl = null,
     data = null
-}) => Notification.create({
-    user_id: userId,
-    student_id: studentId,
-    title,
-    message,
-    notification_type: notificationType,
-    priority,
-    action_url: actionUrl,
-    data
-});
+}) => {
+    const notification = await Notification.create({
+        user_id: userId,
+        student_id: studentId,
+        title,
+        message,
+        notification_type: notificationType,
+        priority,
+        action_url: actionUrl,
+        data
+    });
+
+    sendPushNotificationToUsers({
+        userIds: [userId],
+        title,
+        message,
+        notificationType,
+        priority,
+        actionUrl,
+        data
+    }).catch(() => {});
+
+    return notification;
+};
 
 const escapedRegex = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -102,6 +204,18 @@ exports.broadcastNotificationService = async ({
     }
 
     const matchedStudentIds = new Set(recipients.map(user => user.student_id));
+
+    // Dispatch FCM push notifications to all recipients
+    sendPushNotificationToUsers({
+        userIds: recipients.map(u => u._id),
+        title,
+        message,
+        notificationType,
+        priority,
+        actionUrl,
+        data
+    }).catch(() => {});
+
     return {
         audience,
         matched_recipients: recipients.length,
