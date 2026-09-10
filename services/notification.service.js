@@ -58,6 +58,21 @@ const sendPushNotificationToUsers = async ({
                         icon: "ic_notification",
                         sound: "default"
                     }
+                },
+                apns: {
+                    headers: {
+                        "apns-priority": isHighPriority ? "10" : "5"
+                    },
+                    payload: {
+                        aps: {
+                            alert: {
+                                title,
+                                body: message
+                            },
+                            sound: "default",
+                            badge: 1
+                        }
+                    }
                 }
             };
 
