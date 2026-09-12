@@ -154,7 +154,8 @@ exports.sendFcmPushToTokens = async ({
             apns: {
                 headers: {
                     "apns-priority": isHighPriority ? "10" : "5",
-                    "apns-push-type": "alert"
+                    "apns-push-type": "alert",
+                    "apns-topic": "com.mbbs.Mbbs"
                 },
                 payload: {
                     aps: {
@@ -250,7 +251,8 @@ exports.sendDirectPushToSingleToken = async ({
         apns: {
             headers: {
                 "apns-priority": "10",
-                "apns-push-type": "alert"
+                "apns-push-type": "alert",
+                "apns-topic": "com.mbbs.Mbbs"
             },
             payload: {
                 aps: {
