@@ -12,25 +12,20 @@ const INVALID_TOKEN_ERROR_CODES = new Set([
     "messaging/mismatched-credential"
 ]);
 
-exports.createNotificationService = async ({
-    userId,
-    studentId,
-    title,
-    message,
-    notificationType = "system",
-    priority = "normal",
-    actionUrl = null,
-    data = null
-}) => Notification.create({
-    user_id: userId,
-    student_id: studentId,
-    title,
-    message,
-    notification_type: notificationType,
-    priority,
-    action_url: actionUrl,
-    data
-});
+const sanitizeDataPayload = data => {
+    if (!data || typeof data !== "object") return {};
+    const sanitized = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (value === null || value === undefined) {
+            sanitized[key] = "";
+        } else if (typeof value === "object") {
+            sanitized[key] = JSON.stringify(value);
+        } else {
+            sanitized[key] = String(value);
+        }
+    }
+    return sanitized;
+};
 
 exports.registerDeviceTokenService = async ({
     userId,
@@ -84,21 +79,6 @@ exports.deactivateDeviceTokenService = async ({ userId, token, deviceId = null }
     return { modifiedCount: result.modifiedCount };
 };
 
-const sanitizeDataPayload = data => {
-    if (!data || typeof data !== "object") return {};
-    const sanitized = {};
-    for (const [key, value] of Object.entries(data)) {
-        if (value === null || value === undefined) {
-            sanitized[key] = "";
-        } else if (typeof value === "object") {
-            sanitized[key] = JSON.stringify(value);
-        } else {
-            sanitized[key] = String(value);
-        }
-    }
-    return sanitized;
-};
-
 exports.sendFcmPushToTokens = async ({
     tokens = [],
     title,
@@ -111,7 +91,7 @@ exports.sendFcmPushToTokens = async ({
 }) => {
     const uniqueTokens = Array.from(new Set(tokens.filter(t => typeof t === "string" && t.trim().length > 0)));
     if (!uniqueTokens.length) {
-        return { success: true, total: 0, sentCount: 0, failedCount: 0, deactivatedTokens: [] };
+        return { success: true, total: 0, sentCount: 0, failedCount: 0, deactivatedTokensCount: 0 };
     }
 
     if (!isFirebaseConfigured()) {
@@ -121,14 +101,19 @@ exports.sendFcmPushToTokens = async ({
             total: uniqueTokens.length,
             sentCount: 0,
             failedCount: uniqueTokens.length,
-            deactivatedTokens: []
+            deactivatedTokensCount: 0
         };
     }
 
     const messaging = getFirebaseMessaging();
+    const normType = String(notificationType || "GENERAL").toUpperCase();
+    const isTest = normType === "TEST" || normType === "RESULT";
+    const resolvedChannelId = isTest ? "mbbs_tests_channel" : channelId;
+    const isHighPriority = priority === "urgent" || priority === "high" || isTest;
+
     const stringData = sanitizeDataPayload({
         ...data,
-        type: String(notificationType).toUpperCase(),
+        type: normType,
         title: title || "",
         body: body || ""
     });
@@ -147,13 +132,28 @@ exports.sendFcmPushToTokens = async ({
             },
             data: stringData,
             android: {
-                priority: priority === "high" ? "high" : "normal",
+                priority: isHighPriority ? "high" : "normal",
                 notification: {
-                    channelId,
+                    channelId: resolvedChannelId,
                     sound,
                     defaultSound: true,
                     defaultVibrateTimings: true,
                     clickAction: "MBBS_NOTIFICATION_CLICK"
+                }
+            },
+            apns: {
+                headers: {
+                    "apns-priority": isHighPriority ? "10" : "5"
+                },
+                payload: {
+                    aps: {
+                        alert: {
+                            title: String(title || "MBBS.net"),
+                            body: String(body || "")
+                        },
+                        sound: sound || "default",
+                        badge: 1
+                    }
                 }
             }
         };
@@ -190,6 +190,60 @@ exports.sendFcmPushToTokens = async ({
         failedCount,
         deactivatedTokensCount: invalidTokens.length
     };
+};
+
+exports.sendPushNotificationToUsers = async ({
+    userIds = [],
+    title,
+    message,
+    body,
+    notificationType = "GENERAL",
+    priority = "normal",
+    actionUrl = null,
+    data = {}
+}) => {
+    return exports.sendNotificationToUsers(userIds, {
+        title,
+        body: body || message,
+        data,
+        notificationType,
+        priority: priority === "urgent" || priority === "high" ? "high" : "normal",
+        actionUrl
+    });
+};
+
+exports.createNotificationService = async ({
+    userId,
+    studentId,
+    title,
+    message,
+    notificationType = "system",
+    priority = "normal",
+    actionUrl = null,
+    data = null
+}) => {
+    const notification = await Notification.create({
+        user_id: userId,
+        student_id: studentId,
+        title,
+        message,
+        notification_type: notificationType,
+        priority,
+        action_url: actionUrl,
+        data
+    });
+
+    exports.sendPushNotificationToUsers({
+        userIds: [userId],
+        title,
+        message,
+        notificationType,
+        priority,
+        actionUrl,
+        data
+    }).catch(() => {});
+
+    return notification;
 };
 
 exports.sendNotificationToUser = async (userId, {
@@ -381,6 +435,7 @@ exports.broadcastNotificationService = async ({
     }
 
     const matchedStudentIds = new Set(recipients.map(user => user.student_id));
+
     return {
         audience,
         matched_recipients: recipients.length,

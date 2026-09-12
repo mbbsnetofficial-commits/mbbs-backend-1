@@ -6,17 +6,19 @@ const notificationRouter = express.Router();
 
 notificationRouter.use("/notifications", protect);
 
-// Device token registration & deactivation for FCM push notifications
-notificationRouter.post(
-    "/notifications/device-token",
-    notificationController.registerDeviceToken
-);
-notificationRouter.delete(
-    "/notifications/device-token",
-    notificationController.deactivateDeviceToken
-);
+// In-app notifications collection & list
+notificationRouter
+    .route("/notifications")
+    .post(notificationController.createNotification)
+    .get(notificationController.listNotifications);
 
-// Admin & internal push notification dispatch
+// Device token registration & deactivation for FCM push notifications
+notificationRouter
+    .route("/notifications/device-token")
+    .post(notificationController.registerDeviceToken)
+    .delete(notificationController.deactivateDeviceToken);
+
+// Direct & broadcast notification dispatch
 notificationRouter.post(
     "/notifications/send",
     notificationController.sendDirectNotification
@@ -26,27 +28,23 @@ notificationRouter.post(
     notificationController.broadcastPushNotification
 );
 
-// In-app notifications
-notificationRouter
-    .route("/notifications")
-    .post(notificationController.createNotification)
-    .get(notificationController.listNotifications);
-
+// Unread count
 notificationRouter.get(
     "/notifications/unread-count",
     notificationController.getUnreadCount
 );
 
+// Read state updates
 notificationRouter.patch(
     "/notifications/read-all",
     notificationController.markAllNotificationsAsRead
 );
-
 notificationRouter.patch(
     "/notifications/:notificationId/read",
     notificationController.markNotificationAsRead
 );
 
+// Dismiss / delete
 notificationRouter.delete(
     "/notifications/:notificationId",
     notificationController.dismissNotification
