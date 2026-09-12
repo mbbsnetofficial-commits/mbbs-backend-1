@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Notification = require("../model/neet-models/notification");
 const Auth = require("../model/neet-models/auth");
 const StudentProfile = require("../model/neet-models/studentProfile");
@@ -116,10 +117,13 @@ exports.sendFcmPushToTokens = async ({
     const isHighPriority = priority === "urgent" || priority === "high" || isTest;
 
     const stringData = sanitizeDataPayload({
-        ...data,
+        ...(data || {}),
         type: normType,
         title: String(textTitle),
-        body: String(textBody)
+        body: String(textBody),
+        message: String(textBody),
+        notification_type: normType,
+        click_action: "FLUTTER_NOTIFICATION_CLICK"
     });
 
     let sentCount = 0;
@@ -143,7 +147,7 @@ exports.sendFcmPushToTokens = async ({
                     sound: sound || "default",
                     defaultSound: true,
                     defaultVibrateTimings: true,
-                    clickAction: "MBBS_NOTIFICATION_CLICK"
+                    clickAction: "FLUTTER_NOTIFICATION_CLICK"
                 }
             },
             apns: {
@@ -171,6 +175,7 @@ exports.sendFcmPushToTokens = async ({
             response.responses.forEach((resp, idx) => {
                 if (!resp.success && resp.error) {
                     const errorCode = resp.error.code;
+                    console.warn(`⚠️ [FCM Token Response ${chunk[idx].slice(0, 15)}...]:`, errorCode, resp.error.message);
                     if (INVALID_TOKEN_ERROR_CODES.has(errorCode)) {
                         invalidTokens.push(chunk[idx]);
                     }
@@ -365,20 +370,21 @@ exports.sendNotificationToUsers = async (userIds = [], {
 const escapedRegex = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const resolveAudience = async ({ audience, studentIds, batch, course, year }) => {
-    const hasStudentId = { student_id: { $type: "string", $ne: "" } };
     if (audience === "ALL_STUDENTS") {
-        return Auth.find(hasStudentId).select("_id student_id").lean();
+        return Auth.find({}).select("_id student_id").lean();
     }
     if (audience === "ACTIVE_STUDENTS") {
         return Auth.find({
-            ...hasStudentId,
             is_active: { $ne: false }
         }).select("_id student_id").lean();
     }
     if (audience === "SELECTED_STUDENTS") {
-        return Auth.find({ student_id: { $in: studentIds } })
-            .select("_id student_id")
-            .lean();
+        return Auth.find({
+            $or: [
+                { student_id: { $in: studentIds } },
+                { _id: { $in: studentIds.filter(id => mongoose.isValidObjectId(id)) } }
+            ]
+        }).select("_id student_id").lean();
     }
 
     const profileFilter = { is_active: { $ne: false } };
@@ -413,6 +419,7 @@ exports.broadcastNotificationService = async ({
     sendPush = true
 }) => {
     const textBody = message || body || "";
+    const textTitle = title || "MBBS.net";
     const recipients = await resolveAudience({
         audience,
         studentIds,
@@ -423,8 +430,8 @@ exports.broadcastNotificationService = async ({
     const createdAt = new Date();
     const documents = recipients.map(user => ({
         user_id: user._id,
-        student_id: user.student_id,
-        title,
+        student_id: user.student_id || null,
+        title: textTitle,
         message: textBody,
         notification_type: String(notificationType).toLowerCase(),
         priority: priority === "high" || priority === "urgent" ? "high" : "normal",
@@ -435,36 +442,45 @@ exports.broadcastNotificationService = async ({
     }));
 
     let createdCount = 0;
-    const chunkSize = 1000;
-    for (let index = 0; index < documents.length; index += chunkSize) {
-        const created = await Notification.insertMany(
-            documents.slice(index, index + chunkSize),
-            { ordered: false }
-        );
-        createdCount += created.length;
+    if (documents.length > 0) {
+        const chunkSize = 1000;
+        for (let index = 0; index < documents.length; index += chunkSize) {
+            const created = await Notification.insertMany(
+                documents.slice(index, index + chunkSize),
+                { ordered: false }
+            );
+            createdCount += created.length;
+        }
     }
 
     let pushResult = null;
-    if (sendPush && recipients.length > 0) {
-        const recipientUserIds = recipients.map(r => r._id);
-        const recipientStudentIds = recipients.map(r => r.student_id).filter(Boolean);
+    if (sendPush) {
+        let tokens = [];
+        if (audience === "ALL_STUDENTS") {
+            tokens = await DeviceToken.find({ is_active: true }).distinct("token");
+        } else if (recipients.length > 0) {
+            const recipientUserIds = recipients.map(r => r._id);
+            const recipientStudentIds = recipients.map(r => r.student_id).filter(Boolean);
 
-        const tokens = await DeviceToken.find({
-            $or: [
-                { user_id: { $in: recipientUserIds } },
-                ...(recipientStudentIds.length ? [{ student_id: { $in: recipientStudentIds } }] : [])
-            ],
-            is_active: true
-        }).distinct("token");
+            tokens = await DeviceToken.find({
+                $or: [
+                    { user_id: { $in: recipientUserIds } },
+                    ...(recipientStudentIds.length ? [{ student_id: { $in: recipientStudentIds } }] : [])
+                ],
+                is_active: true
+            }).distinct("token");
+        }
 
-        pushResult = await exports.sendFcmPushToTokens({
-            tokens,
-            title,
-            body: textBody,
-            data: { ...(data || {}), action_url: actionUrl || "" },
-            notificationType,
-            priority
-        });
+        if (tokens.length > 0) {
+            pushResult = await exports.sendFcmPushToTokens({
+                tokens,
+                title: textTitle,
+                body: textBody,
+                data: { ...(data || {}), action_url: actionUrl || "" },
+                notificationType,
+                priority
+            });
+        }
     }
 
     const matchedStudentIds = new Set(recipients.map(user => user.student_id));
