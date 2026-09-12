@@ -47,6 +47,10 @@ notificationRouter.post(
     "/notifications/broadcast",
     notificationController.broadcastPushNotification
 );
+notificationRouter.post(
+    "/notifications/test-token",
+    notificationController.testDeviceTokenPush
+);
 
 // Unread count
 notificationRouter.get(

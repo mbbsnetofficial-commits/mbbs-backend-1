@@ -153,7 +153,8 @@ exports.sendFcmPushToTokens = async ({
             },
             apns: {
                 headers: {
-                    "apns-priority": isHighPriority ? "10" : "5"
+                    "apns-priority": isHighPriority ? "10" : "5",
+                    "apns-push-type": "alert"
                 },
                 payload: {
                     aps: {
@@ -162,8 +163,11 @@ exports.sendFcmPushToTokens = async ({
                             body: String(textBody)
                         },
                         sound: sound || "default",
-                        badge: 1
-                    }
+                        badge: 1,
+                        contentAvailable: true,
+                        mutableContent: true
+                    },
+                    ...stringData
                 }
             }
         };
@@ -202,6 +206,70 @@ exports.sendFcmPushToTokens = async ({
         failedCount,
         deactivatedTokensCount: invalidTokens.length
     };
+};
+
+exports.sendDirectPushToSingleToken = async ({
+    token,
+    title = "MBBS.net Alert",
+    body = "Test push notification",
+    data = {},
+    sound = "default"
+}) => {
+    if (!token || typeof token !== "string" || !token.trim()) {
+        throw new Error("Device token is required.");
+    }
+    if (!isFirebaseConfigured()) {
+        throw new Error("Firebase Admin credentials are not configured on the server.");
+    }
+
+    const messaging = getFirebaseMessaging();
+    const stringData = sanitizeDataPayload({
+        ...(data || {}),
+        title: String(title),
+        body: String(body),
+        click_action: "FLUTTER_NOTIFICATION_CLICK"
+    });
+
+    const message = {
+        token: token.trim(),
+        notification: {
+            title: String(title),
+            body: String(body)
+        },
+        data: stringData,
+        android: {
+            priority: "high",
+            notification: {
+                channelId: "mbbs_general_notifications",
+                sound: sound || "default",
+                defaultSound: true,
+                defaultVibrateTimings: true,
+                clickAction: "FLUTTER_NOTIFICATION_CLICK"
+            }
+        },
+        apns: {
+            headers: {
+                "apns-priority": "10",
+                "apns-push-type": "alert"
+            },
+            payload: {
+                aps: {
+                    alert: {
+                        title: String(title),
+                        body: String(body)
+                    },
+                    sound: sound || "default",
+                    badge: 1,
+                    contentAvailable: true,
+                    mutableContent: true
+                },
+                ...stringData
+            }
+        }
+    };
+
+    const response = await messaging.send(message);
+    return { success: true, messageId: response, token: token.trim() };
 };
 
 exports.sendPushNotificationToUsers = async ({

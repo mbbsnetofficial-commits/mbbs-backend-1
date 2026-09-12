@@ -7,6 +7,7 @@ const {
     deactivateDeviceTokenService,
     sendNotificationToUser,
     sendNotificationToUsers,
+    sendDirectPushToSingleToken,
     broadcastNotificationService,
     sendIncompleteTestNotificationService,
     sendUniversityInviteNotificationService,
@@ -22,6 +23,47 @@ const getOwnerFilter = req => ({
     student_id: req.user.student_id,
     is_deleted: false
 });
+
+/**
+ * Diagnostic test endpoint to test iOS/Android push notification directly with a token
+ */
+exports.testDeviceTokenPush = async (req, res) => {
+    try {
+        const token = req.body.token || req.body.deviceToken || req.body.fcmToken;
+        const title = req.body.title || "MBBS.net iOS Test";
+        const body = req.body.body || req.body.message || "Push notification is working perfectly on your device!";
+        const data = req.body.data || {};
+
+        if (!token || typeof token !== "string" || !token.trim()) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "token is required and must be a non-empty string."
+            });
+        }
+
+        const result = await sendDirectPushToSingleToken({
+            token: token.trim(),
+            title,
+            body,
+            data
+        });
+
+        return res.status(200).json({
+            status: "success",
+            success: true,
+            message: "Push notification successfully delivered to FCM gateway.",
+            data: result
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "fail",
+            success: false,
+            message: error.message,
+            code: error.code || null
+        });
+    }
+};
 
 exports.registerDeviceToken = async (req, res) => {
     try {
