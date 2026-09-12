@@ -136,7 +136,7 @@ const server = app.listen(0, async () => {
         assert.strictEqual(res.statusCode, 204);
         assert.strictEqual(res.headers["access-control-allow-origin"], "https://mbbs.net");
         assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
-        console.log("✔ Preflight Test: OPTIONS allowed for trusted origin");
+        console.log("✔ Preflight Test: OPTIONS allowed for trusted origin on NEET auth");
 
         res = await makeRequest("/api/v1/auth/login", {
             "Origin": "https://evil.com",
@@ -144,7 +144,46 @@ const server = app.listen(0, async () => {
             "Access-Control-Request-Headers": "Content-Type"
         }, "OPTIONS");
         assert.strictEqual(res.headers["access-control-allow-origin"], undefined, "Preflight must not set allow-origin for untrusted origin");
-        console.log("✔ Preflight Test: OPTIONS rejected CORS headers for untrusted origin");
+        console.log("✔ Preflight Test: OPTIONS rejected CORS headers for untrusted origin on NEET auth");
+
+        // Backend-2 (UCAT) Tests:
+        // Test UCAT Streaks
+        res = await makeRequest("/api/v1/ucat/streaks", { "Origin": "https://student.mbbs.net" });
+        assert.strictEqual(res.headers["access-control-allow-origin"], "https://student.mbbs.net");
+        assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
+        console.log("✔ Backend-2 (UCAT): Trusted origin https://student.mbbs.net allowed on '/api/v1/ucat/streaks'");
+
+        res = await makeRequest("/api/v1/ucat/streaks", { "Origin": "https://evil.com" });
+        assert.strictEqual(res.headers["access-control-allow-origin"], undefined, "Must NOT reflect untrusted origin on UCAT routes");
+        console.log("✔ Backend-2 (UCAT): Untrusted origin https://evil.com blocked on '/api/v1/ucat/streaks'");
+
+        // Test UCAT Previous Year Tests Preflight OPTIONS
+        res = await makeRequest("/api/v1/ucat/previous-year-tests", {
+            "Origin": "https://portal.mbbs.net",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Authorization"
+        }, "OPTIONS");
+        assert.strictEqual(res.statusCode, 204);
+        assert.strictEqual(res.headers["access-control-allow-origin"], "https://portal.mbbs.net");
+        assert.strictEqual(res.headers["access-control-allow-credentials"], "true");
+        console.log("✔ Backend-2 (UCAT): Preflight OPTIONS allowed for trusted origin on '/api/v1/ucat/previous-year-tests'");
+
+        res = await makeRequest("/api/v1/ucat/previous-year-tests", {
+            "Origin": "https://evil.com",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Authorization"
+        }, "OPTIONS");
+        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
+        console.log("✔ Backend-2 (UCAT): Preflight OPTIONS blocked for untrusted origin on '/api/v1/ucat/previous-year-tests'");
+
+        // Test UCAT Chat endpoint
+        res = await makeRequest("/api/v1/ucat/chat", { "Origin": "https://mbbs.net" });
+        assert.strictEqual(res.headers["access-control-allow-origin"], "https://mbbs.net");
+        console.log("✔ Backend-2 (UCAT): Trusted origin https://mbbs.net allowed on '/api/v1/ucat/chat'");
+
+        res = await makeRequest("/api/v1/ucat/chat", { "Origin": "https://attackermbbs.net" });
+        assert.strictEqual(res.headers["access-control-allow-origin"], undefined);
+        console.log("✔ Backend-2 (UCAT): Prefix spoof origin https://attackermbbs.net blocked on '/api/v1/ucat/chat'");
 
         // Non-browser request without Origin header
         res = await makeRequest("/health");
