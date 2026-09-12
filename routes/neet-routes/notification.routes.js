@@ -6,6 +6,27 @@ const notificationRouter = express.Router();
 
 notificationRouter.use("/notifications", protect);
 
+// Device token registration & deactivation for FCM push notifications
+notificationRouter.post(
+    "/notifications/device-token",
+    notificationController.registerDeviceToken
+);
+notificationRouter.delete(
+    "/notifications/device-token",
+    notificationController.deactivateDeviceToken
+);
+
+// Admin & internal push notification dispatch
+notificationRouter.post(
+    "/notifications/send",
+    notificationController.sendDirectNotification
+);
+notificationRouter.post(
+    "/notifications/broadcast",
+    notificationController.broadcastPushNotification
+);
+
+// In-app notifications
 notificationRouter
     .route("/notifications")
     .post(notificationController.createNotification)

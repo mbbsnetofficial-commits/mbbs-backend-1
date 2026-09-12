@@ -195,6 +195,10 @@ Authorization: Bearer <YOUR_ACCESS_TOKEN>
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
+| `POST` | `/notifications/device-token` | Register/refresh FCM device token for push notifications | `Bearer Token` |
+| `DELETE` | `/notifications/device-token` | Deactivate FCM device token on logout | `Bearer Token` |
+| `POST` | `/notifications/send` | Send targeted push & in-app notification to user(s) | `Bearer Token` |
+| `POST` | `/notifications/broadcast` | Broadcast push & in-app notification to students | `Bearer Token` |
 | `GET` | `/notifications` | List student notifications with pagination | `Bearer Token` |
 | `GET` | `/notifications/unread-count` | Get total count of unread notifications | `Bearer Token` |
 | `PATCH` | `/notifications/read-all` | Mark all notifications as read | `Bearer Token` |

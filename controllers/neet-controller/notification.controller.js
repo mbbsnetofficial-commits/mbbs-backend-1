@@ -1,6 +1,13 @@
 const mongoose = require("mongoose");
 const Notification = require("../../model/neet-models/notification");
-const { createNotificationService } = require("../../services/notification.service");
+const {
+    createNotificationService,
+    registerDeviceTokenService,
+    deactivateDeviceTokenService,
+    sendNotificationToUser,
+    sendNotificationToUsers,
+    broadcastNotificationService
+} = require("../../services/notification.service");
 const {
     NOTIFICATION_TYPE_ENUM,
     NOTIFICATION_PRIORITY_ENUM
@@ -12,11 +19,74 @@ const getOwnerFilter = req => ({
     is_deleted: false
 });
 
+exports.registerDeviceToken = async (req, res) => {
+    try {
+        const token = req.body.token || req.body.deviceToken || req.body.fcmToken;
+        const deviceType = req.body.deviceType || req.body.device_type || "android";
+        const deviceId = req.body.deviceId || req.body.device_id || null;
+        const appVersion = req.body.appVersion || req.body.app_version || null;
+
+        if (!token || typeof token !== "string" || !token.trim()) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "token is required and must be a non-empty string."
+            });
+        }
+
+        const deviceRecord = await registerDeviceTokenService({
+            userId: req.user.id,
+            studentId: req.user.student_id,
+            token: token.trim(),
+            deviceType,
+            deviceId,
+            appVersion
+        });
+
+        return res.status(200).json({
+            status: "success",
+            success: true,
+            message: "FCM device token registered successfully.",
+            data: {
+                _id: deviceRecord._id,
+                device_type: deviceRecord.device_type,
+                device_id: deviceRecord.device_id,
+                app_version: deviceRecord.app_version,
+                is_active: deviceRecord.is_active,
+                last_used_at: deviceRecord.last_used_at
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({ status: "fail", success: false, message: error.message });
+    }
+};
+
+exports.deactivateDeviceToken = async (req, res) => {
+    try {
+        const token = req.body.token || req.query.token;
+        const deviceId = req.body.deviceId || req.body.device_id || req.query.deviceId;
+
+        await deactivateDeviceTokenService({
+            userId: req.user.id,
+            token,
+            deviceId
+        });
+
+        return res.status(200).json({
+            status: "success",
+            success: true,
+            message: "Device token deactivated successfully."
+        });
+    } catch (error) {
+        return res.status(500).json({ status: "fail", success: false, message: error.message });
+    }
+};
+
 exports.createNotification = async (req, res) => {
     try {
         const title = typeof req.body.title === "string" ? req.body.title.trim() : "";
         const message = typeof req.body.message === "string" ? req.body.message.trim() : "";
-        const notificationType = req.body.notification_type || "system";
+        const notificationType = req.body.notification_type || req.body.type || "system";
         const priority = req.body.priority || "normal";
         const actionUrl = typeof req.body.action_url === "string"
             ? req.body.action_url.trim() || null
@@ -34,7 +104,8 @@ exports.createNotification = async (req, res) => {
                 message: "message is required and cannot exceed 1000 characters."
             });
         }
-        if (!NOTIFICATION_TYPE_ENUM.includes(notificationType)) {
+        const normalizedType = String(notificationType).toLowerCase();
+        if (!NOTIFICATION_TYPE_ENUM.includes(normalizedType)) {
             return res.status(400).json({
                 status: "fail",
                 message: `notification_type must be one of: ${NOTIFICATION_TYPE_ENUM.join(", ")}.`
@@ -52,7 +123,7 @@ exports.createNotification = async (req, res) => {
             studentId: req.user.student_id,
             title,
             message,
-            notificationType,
+            notificationType: normalizedType,
             priority,
             actionUrl,
             data: req.body.data ?? null
@@ -65,6 +136,146 @@ exports.createNotification = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({ status: "fail", message: error.message });
+    }
+};
+
+exports.sendDirectNotification = async (req, res) => {
+    try {
+        const targetUserId = req.body.userId || req.body.user_id;
+        const targetUserIds = req.body.userIds || req.body.user_ids;
+        const title = typeof req.body.title === "string" ? req.body.title.trim() : "";
+        const body = typeof req.body.body === "string"
+            ? req.body.body.trim()
+            : typeof req.body.message === "string"
+                ? req.body.message.trim()
+                : "";
+        const notificationType = req.body.type || req.body.notification_type || "GENERAL";
+        const priority = req.body.priority || "high";
+        const actionUrl = req.body.actionUrl || req.body.action_url || null;
+        const data = req.body.data || {};
+
+        if (!title) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "title is required."
+            });
+        }
+        if (!body) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "body/message is required."
+            });
+        }
+
+        if (Array.isArray(targetUserIds) && targetUserIds.length > 0) {
+            const result = await sendNotificationToUsers(targetUserIds, {
+                title,
+                body,
+                data,
+                notificationType,
+                priority,
+                actionUrl
+            });
+            return res.status(200).json({
+                status: "success",
+                success: true,
+                message: "Notifications sent to user list.",
+                data: result
+            });
+        }
+
+        if (!targetUserId) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "userId or userIds array is required."
+            });
+        }
+
+        if (!mongoose.isValidObjectId(targetUserId)) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "Invalid userId format."
+            });
+        }
+
+        const result = await sendNotificationToUser(targetUserId, {
+            title,
+            body,
+            data,
+            notificationType,
+            priority,
+            actionUrl
+        });
+
+        return res.status(200).json({
+            status: "success",
+            success: true,
+            message: "Notification sent successfully.",
+            data: result
+        });
+    } catch (error) {
+        return res.status(500).json({ status: "fail", success: false, message: error.message });
+    }
+};
+
+exports.broadcastPushNotification = async (req, res) => {
+    try {
+        const {
+            audience = "ALL_STUDENTS",
+            studentIds = [],
+            batch,
+            course,
+            year,
+            title,
+            message,
+            body,
+            notification_type,
+            type,
+            priority = "high",
+            action_url,
+            actionUrl,
+            data,
+            sendPush = true
+        } = req.body;
+
+        const textTitle = typeof title === "string" ? title.trim() : "";
+        const textBody = typeof body === "string" ? body.trim() : typeof message === "string" ? message.trim() : "";
+
+        if (!textTitle || !textBody) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "title and body/message are required."
+            });
+        }
+
+        const result = await broadcastNotificationService({
+            audience,
+            studentIds,
+            batch,
+            course,
+            year,
+            title: textTitle,
+            body: textBody,
+            notificationType: type || notification_type || "GENERAL",
+            priority,
+            actionUrl: actionUrl || action_url || null,
+            data: data || {},
+            sendPush: Boolean(sendPush)
+        });
+
+        return res.status(200).json({
+            status: "success",
+            success: true,
+            message: "Broadcast notification processed successfully.",
+            data: result
+        });
+    } catch (error) {
+        return res.status(500).json({ status: "fail", success: false, message: error.message });
     }
 };
 
