@@ -8,6 +8,16 @@ const blogConnection = mongoose.createConnection();
 // UCAT database connection
 const ucatConnection = mongoose.createConnection();
 
+const HIGH_CONCURRENCY_POOL_OPTIONS = {
+    maxPoolSize: 100,
+    minPoolSize: 10,
+    maxIdleTimeMS: 30000,
+    socketTimeoutMS: 45000,
+    serverSelectionTimeoutMS: 10000,
+    heartbeatFrequencyMS: 10000,
+    autoIndex: process.env.NODE_ENV !== "production"
+};
+
 const connectDatabases = async () => {
     const connectionString = process.env.CONNECTION_STRING;
 
@@ -17,14 +27,17 @@ const connectDatabases = async () => {
 
     try {
         await mongoose.connect(connectionString, {
+            ...HIGH_CONCURRENCY_POOL_OPTIONS,
             dbName: "mbbs-neet"
         });
 
         await blogConnection.openUri(connectionString, {
+            ...HIGH_CONCURRENCY_POOL_OPTIONS,
             dbName: "blog"
         });
 
         await ucatConnection.openUri(connectionString, {
+            ...HIGH_CONCURRENCY_POOL_OPTIONS,
             dbName: "mbbs-UCAT"
         });
 
