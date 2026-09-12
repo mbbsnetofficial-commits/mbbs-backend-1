@@ -85,7 +85,9 @@ const NOTIFICATION_TYPE_ENUM = Object.freeze([
     "test",
     "chatbot",
     "account",
-    "reminder"
+    "reminder",
+    "invite",
+    "university_invite"
 ]);
 
 const NOTIFICATION_PRIORITY_ENUM = Object.freeze([

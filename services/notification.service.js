@@ -3,6 +3,7 @@ const Notification = require("../model/neet-models/notification");
 const Auth = require("../model/neet-models/auth");
 const StudentProfile = require("../model/neet-models/studentProfile");
 const DeviceToken = require("../model/neet-models/deviceToken");
+const TestSession = require("../model/neet-models/testSession");
 const { getFirebaseMessaging, isFirebaseConfigured } = require("../config/firebaseAdmin");
 
 const FCM_MULTICAST_CHUNK_SIZE = 500;
@@ -112,7 +113,7 @@ exports.sendFcmPushToTokens = async ({
 
     const messaging = getFirebaseMessaging();
     const normType = String(notificationType || "GENERAL").toUpperCase();
-    const isTest = normType === "TEST" || normType === "RESULT";
+    const isTest = normType === "TEST" || normType === "RESULT" || normType === "TEST_INCOMPLETE";
     const resolvedChannelId = isTest ? "mbbs_tests_channel" : channelId;
     const isHighPriority = priority === "urgent" || priority === "high" || isTest;
 
@@ -493,5 +494,183 @@ exports.broadcastNotificationService = async ({
         unmatched_student_ids: audience === "SELECTED_STUDENTS"
             ? studentIds.filter(id => !matchedStudentIds.has(id))
             : []
+    };
+};
+
+/**
+ * Automated push notification when a user leaves a test session incomplete.
+ */
+exports.sendIncompleteTestNotificationService = async ({
+    sessionId,
+    userId,
+    studentId,
+    testType = "Test"
+}) => {
+    let targetUser = null;
+    let targetStudentId = studentId || null;
+
+    if (userId) {
+        targetUser = await Auth.findById(userId).select("_id student_id").lean();
+    } else if (studentId) {
+        targetUser = await Auth.findOne({ student_id: studentId }).select("_id student_id").lean();
+    } else if (sessionId) {
+        let session = null;
+        if (mongoose.isValidObjectId(sessionId)) {
+            session = await TestSession.findById(sessionId).lean();
+        }
+        if (session) {
+            targetStudentId = session.student_id;
+            targetUser = await Auth.findOne({ student_id: session.student_id }).select("_id student_id").lean();
+            testType = session.test_type || testType;
+        }
+    }
+
+    if (!targetUser) {
+        throw new Error("Target user could not be found for incomplete test notification.");
+    }
+
+    const title = "📝 You have an unfinished test!";
+    const body = `You left your ${testType} session incomplete. Tap here to resume and finish your test now!`;
+    const actionUrl = sessionId ? `/tests/resume/${sessionId}` : "/tests/active";
+
+    const result = await exports.sendNotificationToUser(targetUser._id, {
+        title,
+        body,
+        notificationType: "reminder",
+        priority: "high",
+        actionUrl,
+        data: {
+            type: "TEST_INCOMPLETE",
+            test_type: String(testType),
+            session_id: String(sessionId || ""),
+            action_url: actionUrl
+        },
+        saveInApp: true
+    });
+
+    return {
+        success: true,
+        user_id: targetUser._id,
+        student_id: targetUser.student_id,
+        session_id: sessionId || null,
+        push: result.push
+    };
+};
+
+/**
+ * Automated push notification when a student receives an invitation from a university.
+ */
+exports.sendUniversityInviteNotificationService = async ({
+    userId,
+    studentId,
+    email,
+    phoneNumber,
+    universityName,
+    programName = null,
+    inviteId = null,
+    actionUrl = null,
+    customMessage = null,
+    expiryDate = null,
+    data = {}
+}) => {
+    if (!universityName || typeof universityName !== "string" || !universityName.trim()) {
+        throw new Error("university_name is required for university invite notification.");
+    }
+
+    const cleanUnivName = universityName.trim();
+    let targetUser = null;
+
+    if (userId && mongoose.isValidObjectId(userId)) {
+        targetUser = await Auth.findById(userId).select("_id student_id").lean();
+    } else if (studentId) {
+        targetUser = await Auth.findOne({ student_id: String(studentId).trim() }).select("_id student_id").lean();
+    } else if (email) {
+        targetUser = await Auth.findOne({ email: String(email).trim().toLowerCase() }).select("_id student_id").lean();
+    } else if (phoneNumber) {
+        targetUser = await Auth.findOne({ phoneNumber: String(phoneNumber).trim() }).select("_id student_id").lean();
+    }
+
+    if (!targetUser) {
+        throw new Error("Recipient student could not be located by the provided identifier (userId, studentId, email, or phoneNumber).");
+    }
+
+    const title = `🎓 New Invitation from ${cleanUnivName}`;
+    const programText = programName ? ` for the ${programName} program` : "";
+    const body = customMessage
+        ? String(customMessage).trim()
+        : `${cleanUnivName} has sent you an exclusive admission invitation${programText}! Tap here to view and respond.`;
+
+    const resolvedActionUrl = actionUrl || (inviteId ? `/invites/${inviteId}` : "/invites");
+
+    const result = await exports.sendNotificationToUser(targetUser._id, {
+        title,
+        body,
+        notificationType: "university_invite",
+        priority: "high",
+        actionUrl: resolvedActionUrl,
+        data: {
+            type: "UNIVERSITY_INVITE",
+            university_name: cleanUnivName,
+            program_name: programName || "",
+            invite_id: inviteId || "",
+            expiry_date: expiryDate ? String(expiryDate) : "",
+            action_url: resolvedActionUrl,
+            ...data
+        },
+        saveInApp: true
+    });
+
+    return {
+        success: true,
+        user_id: targetUser._id,
+        student_id: targetUser.student_id,
+        university_name: cleanUnivName,
+        program_name: programName || null,
+        invite_id: inviteId || null,
+        push: result.push
+    };
+};
+
+/**
+ * Background scanner to detect incomplete/abandoned test sessions and send automated push notifications.
+ */
+exports.checkIncompleteTestSessionsAndNotifyService = async ({ inactivityMinutes = 5 } = {}) => {
+    const cutoffTime = new Date(Date.now() - inactivityMinutes * 60 * 1000);
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Find sessions started more than `inactivityMinutes` ago, but less than 24h ago, still marked "Started"
+    const incompleteSessions = await TestSession.find({
+        status: "Started",
+        started_at: { $lte: cutoffTime, $gte: dayAgo }
+    }).limit(100).lean();
+
+    const results = [];
+    for (const session of incompleteSessions) {
+        try {
+            // Check if reminder was already sent in the last 6 hours
+            const recentReminder = await Notification.findOne({
+                student_id: session.student_id,
+                notification_type: "reminder",
+                "data.session_id": String(session._id),
+                created_at: { $gte: new Date(Date.now() - 6 * 60 * 60 * 1000) }
+            }).lean();
+
+            if (!recentReminder) {
+                const sendRes = await exports.sendIncompleteTestNotificationService({
+                    sessionId: session._id,
+                    studentId: session.student_id,
+                    testType: session.test_type || "Test"
+                });
+                results.push({ sessionId: session._id, success: true, push: sendRes.push });
+            }
+        } catch (err) {
+            results.push({ sessionId: session._id, success: false, error: err.message });
+        }
+    }
+
+    return {
+        scanned: incompleteSessions.length,
+        reminders_sent: results.filter(r => r.success).length,
+        results
     };
 };

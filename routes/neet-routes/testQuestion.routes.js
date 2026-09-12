@@ -4,7 +4,7 @@ const { protect } = require("../../utilities/auth");
 
 const testQuestionRouter = express.Router();
 
-testQuestionRouter.use(protect);
+testQuestionRouter.use("/test", protect);
 
 testQuestionRouter.get("/test/history", testQuestionController.getTestHistory);
 testQuestionRouter.get("/test/sessions/:sessionId/result", testQuestionController.getTestResult);

@@ -7,7 +7,10 @@ const {
     deactivateDeviceTokenService,
     sendNotificationToUser,
     sendNotificationToUsers,
-    broadcastNotificationService
+    broadcastNotificationService,
+    sendIncompleteTestNotificationService,
+    sendUniversityInviteNotificationService,
+    checkIncompleteTestSessionsAndNotifyService
 } = require("../../services/notification.service");
 const {
     NOTIFICATION_TYPE_ENUM,
@@ -181,13 +184,11 @@ exports.sendDirectNotification = async (req, res) => {
             });
         }
 
-        // Support resolving by studentIds
         if (!targetUserIds && Array.isArray(targetStudentIds) && targetStudentIds.length > 0) {
             const foundUsers = await Auth.find({ student_id: { $in: targetStudentIds } }).select("_id").lean();
             targetUserIds = foundUsers.map(u => u._id);
         }
 
-        // Support resolving single studentId
         if (!targetUserId && !targetUserIds && targetStudentId) {
             const foundUser = await Auth.findOne({ student_id: targetStudentId }).select("_id").lean();
             if (foundUser) {
@@ -312,6 +313,103 @@ exports.broadcastPushNotification = async (req, res) => {
             success: true,
             message: "Broadcast notification processed successfully.",
             data: result
+        });
+    } catch (error) {
+        return res.status(500).json({ status: "fail", success: false, message: error.message });
+    }
+};
+
+/**
+ * Automated Push Notification for Incomplete/Abandoned Test Session
+ */
+exports.sendIncompleteTestNotification = async (req, res) => {
+    try {
+        const sessionId = req.body.sessionId || req.body.session_id || req.params.sessionId;
+        const studentId = req.body.studentId || req.body.student_id || req.user?.student_id;
+        const userId = req.body.userId || req.body.user_id || req.user?.id;
+        const testType = req.body.testType || req.body.test_type || "Test";
+
+        const result = await sendIncompleteTestNotificationService({
+            sessionId,
+            userId,
+            studentId,
+            testType
+        });
+
+        return res.status(200).json({
+            status: "success",
+            success: true,
+            message: "Incomplete test reminder notification sent successfully.",
+            data: result
+        });
+    } catch (error) {
+        return res.status(400).json({ status: "fail", success: false, message: error.message });
+    }
+};
+
+/**
+ * Automated Push Notification for University Invites
+ */
+exports.sendUniversityInviteNotification = async (req, res) => {
+    try {
+        const universityName = req.body.university_name || req.body.universityName || req.body.name;
+        const studentId = req.body.student_id || req.body.studentId || req.user?.student_id;
+        const userId = req.body.user_id || req.body.userId || req.user?.id;
+        const email = req.body.email;
+        const phoneNumber = req.body.phoneNumber || req.body.phone_number;
+        const programName = req.body.program_name || req.body.programName || req.body.course;
+        const inviteId = req.body.invite_id || req.body.inviteId || req.body.id;
+        const actionUrl = req.body.action_url || req.body.actionUrl;
+        const customMessage = req.body.message || req.body.custom_message;
+        const expiryDate = req.body.expiry_date || req.body.expiryDate;
+        const data = req.body.data || {};
+
+        if (!universityName || !String(universityName).trim()) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "university_name is required."
+            });
+        }
+
+        const result = await sendUniversityInviteNotificationService({
+            userId,
+            studentId,
+            email,
+            phoneNumber,
+            universityName,
+            programName,
+            inviteId,
+            actionUrl,
+            customMessage,
+            expiryDate,
+            data
+        });
+
+        return res.status(200).json({
+            status: "success",
+            success: true,
+            message: `University invite push notification for ${universityName} sent successfully.`,
+            data: result
+        });
+    } catch (error) {
+        return res.status(400).json({ status: "fail", success: false, message: error.message });
+    }
+};
+
+/**
+ * Background / Cron Trigger to scan and send reminders for incomplete test sessions
+ */
+exports.checkIncompleteTestSessions = async (req, res) => {
+    try {
+        const inactivityMinutes = Number(req.body.inactivity_minutes || req.query.inactivity_minutes) || 5;
+        const scanResult = await checkIncompleteTestSessionsAndNotifyService({ inactivityMinutes });
+
+        return res.status(200).json({
+            status: "success",
+            success: true,
+            message: "Incomplete test sessions scan completed.",
+            data: scanResult
         });
     } catch (error) {
         return res.status(500).json({ status: "fail", success: false, message: error.message });
