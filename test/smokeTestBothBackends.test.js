@@ -158,10 +158,13 @@ const makeRequest = (port, path, method = "GET", headers = {}, body = null) => {
         const resHealth = await makeRequest(port, "/health");
         recordTest("SYSTEM", "GET /health returns 200 OK without secrets leakage", resHealth.statusCode === 200 && resHealth.body.timestamp && !resHealth.body.connectionString, `${resHealth.durationMs}ms`);
 
-        // Test 1.3: Security headers
-        const hasCors = Boolean(resHealth.headers["access-control-allow-origin"] !== undefined || resHealth.headers["vary"]);
+        // Test 1.3: Security headers (Trusted origin allowed, untrusted blocked, X-Powered-By masked)
+        const resCorsTrusted = await makeRequest(port, "/health", "GET", { "Origin": "https://mbbs.net" });
+        const resCorsUntrusted = await makeRequest(port, "/health", "GET", { "Origin": "https://evil.com" });
+        const corsSecure = resCorsTrusted.headers["access-control-allow-origin"] === "https://mbbs.net" &&
+                           resCorsUntrusted.headers["access-control-allow-origin"] === undefined;
         const noPoweredBy = resHealth.headers["x-powered-by"] === undefined;
-        recordTest("SECURITY", "CORS & X-Powered-By masked correctly", hasCors && noPoweredBy);
+        recordTest("SECURITY", "CORS strictly enforced (trusted allowed, untrusted blocked) & X-Powered-By masked", corsSecure && noPoweredBy);
 
         // -------------------------------------------------------------
         // SUITE 2: NEET BACKEND & NOTIFICATIONS
