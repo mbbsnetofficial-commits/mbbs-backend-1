@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Notification = require("../../model/neet-models/notification");
+const Auth = require("../../model/neet-models/auth");
 const {
     createNotificationService,
     registerDeviceTokenService,
@@ -63,8 +64,16 @@ exports.registerDeviceToken = async (req, res) => {
 
 exports.deactivateDeviceToken = async (req, res) => {
     try {
-        const token = req.body.token || req.query.token;
+        const token = req.body.token || req.body.deviceToken || req.body.fcmToken || req.query.token;
         const deviceId = req.body.deviceId || req.body.device_id || req.query.deviceId;
+
+        if (!token && !deviceId) {
+            return res.status(400).json({
+                status: "fail",
+                success: false,
+                message: "token or deviceId is required."
+            });
+        }
 
         await deactivateDeviceTokenService({
             userId: req.user.id,
@@ -141,8 +150,11 @@ exports.createNotification = async (req, res) => {
 
 exports.sendDirectNotification = async (req, res) => {
     try {
-        const targetUserId = req.body.userId || req.body.user_id;
-        const targetUserIds = req.body.userIds || req.body.user_ids;
+        let targetUserId = req.body.userId || req.body.user_id;
+        let targetUserIds = req.body.userIds || req.body.user_ids;
+        const targetStudentId = req.body.studentId || req.body.student_id;
+        const targetStudentIds = req.body.studentIds || req.body.student_ids;
+
         const title = typeof req.body.title === "string" ? req.body.title.trim() : "";
         const body = typeof req.body.body === "string"
             ? req.body.body.trim()
@@ -169,6 +181,26 @@ exports.sendDirectNotification = async (req, res) => {
             });
         }
 
+        // Support resolving by studentIds
+        if (!targetUserIds && Array.isArray(targetStudentIds) && targetStudentIds.length > 0) {
+            const foundUsers = await Auth.find({ student_id: { $in: targetStudentIds } }).select("_id").lean();
+            targetUserIds = foundUsers.map(u => u._id);
+        }
+
+        // Support resolving single studentId
+        if (!targetUserId && !targetUserIds && targetStudentId) {
+            const foundUser = await Auth.findOne({ student_id: targetStudentId }).select("_id").lean();
+            if (foundUser) {
+                targetUserId = foundUser._id;
+            } else {
+                return res.status(404).json({
+                    status: "fail",
+                    success: false,
+                    message: "Student with specified student_id not found."
+                });
+            }
+        }
+
         if (Array.isArray(targetUserIds) && targetUserIds.length > 0) {
             const result = await sendNotificationToUsers(targetUserIds, {
                 title,
@@ -190,7 +222,7 @@ exports.sendDirectNotification = async (req, res) => {
             return res.status(400).json({
                 status: "fail",
                 success: false,
-                message: "userId or userIds array is required."
+                message: "userId, userIds, student_id, or student_ids is required."
             });
         }
 
@@ -227,6 +259,7 @@ exports.broadcastPushNotification = async (req, res) => {
         const {
             audience = "ALL_STUDENTS",
             studentIds = [],
+            student_ids = [],
             batch,
             course,
             year,
@@ -242,6 +275,12 @@ exports.broadcastPushNotification = async (req, res) => {
             sendPush = true
         } = req.body;
 
+        const effectiveStudentIds = Array.isArray(studentIds) && studentIds.length > 0
+            ? studentIds
+            : Array.isArray(student_ids)
+                ? student_ids
+                : [];
+
         const textTitle = typeof title === "string" ? title.trim() : "";
         const textBody = typeof body === "string" ? body.trim() : typeof message === "string" ? message.trim() : "";
 
@@ -255,7 +294,7 @@ exports.broadcastPushNotification = async (req, res) => {
 
         const result = await broadcastNotificationService({
             audience,
-            studentIds,
+            studentIds: effectiveStudentIds,
             batch,
             course,
             year,
@@ -351,7 +390,7 @@ exports.markNotificationAsRead = async (req, res) => {
         const notification = await Notification.findOneAndUpdate(
             { _id: req.params.notificationId, ...getOwnerFilter(req) },
             { $set: { is_read: true, read_at: new Date() } },
-            { new: true, runValidators: true }
+            { returnDocument: "after", runValidators: true }
         );
 
         if (!notification) {
@@ -394,7 +433,7 @@ exports.dismissNotification = async (req, res) => {
         const notification = await Notification.findOneAndUpdate(
             { _id: req.params.notificationId, ...getOwnerFilter(req) },
             { $set: { is_deleted: true, deleted_at: new Date() } },
-            { new: true }
+            { returnDocument: "after" }
         );
 
         if (!notification) {

@@ -13,10 +13,14 @@ const serviceAccountFromEnv = () => {
 
     const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } = process.env;
     if (FIREBASE_CLIENT_EMAIL && FIREBASE_PRIVATE_KEY) {
+        let privateKey = String(FIREBASE_PRIVATE_KEY).trim();
+        if ((privateKey.startsWith('"') && privateKey.endsWith('"')) || (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
+            privateKey = privateKey.slice(1, -1);
+        }
         return {
             projectId: FIREBASE_PROJECT_ID || "mbbs-e6f31",
-            clientEmail: FIREBASE_CLIENT_EMAIL,
-            privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
+            clientEmail: FIREBASE_CLIENT_EMAIL.trim(),
+            privateKey: privateKey.replace(/\\n/g, "\n")
         };
     }
     return null;
@@ -52,7 +56,9 @@ const getFirebaseMessaging = () => {
 
 const isFirebaseConfigured = () => {
     if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) return true;
-    return Boolean(process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY);
+    if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) return true;
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) return true;
+    return getApps().length > 0;
 };
 
 module.exports = {

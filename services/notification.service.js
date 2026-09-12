@@ -49,7 +49,7 @@ exports.registerDeviceTokenService = async ({
         {
             $set: {
                 user_id: userId,
-                student_id: studentId,
+                student_id: studentId || null,
                 device_type: cleanDeviceType,
                 device_id: deviceId ? String(deviceId).trim() : null,
                 app_version: appVersion ? String(appVersion).trim() : null,
@@ -57,7 +57,7 @@ exports.registerDeviceTokenService = async ({
                 last_used_at: new Date()
             }
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
     );
 
     return updated;
@@ -83,18 +83,22 @@ exports.sendFcmPushToTokens = async ({
     tokens = [],
     title,
     body,
+    message,
     data = {},
     notificationType = "GENERAL",
     priority = "high",
     channelId = "mbbs_general_notifications",
     sound = "default"
 }) => {
+    const textBody = body || message || "";
+    const textTitle = title || "MBBS.net";
     const uniqueTokens = Array.from(new Set(tokens.filter(t => typeof t === "string" && t.trim().length > 0)));
     if (!uniqueTokens.length) {
         return { success: true, total: 0, sentCount: 0, failedCount: 0, deactivatedTokensCount: 0 };
     }
 
     if (!isFirebaseConfigured()) {
+        console.warn("⚠️ [Push Notification Warning]: Firebase Admin credentials are not configured on the server.");
         return {
             success: false,
             message: "Firebase Admin credentials are not configured on the server.",
@@ -114,8 +118,8 @@ exports.sendFcmPushToTokens = async ({
     const stringData = sanitizeDataPayload({
         ...data,
         type: normType,
-        title: title || "",
-        body: body || ""
+        title: String(textTitle),
+        body: String(textBody)
     });
 
     let sentCount = 0;
@@ -127,15 +131,16 @@ exports.sendFcmPushToTokens = async ({
         const multicastPayload = {
             tokens: chunk,
             notification: {
-                title: String(title || "MBBS.net"),
-                body: String(body || "")
+                title: String(textTitle),
+                body: String(textBody)
             },
             data: stringData,
             android: {
                 priority: isHighPriority ? "high" : "normal",
                 notification: {
                     channelId: resolvedChannelId,
-                    sound,
+                    icon: "ic_notification",
+                    sound: sound || "default",
                     defaultSound: true,
                     defaultVibrateTimings: true,
                     clickAction: "MBBS_NOTIFICATION_CLICK"
@@ -148,8 +153,8 @@ exports.sendFcmPushToTokens = async ({
                 payload: {
                     aps: {
                         alert: {
-                            title: String(title || "MBBS.net"),
-                            body: String(body || "")
+                            title: String(textTitle),
+                            body: String(textBody)
                         },
                         sound: sound || "default",
                         badge: 1
@@ -172,6 +177,7 @@ exports.sendFcmPushToTokens = async ({
                 }
             });
         } catch (chunkError) {
+            console.error("⚠️ [FCM Multicast Error]:", chunkError.message);
             failedCount += chunk.length;
         }
     }
@@ -220,7 +226,8 @@ exports.createNotificationService = async ({
     notificationType = "system",
     priority = "normal",
     actionUrl = null,
-    data = null
+    data = null,
+    sendPush = true
 }) => {
     const notification = await Notification.create({
         user_id: userId,
@@ -233,15 +240,19 @@ exports.createNotificationService = async ({
         data
     });
 
-    exports.sendPushNotificationToUsers({
-        userIds: [userId],
-        title,
-        message,
-        notificationType,
-        priority,
-        actionUrl,
-        data
-    }).catch(() => {});
+    if (sendPush) {
+        exports.sendPushNotificationToUsers({
+            userIds: [userId],
+            title,
+            message,
+            notificationType,
+            priority,
+            actionUrl,
+            data
+        }).catch(pushErr => {
+            console.error("⚠️ [Push Notification Error]:", pushErr.message);
+        });
+    }
 
     return notification;
 };
@@ -257,31 +268,41 @@ exports.sendNotificationToUser = async (userId, {
     saveInApp = true
 }) => {
     const textBody = body || message || "";
-    const [tokens, user] = await Promise.all([
-        DeviceToken.find({ user_id: userId, is_active: true }).distinct("token"),
-        Auth.findById(userId).select("student_id").lean()
-    ]);
+    const user = await Auth.findById(userId).select("student_id").lean();
 
     let inAppNotification = null;
     if (saveInApp && user) {
         inAppNotification = await exports.createNotificationService({
             userId,
-            studentId: user.student_id || "STU123456",
+            studentId: user.student_id || null,
             title,
             message: textBody,
             notificationType: String(notificationType).toLowerCase(),
-            priority: priority === "high" ? "high" : "normal",
+            priority: priority === "high" || priority === "urgent" ? "high" : "normal",
             actionUrl,
-            data
+            data,
+            sendPush: false
         }).catch(() => null);
     }
+
+    const tokenQuery = {
+        $or: [
+            { user_id: userId }
+        ],
+        is_active: true
+    };
+    if (user?.student_id) {
+        tokenQuery.$or.push({ student_id: user.student_id });
+    }
+
+    const tokens = await DeviceToken.find(tokenQuery).distinct("token");
 
     const pushResult = await exports.sendFcmPushToTokens({
         tokens,
         title,
         body: textBody,
         data: {
-            ...data,
+            ...(data || {}),
             notification_id: inAppNotification?._id?.toString() || "",
             action_url: actionUrl || ""
         },
@@ -312,8 +333,15 @@ exports.sendNotificationToUsers = async (userIds = [], {
         return { success: true, matched_users: 0, sentCount: 0, failedCount: 0 };
     }
 
+    const users = await Auth.find({ _id: { $in: uniqueUserIds } }).select("_id student_id").lean();
+    const userObjectIds = users.map(u => u._id);
+    const studentIds = users.map(u => u.student_id).filter(Boolean);
+
     const activeTokens = await DeviceToken.find({
-        user_id: { $in: uniqueUserIds },
+        $or: [
+            { user_id: { $in: userObjectIds.length ? userObjectIds : uniqueUserIds } },
+            ...(studentIds.length ? [{ student_id: { $in: studentIds } }] : [])
+        ],
         is_active: true
     }).distinct("token");
 
@@ -321,7 +349,7 @@ exports.sendNotificationToUsers = async (userIds = [], {
         tokens: activeTokens,
         title,
         body: textBody,
-        data: { ...data, action_url: actionUrl || "" },
+        data: { ...(data || {}), action_url: actionUrl || "" },
         notificationType,
         priority
     });
@@ -399,7 +427,7 @@ exports.broadcastNotificationService = async ({
         title,
         message: textBody,
         notification_type: String(notificationType).toLowerCase(),
-        priority: priority === "high" ? "high" : "normal",
+        priority: priority === "high" || priority === "urgent" ? "high" : "normal",
         action_url: actionUrl,
         data,
         created_at: createdAt,
@@ -419,8 +447,13 @@ exports.broadcastNotificationService = async ({
     let pushResult = null;
     if (sendPush && recipients.length > 0) {
         const recipientUserIds = recipients.map(r => r._id);
+        const recipientStudentIds = recipients.map(r => r.student_id).filter(Boolean);
+
         const tokens = await DeviceToken.find({
-            user_id: { $in: recipientUserIds },
+            $or: [
+                { user_id: { $in: recipientUserIds } },
+                ...(recipientStudentIds.length ? [{ student_id: { $in: recipientStudentIds } }] : [])
+            ],
             is_active: true
         }).distinct("token");
 
