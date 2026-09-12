@@ -12,6 +12,7 @@
   },
   "scripts": {
     "test": "NODE_PATH=./node_modules node test/cors.test.js && NODE_PATH=./node_modules node test/csp.test.js && NODE_PATH=./node_modules node test/dnssec.test.js && NODE_PATH=./node_modules node test/coep.test.js && NODE_PATH=./node_modules node test/permissionsPolicy.test.js && NODE_PATH=./node_modules node test/endpoints.test.js && NODE_PATH=./node_modules node test/ucatChat.test.js && NODE_PATH=./node_modules node test/neetLearningReport.test.js && NODE_PATH=./node_modules node test/patchSessionAnswer.test.js && NODE_PATH=./node_modules node test/submitTestFlow.test.js && NODE_PATH=./node_modules node test/customTestFlow.test.js && NODE_PATH=./node_modules node test/ucatExamFlow.test.js && NODE_PATH=./node_modules node test/whatsappAuthFlow.test.js && NODE_PATH=./node_modules node test/neetOwnershipSecurity.test.js && NODE_PATH=./node_modules node test/ucatOwnershipSecurity.test.js && NODE_PATH=./node_modules node test/ucatCustomTestDefinition.test.js && NODE_PATH=./node_modules node test/notificationFcm.test.js && NODE_PATH=./node_modules node test/notificationAutomated.test.js",
+    "test:smoke": "NODE_PATH=./node_modules node test/smokeTestBothBackends.test.js",
     "test:automated-push": "NODE_PATH=./node_modules node test/notificationAutomated.test.js",
     "test:cors": "NODE_PATH=./node_modules node test/cors.test.js",
     "test:csp": "NODE_PATH=./node_modules node test/csp.test.js",
