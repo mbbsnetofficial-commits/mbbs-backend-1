@@ -4,9 +4,13 @@ const { protect } = require("../../utilities/auth");
 
 const notificationRouter = express.Router();
 
-// Public / Service webhook for University Invites & automated test checks (can be called by internal services or protected by API token / auth)
+// Public / Service webhook for University Invites (can be called by university portal / backend webhook)
 notificationRouter.post(
     "/invites/university",
+    notificationController.sendUniversityInviteNotification
+);
+notificationRouter.post(
+    "/notifications/university-invite",
     notificationController.sendUniversityInviteNotification
 );
 
@@ -16,10 +20,6 @@ notificationRouter.use("/notifications", protect);
 notificationRouter.post(
     "/notifications/incomplete-test",
     notificationController.sendIncompleteTestNotification
-);
-notificationRouter.post(
-    "/notifications/university-invite",
-    notificationController.sendUniversityInviteNotification
 );
 notificationRouter.post(
     "/notifications/check-incomplete-tests",

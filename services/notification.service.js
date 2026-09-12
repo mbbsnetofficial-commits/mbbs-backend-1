@@ -651,11 +651,48 @@ exports.sendUniversityInviteNotificationService = async ({
     if (userId && mongoose.isValidObjectId(userId)) {
         targetUser = await Auth.findById(userId).select("_id student_id").lean();
     } else if (studentId) {
-        targetUser = await Auth.findOne({ student_id: String(studentId).trim() }).select("_id student_id").lean();
+        const cleanId = String(studentId).trim();
+        targetUser = await Auth.findOne({ student_id: cleanId }).select("_id student_id").lean();
+        if (!targetUser) {
+            const profile = await StudentProfile.findOne({ student_id: cleanId }).lean();
+            if (profile) {
+                targetUser = await Auth.findOne({
+                    $or: [
+                        { student_id: profile.student_id },
+                        ...(profile.email ? [{ email: profile.email.toLowerCase() }] : []),
+                        ...(profile.phone_number ? [{ phoneNumber: profile.phone_number }] : [])
+                    ]
+                }).select("_id student_id").lean();
+            }
+        }
     } else if (email) {
-        targetUser = await Auth.findOne({ email: String(email).trim().toLowerCase() }).select("_id student_id").lean();
+        const cleanEmail = String(email).trim().toLowerCase();
+        targetUser = await Auth.findOne({ email: cleanEmail }).select("_id student_id").lean();
+        if (!targetUser) {
+            const profile = await StudentProfile.findOne({ email: cleanEmail }).lean();
+            if (profile) {
+                targetUser = await Auth.findOne({
+                    $or: [
+                        ...(profile.student_id ? [{ student_id: profile.student_id }] : []),
+                        ...(profile.phone_number ? [{ phoneNumber: profile.phone_number }] : [])
+                    ]
+                }).select("_id student_id").lean();
+            }
+        }
     } else if (phoneNumber) {
-        targetUser = await Auth.findOne({ phoneNumber: String(phoneNumber).trim() }).select("_id student_id").lean();
+        const cleanPhone = String(phoneNumber).trim();
+        targetUser = await Auth.findOne({ phoneNumber: cleanPhone }).select("_id student_id").lean();
+        if (!targetUser) {
+            const profile = await StudentProfile.findOne({ phone_number: cleanPhone }).lean();
+            if (profile) {
+                targetUser = await Auth.findOne({
+                    $or: [
+                        ...(profile.student_id ? [{ student_id: profile.student_id }] : []),
+                        ...(profile.email ? [{ email: profile.email.toLowerCase() }] : [])
+                    ]
+                }).select("_id student_id").lean();
+            }
+        }
     }
 
     if (!targetUser) {

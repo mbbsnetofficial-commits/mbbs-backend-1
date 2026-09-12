@@ -18,11 +18,27 @@ const {
     NOTIFICATION_PRIORITY_ENUM
 } = require("../../constants/enum");
 
-const getOwnerFilter = req => ({
-    user_id: req.user.id,
-    student_id: req.user.student_id,
-    is_deleted: false
-});
+const getOwnerFilter = req => {
+    const userId = req.user?.id || req.user?._id;
+    const studentId = req.user?.student_id;
+    const conditions = [];
+
+    if (userId && mongoose.isValidObjectId(userId)) {
+        conditions.push({ user_id: new mongoose.Types.ObjectId(userId) });
+    }
+    if (studentId && String(studentId).trim()) {
+        conditions.push({ student_id: String(studentId).trim() });
+    }
+
+    if (conditions.length === 0) {
+        return { is_deleted: false, user_id: null };
+    }
+
+    return {
+        is_deleted: false,
+        $or: conditions
+    };
+};
 
 /**
  * Diagnostic test endpoint to test iOS/Android push notification directly with a token

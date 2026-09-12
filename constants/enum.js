@@ -87,7 +87,8 @@ const NOTIFICATION_TYPE_ENUM = Object.freeze([
     "account",
     "reminder",
     "invite",
-    "university_invite"
+    "university_invite",
+    "admission_invite"
 ]);
 
 const NOTIFICATION_PRIORITY_ENUM = Object.freeze([

@@ -13,9 +13,10 @@ const notificationSchema = new mongoose.Schema({
     },
     student_id: {
         type: String,
-        required: true,
+        required: false,
         trim: true,
-        index: true
+        index: true,
+        default: null
     },
     title: {
         type: String,
