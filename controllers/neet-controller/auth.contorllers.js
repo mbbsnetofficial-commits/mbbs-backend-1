@@ -14,6 +14,7 @@ const {
     recordSuccessfulLogin
 } = require("../../services/userLoginActivity.service");
 const { normalizePhone, sendWhatsappOtp } = require("../../services/twilioWhatsapp.service");
+const { permanentlyDeleteUserAccount } = require("../../services/accountDeletion.service");
 
 const OTP_VALID_MINUTES = 5;
 const RESEND_SECONDS = 15;
@@ -355,3 +356,65 @@ exports.logoutAll = async (req, res) => {
         return res.status(500).json({ status: "fail", message: error.message });
     }
 };
+
+/**
+ * Permanently delete authenticated user's account and all associated data.
+ * Endpoint: DELETE /api/v1/auth/delete-account
+ * Optional payload: { "password": "...", "reason": "...", "confirmation": true }
+ */
+exports.deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.user?._id;
+        if (!userId) {
+            return res.status(401).json({
+                status: "fail",
+                message: "Authentication required to perform account deletion."
+            });
+        }
+
+        const user = await Auth.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                status: "fail",
+                message: "User account not found or already deleted."
+            });
+        }
+
+        const body = req.body || {};
+        const password = body.password;
+        const reason = body.reason || "User requested permanent account deletion";
+
+        // If user has a password set on their account and supplied a password, verify it
+        if (password && user.password) {
+            const isMatch = await user.comparePassword(password, user.password);
+            if (!isMatch) {
+                return res.status(400).json({
+                    status: "fail",
+                    message: "Incorrect password. Account deletion cancelled."
+                });
+            }
+        }
+
+        const deletionSummary = await permanentlyDeleteUserAccount(user._id, { reason });
+
+        return res.status(200).json({
+            status: "success",
+            message: "Your account and all associated data have been permanently deleted.",
+            data: {
+                deleted: true,
+                student_id: user.student_id || null,
+                phoneNumber: user.phoneNumber || null,
+                email: user.email || null,
+                deleted_at: new Date().toISOString(),
+                summary: deletionSummary?.deletedCollections || {}
+            }
+        });
+    } catch (error) {
+        console.error("Error deleting account:", error);
+        return res.status(500).json({
+            status: "fail",
+            message: error.message || "Failed to permanently delete account."
+        });
+    }
+};
+

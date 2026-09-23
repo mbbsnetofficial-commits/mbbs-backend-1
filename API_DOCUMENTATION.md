@@ -63,6 +63,8 @@ Authorization: Bearer <YOUR_ACCESS_TOKEN>
 | `POST` | `/verify-reset-otp` | Verify reset OTP and receive a one-time `resetToken` | None |
 | `POST` | `/reset-password` | Reset password using `resetToken` | None |
 | `POST` | `/change-password` | Update password for logged-in student | `Bearer Token` |
+| `DELETE` | `/delete-account` | Permanently deletes own account and all associated personal data | `Bearer Token` |
+| `POST` | `/delete-account` | Permanent account deletion endpoint (alternative POST for mobile clients) | `Bearer Token` |
 
 ### Sample Payload: Student Signup
 ```json

@@ -2378,6 +2378,64 @@ const swaggerOptions = {
                     }
                 }
             },
+            '/api/v1/auth/delete-account': {
+                delete: {
+                    tags: ['Authentication'],
+                    summary: 'Permanently delete user account and personal data',
+                    description: 'Permanently removes the authenticated user account and purges associated student profile, sessions, chat history, notifications, activity logs, test attempts, and push tokens.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: false,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        password: { type: 'string', description: 'Optional password verification if password was set on the account' },
+                                        reason: { type: 'string', description: 'Optional reason for deleting the account', example: 'No longer using the app' },
+                                        confirmation: { type: 'boolean', description: 'Confirmation flag', example: true }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Account and associated data deleted permanently.' },
+                        400: { description: 'Incorrect password if supplied.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'User account not found or already deleted.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                },
+                post: {
+                    tags: ['Authentication'],
+                    summary: 'Permanently delete user account (POST alternative)',
+                    description: 'Alternative POST method to permanently delete the authenticated student account.',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: false,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        password: { type: 'string' },
+                                        reason: { type: 'string', example: 'Account deletion requested' },
+                                        confirmation: { type: 'boolean', example: true }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Account and associated data deleted permanently.' },
+                        400: { description: 'Incorrect password.' },
+                        401: { description: 'JWT is missing, invalid, or expired.' },
+                        404: { description: 'User account not found.' },
+                        500: { description: 'Server or database error.' }
+                    }
+                }
+            },
             '/api/v1/test/leaderboard': {
                 get: {
                     tags: ['Test Leaderboard'],

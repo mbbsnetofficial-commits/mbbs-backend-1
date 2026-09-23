@@ -17,7 +17,7 @@ const {
 } = require('../../middleware/rateLimit.middleware');
 
 authRouter.route('/register')
-    .post(signupLimiter, otpLimiter, signupController.startSignup)
+    .post(signupLimiter, otpLimiter, signupController.startSignup);
 
 authRouter.post('/register/verify-otp', otpVerificationLimiter, signupController.verifySignupOtp);
 authRouter.post('/sign-up', signupLimiter, otpLimiter, signupController.startSignup);
@@ -54,5 +54,10 @@ authRouter.post('/forgot-password', otpLimiter, passwordResetController.requestP
 authRouter.post('/verify-reset-otp', otpVerificationLimiter, passwordResetController.verifyPasswordResetOtp);
 authRouter.post('/reset-password', passwordResetController.resetPassword);
 authRouter.post('/change-password', protect, passwordResetController.changePassword);
+
+// Delete account permanently
+authRouter.delete('/delete-account', protect, authController.deleteAccount);
+authRouter.post('/delete-account', protect, authController.deleteAccount);
+authRouter.delete('/account', protect, authController.deleteAccount);
 
 module.exports = authRouter;
