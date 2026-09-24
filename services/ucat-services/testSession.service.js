@@ -456,6 +456,7 @@ const startTest = async (user, payload = {}) => {
         const selectedQuestions = rawQuestions.slice(0, cLimit);
         const questionIds = selectedQuestions.map(q => q.id || q._id);
         const questionsFormatted = selectedQuestions.map(q => ({
+            id: q.id || q._id,
             question_id: q.id || q._id,
             question: q.question,
             option_a: q.option_a,
@@ -652,6 +653,7 @@ const startTest = async (user, payload = {}) => {
     const questionIds = selectedQuestions.map((q) => q.id || q._id);
 
     const questionsFormatted = selectedQuestions.map((q) => ({
+        id: q.id || q._id,
         question_id: q.id || q._id,
         question: q.question,
         option_a: q.option_a,
@@ -896,7 +898,9 @@ const submitTest = async (sessionId, answers = [], user = null) => {
 
 // --- STEP 6: ANSWER AUTOSAVE (API #6) ---
 const updateSessionAnswer = async (sessionId, payload = {}, user = null) => {
-    const { question_id, selected_option, time_spent } = payload;
+    const question_id = payload.question_id !== undefined ? payload.question_id : (payload.questionId !== undefined ? payload.questionId : payload.id);
+    const selected_option = payload.selected_option !== undefined ? payload.selected_option : (payload.selectedOption !== undefined ? payload.selectedOption : payload.selected);
+    const time_spent = payload.time_spent !== undefined ? payload.time_spent : (payload.timeSpent !== undefined ? payload.timeSpent : 0);
 
     if (!sessionId) {
         const error = new Error("A valid sessionId is required.");
@@ -926,7 +930,7 @@ const updateSessionAnswer = async (sessionId, payload = {}, user = null) => {
     }
 
     const qId = Number(question_id);
-    if (!Number.isInteger(qId)) {
+    if (!Number.isInteger(qId) || qId <= 0) {
         const error = new Error("question_id must be a number.");
         error.statusCode = 400;
         throw error;
@@ -1010,6 +1014,7 @@ const getSessionResult = async (sessionId, user = null) => {
         const q = questionMap.get(qId) || {};
         const userAns = userAnsMap.get(qId) || {};
         return {
+            id: qId,
             question_id: qId,
             question: q.question || "",
             option_a: q.option_a || "",

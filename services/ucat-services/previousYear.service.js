@@ -64,6 +64,7 @@ const startPaperTest = async (paperId, user, payload = {}) => {
     const questionIds = rawQuestions.map((q) => q.id || q.question_id);
 
     const formattedQuestions = rawQuestions.map((q) => ({
+        id: q.id || q.question_id,
         question_id: q.id || q.question_id,
         question: q.question || q.prompt,
         option_a: q.option_a || (q.options && q.options[0] ? q.options[0].text : ""),
@@ -245,6 +246,7 @@ const getPaperTestResult = async (sessionId, user = null) => {
         const q = questionMap.get(qId) || {};
         const userAns = userAnsMap.get(qId) || {};
         return {
+            id: qId,
             question_id: qId,
             question: q.question || "",
             option_a: q.option_a || "",
