@@ -145,6 +145,7 @@ exports.sendFcmPushToTokens = async ({
                 notification: {
                     channelId: resolvedChannelId,
                     icon: "ic_notification",
+                    color: "#0A2B2A",
                     sound: sound || "default",
                     defaultSound: true,
                     defaultVibrateTimings: true,
@@ -242,6 +243,8 @@ exports.sendDirectPushToSingleToken = async ({
             priority: "high",
             notification: {
                 channelId: "mbbs_general_notifications",
+                icon: "ic_notification",
+                color: "#0A2B2A",
                 sound: sound || "default",
                 defaultSound: true,
                 defaultVibrateTimings: true,
