@@ -565,16 +565,32 @@ const getNeetSummary = async (studentId) => {
         student_id: studentId
     }).lean();
 
-    // 1. Total Time Spent across all tests
+    // 1. Total Time Spent across all tests (capped to realistic session duration)
     let totalSeconds = 0;
     for (const session of allStudentSessions) {
-        let sec = session.time_spent_seconds || 0;
-        if (!sec && Array.isArray(session.answers)) {
-            sec = session.answers.reduce((sum, a) => sum + (a.time_spent || 0), 0);
+        const hasAnswers = Array.isArray(session.answers) && session.answers.length > 0;
+        const isCompleted = session.status === "Completed";
+        if (!hasAnswers && !isCompleted) {
+            continue;
         }
+
+        const maxDurationSec = (session.duration_minutes || session.duration || 180) * 60;
+        let sec = 0;
+
+        if (hasAnswers) {
+            sec = session.answers.reduce((sum, a) => sum + Math.min(Math.max(0, Number(a.time_spent) || 0), 300), 0);
+        }
+
+        if (!sec && session.time_spent_seconds && session.time_spent_seconds > 0) {
+            sec = session.time_spent_seconds;
+        }
+
         if (!sec && session.submitted_at && session.started_at) {
-            sec = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+            const rawDiff = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+            sec = Math.min(rawDiff, maxDurationSec);
         }
+
+        sec = Math.min(sec, maxDurationSec);
         totalSeconds += sec;
     }
 

@@ -1055,10 +1055,14 @@ exports.submitTest = async (req, res) => {
             ? Math.round((correct / attemptedCount) * 100)
             : 0;
 
-        // 6. Calculate total time spent
-        let timeSpentSeconds = finalSubmittedAnswers.reduce((sum, a) => sum + (a.time_spent || 0), 0);
+        // 6. Calculate total time spent (capped to test duration)
+        const maxSessionSeconds = (session.duration_minutes || session.duration || 200) * 60;
+        let timeSpentSeconds = finalSubmittedAnswers.reduce((sum, a) => sum + Math.min(Math.max(0, Number(a.time_spent) || 0), 300), 0);
         if (!timeSpentSeconds && session.started_at) {
-            timeSpentSeconds = Math.max(0, Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000));
+            const rawDiff = Math.max(0, Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000));
+            timeSpentSeconds = Math.min(rawDiff, maxSessionSeconds);
+        } else {
+            timeSpentSeconds = Math.min(timeSpentSeconds, maxSessionSeconds);
         }
 
         // 7. Update Session in Database

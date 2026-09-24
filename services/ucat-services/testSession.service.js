@@ -829,9 +829,13 @@ const submitTest = async (sessionId, answers = [], user = null) => {
     const attemptedCount = correctCount + wrongCount;
     const accuracyPct = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
 
-    let timeSpentSeconds = processedAnswers.reduce((acc, a) => acc + (a.time_spent || 0), 0);
+    const maxSessionSeconds = (session.duration_minutes || session.duration || 120) * 60;
+    let timeSpentSeconds = processedAnswers.reduce((acc, a) => acc + Math.min(Math.max(0, Number(a.time_spent) || 0), 300), 0);
     if (!timeSpentSeconds && session.started_at) {
-        timeSpentSeconds = Math.max(0, Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000));
+        const rawDiff = Math.max(0, Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000));
+        timeSpentSeconds = Math.min(rawDiff, maxSessionSeconds);
+    } else {
+        timeSpentSeconds = Math.min(timeSpentSeconds, maxSessionSeconds);
     }
 
     const updatePayload = {
@@ -1320,16 +1324,32 @@ const getUcatSummary = async (studentId) => {
         completedSessions = [];
     }
 
-    // 1. Total Practice Time: Sum seconds across all test activity (in-progress + completed)
+    // 1. Total Practice Time: Sum seconds across active completed/attempted test activity
     let totalTimeSeconds = 0;
     for (const session of allSessions) {
-        let sessionTime = session.time_spent_seconds || 0;
-        if (!sessionTime && Array.isArray(session.answers)) {
-            sessionTime = session.answers.reduce((acc, a) => acc + (a.time_spent || 0), 0);
+        const hasAnswers = Array.isArray(session.answers) && session.answers.length > 0;
+        const isCompleted = session.status === "Completed";
+        if (!hasAnswers && !isCompleted) {
+            continue;
         }
+
+        const maxDurationSec = (session.duration_minutes || session.duration || 120) * 60;
+        let sessionTime = 0;
+
+        if (hasAnswers) {
+            sessionTime = session.answers.reduce((acc, a) => acc + Math.min(Math.max(0, Number(a.time_spent) || 0), 300), 0);
+        }
+
+        if (!sessionTime && session.time_spent_seconds && session.time_spent_seconds > 0) {
+            sessionTime = session.time_spent_seconds;
+        }
+
         if (!sessionTime && session.submitted_at && session.started_at) {
-            sessionTime = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+            const rawDiff = Math.max(0, Math.floor((new Date(session.submitted_at) - new Date(session.started_at)) / 1000));
+            sessionTime = Math.min(rawDiff, maxDurationSec);
         }
+
+        sessionTime = Math.min(sessionTime, maxDurationSec);
         totalTimeSeconds += sessionTime;
     }
 
@@ -1338,14 +1358,14 @@ const getUcatSummary = async (studentId) => {
     const completedCount = completedSessions.length;
 
     for (const session of completedSessions) {
-        const sScore = session.score || 0;
+        const sScore = Math.max(0, session.score || 0);
         const sMax = session.max_marks || session.total_marks || (session.total_questions * 4) || 932;
         const pct = sMax > 0 ? (sScore / sMax) : 0;
         totalPercentage += pct;
     }
 
     const avgPercentage = completedCount > 0 ? Math.round((totalPercentage / completedCount) * 100) : 0;
-    const avgScore932 = completedCount > 0 ? Math.round((totalPercentage / completedCount) * 932) : 0;
+    const avgScore932 = completedCount > 0 ? Math.max(0, Math.round((totalPercentage / completedCount) * 932)) : 0;
 
     const hours = Math.floor(totalTimeSeconds / 3600);
     const minutes = Math.floor((totalTimeSeconds % 3600) / 60);
