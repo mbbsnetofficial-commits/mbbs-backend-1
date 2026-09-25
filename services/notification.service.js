@@ -141,7 +141,7 @@ exports.sendFcmPushToTokens = async ({
             },
             data: stringData,
             android: {
-                priority: isHighPriority ? "high" : "normal",
+                priority: "high",
                 notification: {
                     channelId: resolvedChannelId,
                     icon: "ic_notification",
@@ -149,6 +149,8 @@ exports.sendFcmPushToTokens = async ({
                     sound: sound || "default",
                     defaultSound: true,
                     defaultVibrateTimings: true,
+                    priority: "PRIORITY_HIGH",
+                    visibility: "PUBLIC",
                     clickAction: "FLUTTER_NOTIFICATION_CLICK"
                 }
             },
@@ -444,15 +446,16 @@ exports.sendNotificationToUsers = async (userIds = [], {
 const escapedRegex = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const resolveAudience = async ({ audience, studentIds, batch, course, year }) => {
-    if (audience === "ALL_STUDENTS") {
+    const normAudience = String(audience || "ALL_STUDENTS").trim().toUpperCase();
+    if (normAudience === "ALL_STUDENTS" || normAudience === "ALL") {
         return Auth.find({}).select("_id student_id").lean();
     }
-    if (audience === "ACTIVE_STUDENTS") {
+    if (normAudience === "ACTIVE_STUDENTS") {
         return Auth.find({
             is_active: { $ne: false }
         }).select("_id student_id").lean();
     }
-    if (audience === "SELECTED_STUDENTS") {
+    if (normAudience === "SELECTED_STUDENTS") {
         return Auth.find({
             $or: [
                 { student_id: { $in: studentIds } },
@@ -462,11 +465,11 @@ const resolveAudience = async ({ audience, studentIds, batch, course, year }) =>
     }
 
     const profileFilter = { is_active: { $ne: false } };
-    if (audience === "BATCH") {
+    if (normAudience === "BATCH") {
         profileFilter.batch = { $regex: `^${escapedRegex(batch)}$`, $options: "i" };
-    } else if (audience === "COURSE") {
+    } else if (normAudience === "COURSE") {
         profileFilter.course = { $regex: `^${escapedRegex(course)}$`, $options: "i" };
-    } else if (audience === "YEAR") {
+    } else if (normAudience === "YEAR") {
         profileFilter.target_exam_year = year;
     }
 
@@ -492,10 +495,11 @@ exports.broadcastNotificationService = async ({
     data = null,
     sendPush = true
 }) => {
+    const normAudience = String(audience || "ALL_STUDENTS").trim().toUpperCase();
     const textBody = message || body || "";
     const textTitle = title || "MBBS.net";
     const recipients = await resolveAudience({
-        audience,
+        audience: normAudience,
         studentIds,
         batch,
         course,
@@ -530,7 +534,7 @@ exports.broadcastNotificationService = async ({
     let pushResult = null;
     if (sendPush) {
         let tokens = [];
-        if (audience === "ALL_STUDENTS") {
+        if (normAudience === "ALL_STUDENTS" || normAudience === "ALL") {
             tokens = await DeviceToken.find({ is_active: true }).distinct("token");
         } else if (recipients.length > 0) {
             const recipientUserIds = recipients.map(r => r._id);
