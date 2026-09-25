@@ -9,9 +9,7 @@ const { getFirebaseMessaging, isFirebaseConfigured } = require("../config/fireba
 const FCM_MULTICAST_CHUNK_SIZE = 500;
 const INVALID_TOKEN_ERROR_CODES = new Set([
     "messaging/invalid-registration-token",
-    "messaging/registration-token-not-registered",
-    "messaging/invalid-argument",
-    "messaging/mismatched-credential"
+    "messaging/registration-token-not-registered"
 ]);
 
 const sanitizeDataPayload = data => {
@@ -149,8 +147,8 @@ exports.sendFcmPushToTokens = async ({
                     sound: sound || "default",
                     defaultSound: true,
                     defaultVibrateTimings: true,
-                    priority: "PRIORITY_HIGH",
-                    visibility: "PUBLIC",
+                    priority: "high",
+                    visibility: "public",
                     clickAction: "FLUTTER_NOTIFICATION_CLICK"
                 }
             },
